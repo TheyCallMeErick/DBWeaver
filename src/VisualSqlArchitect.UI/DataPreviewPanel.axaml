@@ -1,0 +1,246 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             x:Class="VisualSqlArchitect.UI.Controls.DataPreviewPanel"
+             x:DataType="vm:DataPreviewViewModel">
+
+  <UserControl.Resources>
+    <x:String x:Key="LoadingColorConverter">#60A5FA</x:String>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <!-- DataGrid custom dark theme -->
+    <Style Selector="DataGrid">
+      <Setter Property="Background"          Value="#0D0F14"/>
+      <Setter Property="GridLinesVisibility" Value="All"/>
+      <Setter Property="BorderThickness"     Value="0"/>
+      <Setter Property="RowBackground"       Value="Transparent"/>
+      <!-- <Setter Property="AlternatingRowBackground" Value="#08FFFFFF"/> -->
+      <Setter Property="Foreground"          Value="#C8D0DC"/>
+      <Setter Property="FontSize"            Value="12"/>
+      <Setter Property="HorizontalGridLinesBrush" Value="#1A2335"/>
+      <Setter Property="VerticalGridLinesBrush"   Value="#1A2335"/>
+    </Style>
+    <Style Selector="DataGridColumnHeader">
+      <Setter Property="Background"   Value="#11141E"/>
+      <Setter Property="Foreground"   Value="#60A5FA"/>
+      <Setter Property="FontSize"     Value="11"/>
+      <Setter Property="FontWeight"   Value="SemiBold"/>
+      <Setter Property="Padding"      Value="10,7"/>
+      <Setter Property="BorderBrush"  Value="#1E2335"/>
+      <Setter Property="BorderThickness" Value="0,0,1,1"/>
+    </Style>
+    <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+      <Setter Property="Fill" Value="#101A2B"/>
+    </Style>
+    <Style Selector="DataGridCell">
+      <Setter Property="Padding" Value="10,5"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- ══ Panel shell ════════════════════════════════════════════════════════ -->
+  <Border Background="#0F1219"
+          BorderBrush="#1E2335"
+          BorderThickness="0,1,0,0"
+          BoxShadow="0 -4 24 0 #40000000">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+      <!-- ── Top drag handle + header ──────────────────────────────────────── -->
+      <Grid Grid.Row="0"
+            ColumnDefinitions="Auto,*,Auto,Auto,Auto"
+            Background="#0D0F14"
+            Height="40">
+
+        <!-- Drag handle strip -->
+        <Border Grid.Column="0"
+                Width="3"
+                Background="#252C3F"
+                Margin="12,8,0,8"
+                CornerRadius="2"
+                Cursor="Hand"
+                Name="DragHandle"/>
+
+        <!-- Title + status -->
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="10"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Center">
+
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <!-- Colored indicator dot -->
+            <Ellipse Width="7" Height="7" VerticalAlignment="Center">
+              <Ellipse.Fill>
+                <SolidColorBrush Color="#60A5FA"/>
+              </Ellipse.Fill>
+            </Ellipse>
+            <TextBlock Text="Data Preview"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#E8EAED"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+
+          <!-- Row count / status chip -->
+          <Border Background="#1A2335"
+                  CornerRadius="6"
+                  Padding="7,2"
+                  VerticalAlignment="Center">
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="10"
+                       Foreground="#60A5FA"/>
+          </Border>
+        </StackPanel>
+
+        <!-- Shortcut hint -->
+        <Border Grid.Column="2"
+                Background="#131720"
+                CornerRadius="4"
+                Padding="5,2"
+                Margin="0,0,8,0"
+                VerticalAlignment="Center">
+          <TextBlock Text="F3" FontSize="10" Foreground="#4A5568"/>
+        </Border>
+
+        <!-- Refresh button -->
+        <Button Grid.Column="3"
+                Content="↺  Run"
+                FontSize="11"
+                Foreground="#60A5FA"
+                Background="#0F1A30"
+                BorderBrush="#1E3A60"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="8,4"
+                Margin="0,0,6,0"
+                VerticalAlignment="Center"
+                Name="RunButton">
+          <Button.Styles>
+            <Style Selector="Button:pointerover">
+              <Setter Property="Background" Value="#162540"/>
+            </Style>
+          </Button.Styles>
+        </Button>
+
+        <!-- Close button -->
+        <Button Grid.Column="4"
+                Content="✕"
+                FontSize="11"
+                Foreground="#4A5568"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="8,4"
+                Margin="0,0,8,0"
+                VerticalAlignment="Center"
+                Name="CloseButton">
+          <Button.Styles>
+            <Style Selector="Button:pointerover">
+              <Setter Property="Foreground" Value="#E8EAED"/>
+            </Style>
+          </Button.Styles>
+        </Button>
+      </Grid>
+
+      <!-- ── SQL preview bar ────────────────────────────────────────────────── -->
+      <Border Grid.Row="1"
+              Background="#0B0E15"
+              BorderBrush="#1E2335"
+              BorderThickness="0,1,0,1"
+              Padding="12,7"
+              IsVisible="{Binding QueryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+
+        <Grid ColumnDefinitions="Auto,*">
+          <TextBlock Grid.Column="0"
+                     Text="SQL"
+                     FontSize="10"
+                     FontWeight="Bold"
+                     Foreground="#4338CA"
+                     VerticalAlignment="Center"
+                     Margin="0,0,10,0"/>
+          <SelectableTextBlock Grid.Column="1"
+                               Text="{Binding QueryText}"
+                               FontFamily="Consolas,monospace"
+                               FontSize="11"
+                               Foreground="#8B95A8"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"/>
+        </Grid>
+      </Border>
+
+      <!-- ── Content area ───────────────────────────────────────────────────── -->
+      <Grid Grid.Row="2">
+
+        <!-- Loading state -->
+        <StackPanel IsVisible="{Binding IsLoading}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="12">
+          <!-- Spinner emulated with animated dots -->
+          <ProgressBar IsIndeterminate="True"
+                       Width="200"
+                       Height="3"
+                       Background="#1A2335"
+                       Foreground="#3B82F6"
+                       CornerRadius="2"/>
+          <TextBlock Text="Running preview query…"
+                     FontSize="12"
+                     Foreground="#4A5568"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Error state -->
+        <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#1A0B0B"
+                BorderBrush="#5C1A1A"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="20,16"
+                MaxWidth="500">
+          <StackPanel Spacing="8">
+            <TextBlock Text="⚠  Query Error"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#FB7185"/>
+            <SelectableTextBlock Text="{Binding ErrorMessage}"
+                                 FontFamily="Consolas,monospace"
+                                 FontSize="11"
+                                 Foreground="#F87171"
+                                 TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Empty / no-query state -->
+        <StackPanel IsVisible="{Binding HasData, Converter={x:Static BoolConverters.Not}}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8">
+          <!-- Only show when NOT loading and NOT error -->
+          <TextBlock Text="No data yet"
+                     FontSize="13"
+                     Foreground="#2D3748"
+                     HorizontalAlignment="Center"
+                     IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
+          <TextBlock Text="Press F3 or Space to run the current query"
+                     FontSize="11"
+                     Foreground="#1E2335"
+                     HorizontalAlignment="Center"
+                     IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
+        </StackPanel>
+
+        <!-- DataGrid -->
+        <DataGrid IsVisible="{Binding HasData}"
+                  ItemsSource="{Binding ResultData}"
+                  AutoGenerateColumns="True"
+                  IsReadOnly="True"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="True"
+                  HorizontalScrollBarVisibility="Auto"
+                  VerticalScrollBarVisibility="Auto"
+                  Margin="0"/>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

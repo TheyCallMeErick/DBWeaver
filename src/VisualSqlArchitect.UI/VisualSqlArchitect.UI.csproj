@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>VisualSqlArchitect.UI</RootNamespace>
+    <AssemblyName>VisualSqlArchitect.UI</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <!-- Required for Avalonia XAML compilation -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <!-- ── Avalonia packages ── -->
+  <ItemGroup>
+    <PackageReference Include="Avalonia"                         Version="11.1.4"/>
+    <PackageReference Include="Avalonia.Desktop"                 Version="11.1.4"/>
+    <PackageReference Include="Avalonia.Themes.Fluent"           Version="11.1.4"/>
+    <PackageReference Include="Avalonia.Fonts.Inter"             Version="11.1.4"/>
+    <PackageReference Include="Avalonia.ReactiveUI"              Version="11.1.4"/>
+    <!-- Diagnostics / hot-reload (dev only — exclude from release) -->
+    <PackageReference Include="Avalonia.Diagnostics"             Version="11.1.4"
+                      Condition="'$(Configuration)' == 'Debug'"/>
+  </ItemGroup>
+
+  <!-- ── Core engine reference ── -->
+  <ItemGroup>
+    <ProjectReference Include="..\VisualSqlArchitect\VisualSqlArchitect.csproj"/>
+  </ItemGroup>
+
+  <!-- ── AXAML files handled by Avalonia SDK auto-discovery ── -->
+
+</Project>
+
+<!--
+══════════════════════════════════════════════════════════════════
+  DEPENDENCY NOTES
+══════════════════════════════════════════════════════════════════
+
+  Avalonia 11.1        — stable LTS release; includes:
+                          - Compiled bindings (x:DataType)
+                          - BoxShadow
+                          - CornerRadius on all controls
+                          - PathGeometry / BezierSegment
+                          - TransformGroup (ScaleTransform + TranslateTransform)
+
+  Avalonia.Fonts.Inter — ships the Inter variable font as an embedded resource,
+                         used in AppStyles.axaml via FontFamily.
+
+  Avalonia.ReactiveUI  — optional here (no ReactiveUI VMs yet) but included
+                         for future stream-based undo / live SQL update.
+
+  Avalonia.Diagnostics — enables the Ctrl+F12 visual inspector in Debug builds.
+                         NEVER ship in Release.
+
+══════════════════════════════════════════════════════════════════
+-->

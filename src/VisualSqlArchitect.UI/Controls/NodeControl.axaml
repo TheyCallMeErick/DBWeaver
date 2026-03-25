@@ -1,0 +1,191 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             x:Class="VisualSqlArchitect.UI.Controls.NodeControl"
+             x:DataType="vm:NodeViewModel">
+
+  <UserControl.Styles>
+    <!-- Pin row -->
+    <Style Selector="Border.pin-dot">
+      <Setter Property="Width"        Value="10"/>
+      <Setter Property="Height"       Value="10"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="BorderThickness" Value="1.5"/>
+      <Setter Property="Background"   Value="Transparent"/>
+      <Setter Property="Cursor"       Value="Hand"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.pin-dot:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.4)"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- ══ Node shell ══════════════════════════════════════════════════════════ -->
+  <Border CornerRadius="12"
+          Background="#171B26"
+          BorderBrush="{Binding NodeBorderBrush}"
+          BorderThickness="1"
+          BoxShadow="{Binding NodeShadow}"
+          MinWidth="200"
+          Cursor="SizeAll">
+
+    <Border.Transitions>
+      <Transitions>
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.15"/>
+      </Transitions>
+    </Border.Transitions>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+      <!-- ══ HEADER ═════════════════════════════════════════════════════════ -->
+      <Border Grid.Row="0"
+              CornerRadius="12,12,0,0"
+              Background="{Binding HeaderGradient}"
+              Padding="10,8">
+
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+          <!-- Category icon badge -->
+          <Border Grid.Column="0"
+                  Width="26" Height="26"
+                  CornerRadius="6"
+                  Background="#30FFFFFF"
+                  Margin="0,0,8,0"
+                  VerticalAlignment="Center">
+            <TextBlock Text="{Binding CategoryIcon}"
+                       FontSize="12"
+                       FontWeight="Bold"
+                       Foreground="White"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+          </Border>
+
+          <!-- Title + subtitle -->
+          <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Title}"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="White"
+                       TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding Subtitle}"
+                       FontSize="10"
+                       Foreground="#B0FFFFFF"
+                       TextTrimming="CharacterEllipsis"
+                       IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          </StackPanel>
+
+          <!-- Alias chip (when set) -->
+          <Border Grid.Column="2"
+                  CornerRadius="4"
+                  Background="#20FFFFFF"
+                  Padding="5,2"
+                  Margin="6,0,0,0"
+                  VerticalAlignment="Center"
+                  IsVisible="{Binding Alias, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding Alias}"
+                       FontSize="9"
+                       FontFamily="Consolas,monospace"
+                       Foreground="#D0FFFFFF"/>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- ══ SEPARATOR ══════════════════════════════════════════════════════ -->
+      <Border Grid.Row="1" Height="1" Background="#252C3F"/>
+
+      <!-- ══ PIN BODY ═══════════════════════════════════════════════════════ -->
+      <Grid Grid.Row="2" ColumnDefinitions="*,*" Margin="0,4,0,6">
+
+        <!-- INPUT PINS (left side) -->
+        <ItemsControl Grid.Column="0"
+                      ItemsSource="{Binding InputPins}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PinViewModel">
+              <Grid ColumnDefinitions="12,*" Height="26" Margin="0,1">
+
+                <!-- Pin dot (left edge) -->
+                <Border Grid.Column="0"
+                        Classes="pin-dot"
+                        BorderBrush="{Binding PinBrush}"
+                        Background="{Binding PinGlowBrush}"
+                        Width="10" Height="10"
+                        Margin="-5,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Name="InputPinDot">
+                  <ToolTip.Tip>
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding Name}"    FontWeight="Bold" Foreground="White"/>
+                      <TextBlock Text="{Binding DataTypeLabel}" FontSize="10" Foreground="#60A5FA"/>
+                    </StackPanel>
+                  </ToolTip.Tip>
+                </Border>
+
+                <!-- Pin label -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Name}"
+                           FontSize="11"
+                           Foreground="#8B95A8"
+                           VerticalAlignment="Center"
+                           Margin="6,0,4,0"
+                           TextTrimming="CharacterEllipsis"/>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- OUTPUT PINS (right side) -->
+        <ItemsControl Grid.Column="1"
+                      ItemsSource="{Binding OutputPins}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PinViewModel">
+              <Grid ColumnDefinitions="*,12" Height="26" Margin="0,1">
+
+                <!-- Pin label -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Name}"
+                           FontSize="11"
+                           Foreground="#8B95A8"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="4,0,6,0"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <!-- Pin dot (right edge) -->
+                <Border Grid.Column="1"
+                        Classes="pin-dot"
+                        BorderBrush="{Binding PinBrush}"
+                        Background="{Binding PinGlowBrush}"
+                        Width="10" Height="10"
+                        Margin="0,0,-5,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Name="OutputPinDot">
+                  <ToolTip.Tip>
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding Name}"    FontWeight="Bold" Foreground="White"/>
+                      <TextBlock Text="{Binding DataTypeLabel}" FontSize="10" Foreground="#60A5FA"/>
+                    </StackPanel>
+                  </ToolTip.Tip>
+                </Border>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Grid>
+
+      <!-- No-pin placeholder (CountStar, etc.) -->
+      <TextBlock Grid.Row="2"
+                 Text="No inputs"
+                 FontSize="10"
+                 Foreground="#4A5568"
+                 Margin="12,8"
+                 IsVisible="{Binding InputPins.Count, Converter={x:Static BoolConverters.Not}}"/>
+
+    </Grid>
+  </Border>
+</UserControl>

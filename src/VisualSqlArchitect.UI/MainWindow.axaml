@@ -1,0 +1,369 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+        xmlns:ctrl="using:VisualSqlArchitect.UI.Controls"
+        x:Class="VisualSqlArchitect.UI.MainWindow"
+        x:DataType="vm:CanvasViewModel"
+        Title="Visual SQL Architect"
+        Width="1440" Height="900"
+        MinWidth="960" MinHeight="620"
+        Background="#0D0F14"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        SystemDecorations="BorderOnly"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.Styles>
+    <Style Selector="Button.tb">
+      <Setter Property="Background"      Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground"      Value="#8B95A8"/>
+      <Setter Property="Padding"         Value="7,5"/>
+      <Setter Property="CornerRadius"    Value="6"/>
+      <Setter Property="FontSize"        Value="12"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.tb:pointerover">
+      <Setter Property="Background" Value="#1E2335"/>
+      <Setter Property="Foreground" Value="#E8EAED"/>
+    </Style>
+    <Style Selector="Button.tb.danger:pointerover">
+      <Setter Property="Background" Value="#5C1A1A"/>
+      <Setter Property="Foreground" Value="#FB7185"/>
+    </Style>
+  </Window.Styles>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       ROOT: TitleBar | Body | StatusBar
+  ═══════════════════════════════════════════════════════════════════ -->
+  <Grid RowDefinitions="36,*,28">
+
+    <!-- ╔══ TITLE BAR ══════════════════════════════════════════════════╗ -->
+    <Border Grid.Row="0"
+            Background="#0B0D13"
+            BorderBrush="#1A1D26"
+            BorderThickness="0,0,0,1"
+            PointerPressed="TitleBar_PointerPressed">
+
+      <Grid ColumnDefinitions="Auto,*,Auto">
+
+        <!-- Brand + connection -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                    Margin="12,0,0,0" VerticalAlignment="Center">
+
+          <Border Width="22" Height="22" CornerRadius="6"
+                  Background="#1A1E2C" BorderBrush="#3B82F6" BorderThickness="1">
+            <TextBlock Text="VS" FontSize="8" FontWeight="ExtraBold"
+                       Foreground="#3B82F6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+
+          <TextBlock Text="Visual SQL Architect"
+                     FontSize="12" FontWeight="SemiBold" Foreground="#C8D0DC" VerticalAlignment="Center"/>
+
+          <Border Background="#0F1A30" BorderBrush="#1E3A60" BorderThickness="1"
+                  CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Ellipse Width="5" Height="5" Fill="#4ADE80"/>
+              <TextBlock Text="PostgreSQL 16 · northwind" FontSize="10" Foreground="#60A5FA"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Tab bar -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Border Background="#171B26" CornerRadius="6" Padding="12,5"
+                  BorderBrush="#252C3F" BorderThickness="1">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Ellipse Width="5" Height="5" Fill="#3B82F6"/>
+              <TextBlock Text="Query 1" FontSize="11" Foreground="#E8EAED"/>
+              <TextBlock Text="{Binding IsDirty, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=''}"
+                         FontSize="11" Foreground="#FBBF24"/>
+            </StackPanel>
+          </Border>
+          <Button Content="+" Classes="tb" Width="26" Height="26" Padding="0"
+                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Right controls -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3"
+                    Margin="0,0,8,0" VerticalAlignment="Center">
+
+          <!-- Undo/Redo -->
+          <Button Classes="tb" Content="↩" Command="{Binding UndoCommand}"
+                  ToolTip.Tip="{Binding UndoRedo.UndoDescription}" Width="28" Height="28"
+                  Padding="0" HorizontalContentAlignment="Center"/>
+          <Button Classes="tb" Content="↪" Command="{Binding RedoCommand}"
+                  ToolTip.Tip="{Binding UndoRedo.RedoDescription}" Width="28" Height="28"
+                  Padding="0" HorizontalContentAlignment="Center"/>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- File -->
+          <Button Classes="tb" Content="⊞ New"   Name="NewBtn"  FontSize="11"/>
+          <Button Classes="tb" Content="⊟ Open"  Name="OpenBtn" FontSize="11"/>
+          <Button Classes="tb" Content="⊠ Save"  Name="SaveBtn" FontSize="11"/>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- Zoom -->
+          <Border Background="#131720" CornerRadius="4" Padding="7,3" VerticalAlignment="Center">
+            <TextBlock Text="{Binding ZoomPercent}" FontSize="10" Foreground="#4A5568"/>
+          </Border>
+          <Button Classes="tb" Content="−" Command="{Binding ZoomOutCommand}"
+                  Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center"/>
+          <Button Classes="tb" Content="+" Command="{Binding ZoomInCommand}"
+                  Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center"/>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- Preview toggle -->
+          <Button Classes="tb" Content="⊡ Preview" Name="TogglePreviewBtn"
+                  ToolTip.Tip="Data preview (F3)"/>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- Window chrome -->
+          <Button Classes="tb" Content="─" Name="MinimizeBtn"
+                  Width="28" Height="28" Padding="0" HorizontalContentAlignment="Center"/>
+          <Button Classes="tb" Content="□" Name="MaximizeBtn"
+                  Width="28" Height="28" Padding="0" HorizontalContentAlignment="Center"/>
+          <Button Classes="tb danger" Content="✕" Name="CloseWindowBtn"
+                  Width="28" Height="28" Padding="0" HorizontalContentAlignment="Center"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ╔══ BODY ════════════════════════════════════════════════════════╗ -->
+    <Grid Grid.Row="1" ColumnDefinitions="200,*,240">
+
+      <!-- ╠═ LEFT: Schema Explorer ═══════════════════════════════════════╣ -->
+      <Border Grid.Column="0"
+              Background="#0F1118"
+              BorderBrush="#1A1D26"
+              BorderThickness="0,0,1,0">
+
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+          <Border Grid.Row="0" Background="#0D0F14"
+                  Padding="10,9" BorderBrush="#1A1D26" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Grid.Column="0" Spacing="1">
+                <TextBlock Text="SCHEMA" FontSize="8" FontWeight="Bold"
+                           Foreground="#3B4560" LetterSpacing="1.5"/>
+                <TextBlock Text="northwind" FontSize="11" Foreground="#60A5FA"/>
+              </StackPanel>
+              <Button Grid.Column="1" Content="↺" Classes="tb" FontSize="13"
+                      Width="22" Height="22" Padding="0" ToolTip.Tip="Refresh schema"/>
+            </Grid>
+          </Border>
+
+          <Border Grid.Row="1" Padding="7,4">
+            <TextBox Watermark="Filter…" FontSize="11" Background="#0D0F14"
+                     BorderBrush="#1E2335" BorderThickness="1" CornerRadius="5"
+                     Padding="7,4" Foreground="#8B95A8"/>
+          </Border>
+
+          <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+            <TreeView Name="SchemaTree" Margin="3,0">
+
+              <TreeViewItem IsExpanded="True">
+                <TreeViewItem.Header>
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <TextBlock Text="⊞" Foreground="#4A5568" FontSize="10"/>
+                    <TextBlock Text="public" FontWeight="Medium" Foreground="#8B95A8" FontSize="11"/>
+                  </StackPanel>
+                </TreeViewItem.Header>
+
+                <!-- orders -->
+                <TreeViewItem>
+                  <TreeViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <TextBlock Text="▤" Foreground="#14B8A6" FontSize="10"/>
+                      <TextBlock Text="orders" FontSize="11"/>
+                    </StackPanel>
+                  </TreeViewItem.Header>
+                  <TreeViewItem><TreeViewItem.Header><StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="🔑" FontSize="8"/><TextBlock Text="id" FontFamily="Consolas,monospace" FontSize="10"/><TextBlock Text="int" Foreground="#4ADE80" FontSize="9"/></StackPanel></TreeViewItem.Header></TreeViewItem>
+                  <TreeViewItem><TreeViewItem.Header><StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="🔗" FontSize="8"/><TextBlock Text="customer_id" FontFamily="Consolas,monospace" FontSize="10"/><TextBlock Text="int" Foreground="#4ADE80" FontSize="9"/></StackPanel></TreeViewItem.Header></TreeViewItem>
+                  <TreeViewItem><TreeViewItem.Header><StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="○" FontSize="8" Foreground="#4A5568"/><TextBlock Text="status" FontFamily="Consolas,monospace" FontSize="10"/><TextBlock Text="text" Foreground="#60A5FA" FontSize="9"/></StackPanel></TreeViewItem.Header></TreeViewItem>
+                  <TreeViewItem><TreeViewItem.Header><StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="○" FontSize="8" Foreground="#4A5568"/><TextBlock Text="total" FontFamily="Consolas,monospace" FontSize="10"/><TextBlock Text="decimal" Foreground="#4ADE80" FontSize="9"/></StackPanel></TreeViewItem.Header></TreeViewItem>
+                  <TreeViewItem><TreeViewItem.Header><StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="○" FontSize="8" Foreground="#4A5568"/><TextBlock Text="metadata" FontFamily="Consolas,monospace" FontSize="10"/><TextBlock Text="jsonb" Foreground="#A78BFA" FontSize="9"/></StackPanel></TreeViewItem.Header></TreeViewItem>
+                </TreeViewItem>
+
+                <!-- customers -->
+                <TreeViewItem>
+                  <TreeViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <TextBlock Text="▤" Foreground="#14B8A6" FontSize="10"/>
+                      <TextBlock Text="customers" FontSize="11"/>
+                    </StackPanel>
+                  </TreeViewItem.Header>
+                  <TreeViewItem><TreeViewItem.Header><StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="🔑" FontSize="8"/><TextBlock Text="id" FontFamily="Consolas,monospace" FontSize="10"/><TextBlock Text="int" Foreground="#4ADE80" FontSize="9"/></StackPanel></TreeViewItem.Header></TreeViewItem>
+                  <TreeViewItem><TreeViewItem.Header><StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="○" FontSize="8" Foreground="#4A5568"/><TextBlock Text="name" FontFamily="Consolas,monospace" FontSize="10"/><TextBlock Text="text" Foreground="#60A5FA" FontSize="9"/></StackPanel></TreeViewItem.Header></TreeViewItem>
+                </TreeViewItem>
+
+                <!-- products -->
+                <TreeViewItem>
+                  <TreeViewItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <TextBlock Text="▤" Foreground="#14B8A6" FontSize="10"/>
+                      <TextBlock Text="products" FontSize="11"/>
+                    </StackPanel>
+                  </TreeViewItem.Header>
+                </TreeViewItem>
+
+              </TreeViewItem>
+
+              <!-- Views -->
+              <TreeViewItem>
+                <TreeViewItem.Header>
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <TextBlock Text="◫" Foreground="#4A5568" FontSize="10"/>
+                    <TextBlock Text="Views (2)" FontWeight="Medium" Foreground="#4A5568" FontSize="11"/>
+                  </StackPanel>
+                </TreeViewItem.Header>
+              </TreeViewItem>
+
+            </TreeView>
+          </ScrollViewer>
+
+          <!-- Quick actions footer -->
+          <Border Grid.Row="3" Background="#0B0D12" BorderBrush="#1A1D26"
+                  BorderThickness="0,1,0,0" Padding="8,7">
+            <StackPanel Spacing="4">
+              <Button Classes="tb" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                      Name="OpenSearchBtn">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <TextBlock Text="＋" Foreground="#3B82F6" FontSize="13"/>
+                  <TextBlock Text="Add Node" FontSize="11"/>
+                  <Border Background="#0D0F14" CornerRadius="3" Padding="4,1">
+                    <TextBlock Text="⇧A" FontSize="9" Foreground="#4A5568"/>
+                  </Border>
+                </StackPanel>
+              </Button>
+              <Button Classes="tb" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                      Command="{Binding TogglePreviewCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <TextBlock Text="⊟" Foreground="#4A5568" FontSize="12"/>
+                  <TextBlock Text="Preview" FontSize="11"/>
+                  <Border Background="#0D0F14" CornerRadius="3" Padding="4,1">
+                    <TextBlock Text="F3" FontSize="9" Foreground="#4A5568"/>
+                  </Border>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- ╠═ CENTRE: Canvas + SQL bar + Preview ════════════════════════════╣ -->
+      <Grid Grid.Column="1" RowDefinitions="*,Auto,Auto">
+
+        <!-- Canvas + overlays -->
+        <Panel Grid.Row="0" ClipToBounds="True">
+          <ctrl:InfiniteCanvas Name="TheCanvas" ViewModel="{Binding}" ClipToBounds="True"/>
+
+          <!-- Search overlay (Shift+A) -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,70,0,0"
+                 IsVisible="{Binding SearchMenu.IsVisible}">
+            <ctrl:SearchMenuControl DataContext="{Binding SearchMenu}" Name="SearchOverlay"/>
+          </Panel>
+
+          <!-- Auto-Join overlay -->
+          <Panel HorizontalAlignment="Right" VerticalAlignment="Top"
+                 Margin="0,20,20,0" ZIndex="10"
+                 IsVisible="{Binding AutoJoin.IsVisible}"
+                 Name="AutoJoinPanel">
+            <ctrl:AutoJoinOverlay DataContext="{Binding AutoJoin}" Name="AutoJoinOverlayCtrl"/>
+          </Panel>
+
+          <!-- Empty canvas hint -->
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10"
+                      IsVisible="{Binding Nodes.Count, Converter={x:Static BoolConverters.Not}}">
+            <TextBlock Text="Visual SQL Architect"
+                       FontSize="30" FontWeight="Light" Foreground="#161A26" HorizontalAlignment="Center"/>
+            <TextBlock Text="Press  ⇧A  to add your first node, or drag a table from the sidebar"
+                       FontSize="13" Foreground="#1E2335" HorizontalAlignment="Center"/>
+          </StackPanel>
+
+          <!-- Mini zoom toolbar (bottom-right) -->
+          <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                  Margin="0,0,16,16" Background="#0F1219"
+                  BorderBrush="#252C3F" BorderThickness="1"
+                  CornerRadius="9" Padding="5,3" ZIndex="5">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+              <Button Classes="tb" Content="−" Command="{Binding ZoomOutCommand}"
+                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"/>
+              <Border Width="38" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding ZoomPercent}" FontSize="10" Foreground="#4A5568"
+                           HorizontalAlignment="Center"/>
+              </Border>
+              <Button Classes="tb" Content="+" Command="{Binding ZoomInCommand}"
+                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"/>
+              <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+              <Button Classes="tb" Content="⊡" Command="{Binding FitToScreenCommand}"
+                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"
+                      ToolTip.Tip="Fit to screen"/>
+            </StackPanel>
+          </Border>
+        </Panel>
+
+        <!-- Live SQL bar -->
+        <ctrl:LiveSqlBar Grid.Row="1"
+                         Name="SqlBar"
+                         DataContext="{Binding LiveSql}"/>
+
+        <!-- Data Preview panel (slide up) -->
+        <Border Grid.Row="2" IsVisible="{Binding DataPreview.IsVisible}">
+          <ctrl:DataPreviewPanel Name="PreviewPanel"
+                                 DataContext="{Binding DataPreview}"/>
+        </Border>
+      </Grid>
+
+      <!-- ╠═ RIGHT: Property Panel ══════════════════════════════════════════╣ -->
+      <ctrl:PropertyPanelControl Grid.Column="2"
+                                 DataContext="{Binding PropertyPanel}"
+                                 Name="PropPanel"/>
+
+    </Grid>
+
+    <!-- ╔══ STATUS BAR ════════════════════════════════════════════════════╗ -->
+    <Border Grid.Row="2" Background="#0B0D12"
+            BorderBrush="#1A1D26" BorderThickness="0,1,0,0" Padding="12,0">
+
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Ellipse Width="5" Height="5" Fill="#4ADE80"/>
+            <TextBlock Text="Connected · PostgreSQL 16.2" FontSize="10" Foreground="#3B4560"/>
+          </StackPanel>
+
+          <Border Width="1" Height="12" Background="#1E2335"/>
+
+          <TextBlock FontSize="10" Foreground="#3B4560" VerticalAlignment="Center">
+            <Run Text="{Binding Nodes.Count}"/>
+            <Run Text=" nodes · "/>
+            <Run Text="{Binding Connections.Count}"/>
+            <Run Text=" connections"/>
+          </TextBlock>
+
+          <Border Width="1" Height="12" Background="#1E2335"/>
+
+          <!-- Undo history depth indicator -->
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <TextBlock FontSize="10" Foreground="#3B4560" VerticalAlignment="Center">
+              <Run Text="Undo: "/>
+              <Run Text="{Binding UndoRedo.UndoDescription}"/>
+            </TextBlock>
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock Grid.Column="1" FontSize="10" Foreground="#252C3F"
+                   VerticalAlignment="Center"
+                   Text="⇧A Nodes · F3 Preview · Ctrl+Z Undo · Del Remove · Alt+Drag Pan"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

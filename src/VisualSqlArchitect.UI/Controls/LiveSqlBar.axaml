@@ -1,0 +1,188 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:core="using:VisualSqlArchitect.Core"
+             xmlns:conv="using:VisualSqlArchitect.UI.Converters"
+             x:Class="VisualSqlArchitect.UI.Controls.LiveSqlBar"
+             x:DataType="vm:LiveSqlBarViewModel">
+
+  <UserControl.Resources>
+    <conv:SqlTokenKindConverter x:Key="KindConverter"/>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+
+    <!-- Keyword -->
+    <Style Selector="TextBlock.tok-Keyword">
+      <Setter Property="Foreground" Value="#818CF8"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <!-- Identifier -->
+    <Style Selector="TextBlock.tok-Identifier">
+      <Setter Property="Foreground" Value="#E8EAED"/>
+    </Style>
+    <!-- Literal string / number -->
+    <Style Selector="TextBlock.tok-Literal">
+      <Setter Property="Foreground" Value="#4ADE80"/>
+    </Style>
+    <!-- Operator -->
+    <Style Selector="TextBlock.tok-Operator">
+      <Setter Property="Foreground" Value="#FB7185"/>
+    </Style>
+    <!-- Punctuation -->
+    <Style Selector="TextBlock.tok-Punctuation">
+      <Setter Property="Foreground" Value="#4A5568"/>
+    </Style>
+    <!-- Function call -->
+    <Style Selector="TextBlock.tok-Function">
+      <Setter Property="Foreground" Value="#FBBF24"/>
+    </Style>
+    <!-- Comment -->
+    <Style Selector="TextBlock.tok-Comment">
+      <Setter Property="Foreground" Value="#4A5568"/>
+      <Setter Property="FontStyle"  Value="Italic"/>
+    </Style>
+    <!-- Plain / whitespace -->
+    <Style Selector="TextBlock.tok-Plain">
+      <Setter Property="Foreground" Value="#8B95A8"/>
+    </Style>
+
+    <!-- Action button -->
+    <Style Selector="Button.sql-action">
+      <Setter Property="Background"       Value="Transparent"/>
+      <Setter Property="BorderThickness"  Value="0"/>
+      <Setter Property="Foreground"       Value="#4A5568"/>
+      <Setter Property="Padding"          Value="6,3"/>
+      <Setter Property="CornerRadius"     Value="5"/>
+      <Setter Property="FontSize"         Value="11"/>
+      <Setter Property="Cursor"           Value="Hand"/>
+    </Style>
+    <Style Selector="Button.sql-action:pointerover">
+      <Setter Property="Background" Value="#1E2335"/>
+      <Setter Property="Foreground" Value="#E8EAED"/>
+    </Style>
+
+  </UserControl.Styles>
+
+  <!-- ══ Bar shell ══════════════════════════════════════════════════════════ -->
+  <Border Background="#0A0C11"
+          BorderBrush="#1E2335"
+          BorderThickness="0,1,0,0">
+
+    <Grid RowDefinitions="Auto,Auto" Margin="0">
+
+      <!-- ── Top strip: label + provider + actions ───────────────────────────── -->
+      <Grid Grid.Row="0"
+            ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto"
+            Margin="12,6,8,4">
+
+        <!-- Status dot -->
+        <Ellipse Grid.Column="0"
+                 Width="7" Height="7"
+                 VerticalAlignment="Center"
+                 Margin="0,0,8,0">
+          <Ellipse.Fill>
+            <SolidColorBrush Color="#4ADE80" Opacity="{Binding IsValid, Converter={x:Static BoolConverters.Not}, FallbackValue=0.3}"/>
+          </Ellipse.Fill>
+        </Ellipse>
+
+        <!-- "LIVE SQL" label -->
+        <TextBlock Grid.Column="1"
+                   Text="LIVE SQL"
+                   FontSize="9"
+                   FontWeight="Bold"
+                   Foreground="#3B4560"
+                   LetterSpacing="1.5"
+                   VerticalAlignment="Center"
+                   Margin="0,0,10,0"/>
+
+        <!-- Error hint (shown inline when invalid) -->
+        <TextBlock Grid.Column="2"
+                   Text="{Binding CompileError}"
+                   FontSize="10"
+                   Foreground="#FB7185"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   IsVisible="{Binding IsValid, Converter={x:Static BoolConverters.Not}}"/>
+
+        <!-- Provider picker -->
+        <ComboBox Grid.Column="3"
+                  SelectedItem="{Binding Provider, Mode=TwoWay}"
+                  Background="#0D0F14"
+                  BorderBrush="#252C3F"
+                  Foreground="#60A5FA"
+                  FontSize="10"
+                  CornerRadius="5"
+                  Padding="7,2"
+                  Margin="4,0"
+                  VerticalAlignment="Center">
+          <ComboBox.Items>
+            <core:DatabaseProvider>Postgres</core:DatabaseProvider>
+            <core:DatabaseProvider>MySql</core:DatabaseProvider>
+            <core:DatabaseProvider>SqlServer</core:DatabaseProvider>
+          </ComboBox.Items>
+        </ComboBox>
+
+        <!-- Copy SQL button -->
+        <Button Grid.Column="4"
+                Classes="sql-action"
+                Content="⎘ Copy"
+                Name="CopyBtn"
+                ToolTip.Tip="Copy SQL to clipboard"
+                IsEnabled="{Binding HasSql}"/>
+
+        <!-- Format / pretty-print -->
+        <Button Grid.Column="5"
+                Classes="sql-action"
+                Content="≡ Format"
+                Name="FormatBtn"
+                ToolTip.Tip="Format SQL (coming soon)"
+                IsEnabled="False"
+                Opacity="0.4"/>
+
+        <!-- Recompile indicator (spinning when active) -->
+        <ProgressBar Grid.Column="6"
+                     Width="20" Height="2"
+                     IsIndeterminate="True"
+                     Foreground="#3B82F6"
+                     Background="Transparent"
+                     VerticalAlignment="Center"
+                     Margin="4,0"
+                     IsVisible="{Binding IsCompiling}"/>
+      </Grid>
+
+      <!-- ── SQL token display ──────────────────────────────────────────────── -->
+      <ScrollViewer Grid.Row="1"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Disabled"
+                    Margin="0,0,0,4">
+
+        <ItemsControl ItemsSource="{Binding Tokens}"
+                      Margin="12,0">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <!-- WrapPanel so multi-line SQL wraps nicely -->
+              <WrapPanel Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SqlToken">
+              <TextBlock Text="{Binding Text}"
+                         FontFamily="Consolas,Cascadia Code,monospace"
+                         FontSize="12"
+                         Classes.tok-Keyword="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Keyword}"
+                         Classes.tok-Identifier="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Identifier}"
+                         Classes.tok-Literal="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Literal}"
+                         Classes.tok-Operator="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Operator}"
+                         Classes.tok-Punctuation="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Punctuation}"
+                         Classes.tok-Function="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Function}"
+                         Classes.tok-Comment="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Comment}"
+                         Classes.tok-Plain="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Plain}"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+    </Grid>
+  </Border>
+</UserControl>

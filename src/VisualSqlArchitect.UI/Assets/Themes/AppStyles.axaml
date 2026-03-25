@@ -1,0 +1,129 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       GLOBAL DARK OVERRIDES
+  ═══════════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Window background -->
+  <Style Selector="Window">
+    <Setter Property="Background" Value="#0D0F14"/>
+    <Setter Property="FontFamily" Value="Segoe UI,system-ui,sans-serif"/>
+    <Setter Property="Foreground" Value="#E8EAED"/>
+  </Style>
+
+  <!-- ── TextBox ─────────────────────────────────────────────────────────── -->
+  <Style Selector="TextBox">
+    <Setter Property="Background"   Value="#131720"/>
+    <Setter Property="BorderBrush"  Value="#252C3F"/>
+    <Setter Property="Foreground"   Value="#E8EAED"/>
+    <Setter Property="CaretBrush"   Value="#60A5FA"/>
+    <Setter Property="SelectionBrush" Value="#1E3A60"/>
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+  <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="#3B82F6"/>
+  </Style>
+  <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
+    <Setter Property="Foreground" Value="#4A5568"/>
+  </Style>
+
+  <!-- ── Button ─────────────────────────────────────────────────────────── -->
+  <Style Selector="Button">
+    <Setter Property="CornerRadius"  Value="7"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.10"/>
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <!-- ── ScrollBar (minimal) ─────────────────────────────────────────────── -->
+  <Style Selector="ScrollBar">
+    <Setter Property="Background"  Value="Transparent"/>
+    <Setter Property="Foreground"  Value="#252C3F"/>
+  </Style>
+  <Style Selector="ScrollBar /template/ Thumb">
+    <Setter Property="Background"  Value="#252C3F"/>
+    <Setter Property="CornerRadius" Value="4"/>
+  </Style>
+  <Style Selector="ScrollBar /template/ Thumb:pointerover">
+    <Setter Property="Background"  Value="#3B4560"/>
+  </Style>
+
+  <!-- ── TreeView ─────────────────────────────────────────────────────────── -->
+  <Style Selector="TreeView">
+    <Setter Property="Background"  Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="TreeViewItem">
+    <Setter Property="Foreground"  Value="#8B95A8"/>
+    <Setter Property="FontSize"    Value="12"/>
+    <Setter Property="Padding"     Value="3,3"/>
+  </Style>
+  <Style Selector="TreeViewItem:pointerover /template/ Border#headerBorder">
+    <Setter Property="Background"  Value="#131720"/>
+  </Style>
+
+  <!-- ── ToolTip ─────────────────────────────────────────────────────────── -->
+  <Style Selector="ToolTip">
+    <Setter Property="Background"   Value="#1A1E2C"/>
+    <Setter Property="BorderBrush"  Value="#252C3F"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Foreground"   Value="#E8EAED"/>
+    <Setter Property="CornerRadius" Value="7"/>
+    <Setter Property="Padding"      Value="10,6"/>
+    <Setter Property="FontSize"     Value="11"/>
+  </Style>
+
+  <!-- ── ProgressBar ─────────────────────────────────────────────────────── -->
+  <Style Selector="ProgressBar">
+    <Setter Property="Background"   Value="#1A2335"/>
+    <Setter Property="Foreground"   Value="#3B82F6"/>
+  </Style>
+  <Style Selector="ProgressBar /template/ Border">
+    <Setter Property="CornerRadius" Value="2"/>
+  </Style>
+
+  <!-- ── DataGrid ─────────────────────────────────────────────────────────── -->
+  <Style Selector="DataGrid">
+    <Setter Property="Background"   Value="#0D0F14"/>
+    <Setter Property="Foreground"   Value="#C8D0DC"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="GridLinesVisibility" Value="All"/>
+    <Setter Property="HorizontalGridLinesBrush" Value="#1A2335"/>
+    <Setter Property="VerticalGridLinesBrush"   Value="#1A2335"/>
+    <Setter Property="RowBackground"            Value="Transparent"/>
+    <!-- <Setter Property="AlternatingRowBackground" Value="#08FFFFFF"/> -->
+    <Setter Property="FontSize"     Value="12"/>
+  </Style>
+
+  <Style Selector="DataGridColumnHeader">
+    <Setter Property="Background"   Value="#0F1118"/>
+    <Setter Property="Foreground"   Value="#60A5FA"/>
+    <Setter Property="FontSize"     Value="11"/>
+    <Setter Property="FontWeight"   Value="SemiBold"/>
+    <Setter Property="Padding"      Value="12,8"/>
+    <Setter Property="BorderBrush"  Value="#1E2335"/>
+    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+  </Style>
+
+  <Style Selector="DataGridCell">
+    <Setter Property="Padding"      Value="12,6"/>
+    <Setter Property="BorderBrush"  Value="#1A2335"/>
+  </Style>
+
+  <Style Selector="DataGridRow:pointerover">
+    <Setter Property="Background"   Value="#0F1828"/>
+  </Style>
+
+  <Style Selector="DataGridRow:selected">
+    <Setter Property="Background"   Value="#0F2040"/>
+  </Style>
+
+  <!-- ── Separator ─────────────────────────────────────────────────────────── -->
+  <Style Selector="Separator">
+    <Setter Property="Background" Value="#252C3F"/>
+  </Style>
+
+</Styles>

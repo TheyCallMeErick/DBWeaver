@@ -1,0 +1,148 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       CANVAS & BACKGROUND
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <Color x:Key="CanvasBg">#0D0F14</Color>
+  <Color x:Key="CanvasGrid">#161A22</Color>
+  <Color x:Key="CanvasDot">#1E2330</Color>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       SURFACE LAYERS
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <Color x:Key="Surface0">#12151D</Color>
+  <Color x:Key="Surface1">#171B26</Color>
+  <Color x:Key="Surface2">#1D2235</Color>
+  <Color x:Key="Surface3">#232840</Color>
+  <Color x:Key="SurfaceGlass">#B2171B26</Color>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       TEXT
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <Color x:Key="TextPrimary">#E8EAED</Color>
+  <Color x:Key="TextSecondary">#8B95A8</Color>
+  <Color x:Key="TextMuted">#4A5568</Color>
+  <Color x:Key="TextAccent">#60A5FA</Color>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       ACCENT & BRAND
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <Color x:Key="AccentBlue">#3B82F6</Color>
+  <Color x:Key="AccentBlueMid">#1D4ED8</Color>
+  <Color x:Key="AccentGlow">#6044B3FF</Color>
+  <Color x:Key="Border">#252C3F</Color>
+  <Color x:Key="BorderActive">#3B82F6</Color>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       NODE CATEGORY COLORS  (header fills)
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <!-- DataSource — slate-teal -->
+  <Color x:Key="CatDataSource">#0F766E</Color>
+  <Color x:Key="CatDataSourceLight">#14B8A6</Color>
+  <!-- String — indigo -->
+  <Color x:Key="CatString">#4338CA</Color>
+  <Color x:Key="CatStringLight">#818CF8</Color>
+  <!-- Math — amber -->
+  <Color x:Key="CatMath">#B45309</Color>
+  <Color x:Key="CatMathLight">#FBBF24</Color>
+  <!-- Cast — fuchsia -->
+  <Color x:Key="CatCast">#7E22CE</Color>
+  <Color x:Key="CatCastLight">#C084FC</Color>
+  <!-- Comparison — rose -->
+  <Color x:Key="CatComparison">#BE123C</Color>
+  <Color x:Key="CatComparisonLight">#FB7185</Color>
+  <!-- LogicGate — orange -->
+  <Color x:Key="CatLogic">#C2410C</Color>
+  <Color x:Key="CatLogicLight">#FB923C</Color>
+  <!-- JSON — purple -->
+  <Color x:Key="CatJson">#6D28D9</Color>
+  <Color x:Key="CatJsonLight">#A78BFA</Color>
+  <!-- Aggregate — green -->
+  <Color x:Key="CatAggregate">#15803D</Color>
+  <Color x:Key="CatAggregateLight">#4ADE80</Color>
+  <!-- Conditional — cyan -->
+  <Color x:Key="CatConditional">#0E7490</Color>
+  <Color x:Key="CatConditionalLight">#22D3EE</Color>
+  <!-- Output — gray -->
+  <Color x:Key="CatOutput">#374151</Color>
+  <Color x:Key="CatOutputLight">#9CA3AF</Color>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       PIN / WIRE COLORS BY DATA TYPE
+       Blue=Text  Green=Number  Purple=JSON  Yellow=Boolean  Cyan=DateTime
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <Color x:Key="PinText">#60A5FA</Color>        <!-- Blue  -->
+  <Color x:Key="PinNumber">#4ADE80</Color>      <!-- Green -->
+  <Color x:Key="PinBoolean">#FACC15</Color>     <!-- Yellow -->
+  <Color x:Key="PinDateTime">#22D3EE</Color>    <!-- Cyan  -->
+  <Color x:Key="PinJson">#A78BFA</Color>        <!-- Purple -->
+  <Color x:Key="PinAny">#94A3B8</Color>         <!-- Slate  -->
+  <Color x:Key="PinExpression">#F97316</Color>  <!-- Orange -->
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       SOLID BRUSHES (derived from colors above)
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <SolidColorBrush x:Key="CanvasBgBrush"       Color="{StaticResource CanvasBg}"/>
+  <SolidColorBrush x:Key="Surface0Brush"       Color="{StaticResource Surface0}"/>
+  <SolidColorBrush x:Key="Surface1Brush"       Color="{StaticResource Surface1}"/>
+  <SolidColorBrush x:Key="Surface2Brush"       Color="{StaticResource Surface2}"/>
+  <SolidColorBrush x:Key="Surface3Brush"       Color="{StaticResource Surface3}"/>
+  <SolidColorBrush x:Key="BorderBrush"         Color="{StaticResource Border}"/>
+  <SolidColorBrush x:Key="BorderActiveBrush"   Color="{StaticResource BorderActive}"/>
+  <SolidColorBrush x:Key="TextPrimaryBrush"    Color="{StaticResource TextPrimary}"/>
+  <SolidColorBrush x:Key="TextSecondaryBrush"  Color="{StaticResource TextSecondary}"/>
+  <SolidColorBrush x:Key="TextMutedBrush"      Color="{StaticResource TextMuted}"/>
+  <SolidColorBrush x:Key="AccentBlueBrush"     Color="{StaticResource AccentBlue}"/>
+  <SolidColorBrush x:Key="AccentGlowBrush"     Color="{StaticResource AccentGlow}"/>
+
+  <!-- Pin brushes -->
+  <SolidColorBrush x:Key="PinTextBrush"        Color="{StaticResource PinText}"/>
+  <SolidColorBrush x:Key="PinNumberBrush"      Color="{StaticResource PinNumber}"/>
+  <SolidColorBrush x:Key="PinBooleanBrush"     Color="{StaticResource PinBoolean}"/>
+  <SolidColorBrush x:Key="PinDateTimeBrush"    Color="{StaticResource PinDateTime}"/>
+  <SolidColorBrush x:Key="PinJsonBrush"        Color="{StaticResource PinJson}"/>
+  <SolidColorBrush x:Key="PinAnyBrush"         Color="{StaticResource PinAny}"/>
+  <SolidColorBrush x:Key="PinExpressionBrush"  Color="{StaticResource PinExpression}"/>
+
+  <!-- Category brushes -->
+  <SolidColorBrush x:Key="CatDataSourceBrush"  Color="{StaticResource CatDataSource}"/>
+  <SolidColorBrush x:Key="CatStringBrush"      Color="{StaticResource CatString}"/>
+  <SolidColorBrush x:Key="CatMathBrush"        Color="{StaticResource CatMath}"/>
+  <SolidColorBrush x:Key="CatCastBrush"        Color="{StaticResource CatCast}"/>
+  <SolidColorBrush x:Key="CatComparisonBrush"  Color="{StaticResource CatComparison}"/>
+  <SolidColorBrush x:Key="CatLogicBrush"       Color="{StaticResource CatLogic}"/>
+  <SolidColorBrush x:Key="CatJsonBrush"        Color="{StaticResource CatJson}"/>
+  <SolidColorBrush x:Key="CatAggregateBrush"   Color="{StaticResource CatAggregate}"/>
+  <SolidColorBrush x:Key="CatConditionalBrush" Color="{StaticResource CatConditional}"/>
+  <SolidColorBrush x:Key="CatOutputBrush"      Color="{StaticResource CatOutput}"/>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       TYPOGRAPHY
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <FontFamily x:Key="MonoFont">avares://VisualSqlArchitect.UI/Assets/Fonts#JetBrains Mono,Cascadia Code,Consolas,monospace</FontFamily>
+  <FontFamily x:Key="UIFont">avares://VisualSqlArchitect.UI/Assets/Fonts#Inter,Segoe UI,system-ui,sans-serif</FontFamily>
+
+  <x:Double x:Key="FontSizeXS">10</x:Double>
+  <x:Double x:Key="FontSizeSM">11</x:Double>
+  <x:Double x:Key="FontSizeMD">12</x:Double>
+  <x:Double x:Key="FontSizeLG">13</x:Double>
+  <x:Double x:Key="FontSizeXL">15</x:Double>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       SPACING / GEOMETRY
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <x:Double x:Key="NodeMinWidth">200</x:Double>
+  <x:Double x:Key="PinSize">10</x:Double>
+  <CornerRadius x:Key="NodeRadius">12</CornerRadius>
+  <CornerRadius x:Key="NodeHeaderRadius">12,12,0,0</CornerRadius>
+  <CornerRadius x:Key="PinRadius">5</CornerRadius>
+  <CornerRadius x:Key="PanelRadius">10</CornerRadius>
+  <CornerRadius x:Key="ChipRadius">6</CornerRadius>
+
+  <!-- BoxShadow tokens (Avalonia BoxShadow syntax) -->
+  <x:String x:Key="NodeShadow">0 4 24 0 #40000000, 0 1 4 0 #50000000</x:String>
+  <x:String x:Key="NodeShadowSelected">0 0 0 2 #3B82F6, 0 8 32 0 #603B82F6</x:String>
+  <x:String x:Key="PanelShadow">0 8 40 0 #60000000, 0 2 8 0 #40000000</x:String>
+
+</ResourceDictionary>
