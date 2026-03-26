@@ -32,6 +32,12 @@
           BoxShadow="{Binding NodeShadow}"
           MinWidth="200"
           Cursor="SizeAll">
+    <ToolTip.Tip>
+      <TextBlock Text="{Binding ValidationTooltip}"
+                 FontFamily="Consolas,monospace"
+                 FontSize="11"
+                 IsVisible="{Binding ValidationTooltip, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+    </ToolTip.Tip>
 
     <Border.Transitions>
       <Transitions>
@@ -78,19 +84,52 @@
                        IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
 
-          <!-- Alias chip (when set) -->
-          <Border Grid.Column="2"
-                  CornerRadius="4"
-                  Background="#20FFFFFF"
-                  Padding="5,2"
-                  Margin="6,0,0,0"
-                  VerticalAlignment="Center"
-                  IsVisible="{Binding Alias, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <TextBlock Text="{Binding Alias}"
-                       FontSize="9"
-                       FontFamily="Consolas,monospace"
-                       Foreground="#D0FFFFFF"/>
-          </Border>
+          <!-- Alias chip + validation badge -->
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
+                      VerticalAlignment="Center" Margin="4,0,0,0">
+
+            <!-- Alias chip (when set) -->
+            <Border CornerRadius="4"
+                    Background="#20FFFFFF"
+                    Padding="5,2"
+                    IsVisible="{Binding Alias, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <TextBlock Text="{Binding Alias}"
+                         FontSize="9"
+                         FontFamily="Consolas,monospace"
+                         Foreground="#D0FFFFFF"/>
+            </Border>
+
+            <!-- Error badge -->
+            <Border Width="18" Height="18" CornerRadius="9"
+                    Background="#EF4444"
+                    IsVisible="{Binding HasError}"
+                    VerticalAlignment="Center">
+              <ToolTip.Tip>
+                <TextBlock Text="{Binding ValidationTooltip}"
+                           FontFamily="Consolas,monospace" FontSize="11"
+                           MaxWidth="300"/>
+              </ToolTip.Tip>
+              <TextBlock Text="!" FontSize="10" FontWeight="Bold"
+                         Foreground="White"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- Warning badge -->
+            <Border Width="18" Height="18" CornerRadius="9"
+                    Background="#FBBF24"
+                    IsVisible="{Binding HasWarning}"
+                    VerticalAlignment="Center">
+              <ToolTip.Tip>
+                <TextBlock Text="{Binding ValidationTooltip}"
+                           FontFamily="Consolas,monospace" FontSize="11"
+                           MaxWidth="300"/>
+              </ToolTip.Tip>
+              <TextBlock Text="⚠" FontSize="9" FontWeight="Bold"
+                         Foreground="#1A1A1A"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+          </StackPanel>
         </Grid>
       </Border>
 
@@ -178,13 +217,99 @@
         </ItemsControl>
       </Grid>
 
-      <!-- No-pin placeholder (CountStar, etc.) -->
+      <!-- No-pin placeholder (CountStar, etc.) — hidden for ResultOutput -->
       <TextBlock Grid.Row="2"
                  Text="No inputs"
                  FontSize="10"
                  Foreground="#4A5568"
                  Margin="12,8"
                  IsVisible="{Binding InputPins.Count, Converter={x:Static BoolConverters.Not}}"/>
+
+      <!-- ══ RESULT OUTPUT column ordering panel ════════════════════════════ -->
+      <Border Grid.Row="2"
+              IsVisible="{Binding IsResultOutput}"
+              Background="#0D1020"
+              CornerRadius="0,0,10,10"
+              Padding="10,6">
+        <StackPanel Spacing="4">
+
+          <!-- Header label -->
+          <TextBlock Text="SELECT columns — connect &amp; reorder:"
+                     FontSize="9"
+                     Foreground="#4A5568"
+                     Margin="0,0,0,2"/>
+
+          <!-- Column list -->
+          <ItemsControl ItemsSource="{Binding OutputColumnOrder}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:OutputColumnEntry">
+                <Border Background="#111827"
+                        CornerRadius="5"
+                        Padding="8,4"
+                        Margin="0,1">
+                  <Grid ColumnDefinitions="*,Auto,Auto">
+
+                    <!-- Column name -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding DisplayName}"
+                               FontSize="10"
+                               FontFamily="Consolas,monospace"
+                               Foreground="#94A3B8"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+
+                    <!-- Move up -->
+                    <Button Grid.Column="1"
+                            Content="↑"
+                            Command="{Binding MoveUpCommand}"
+                            FontSize="9"
+                            Foreground="#4A5568"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="4,2"
+                            Cursor="Hand"
+                            ToolTip.Tip="Move column up in SELECT order">
+                      <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                          <Setter Property="Foreground" Value="#60A5FA"/>
+                        </Style>
+                      </Button.Styles>
+                    </Button>
+
+                    <!-- Move down -->
+                    <Button Grid.Column="2"
+                            Content="↓"
+                            Command="{Binding MoveDownCommand}"
+                            FontSize="9"
+                            Foreground="#4A5568"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="4,2"
+                            Cursor="Hand"
+                            ToolTip.Tip="Move column down in SELECT order">
+                      <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                          <Setter Property="Foreground" Value="#60A5FA"/>
+                        </Style>
+                      </Button.Styles>
+                    </Button>
+
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <!-- Empty state hint -->
+          <TextBlock Text="Connect column pins to this node's input ↑"
+                     FontSize="9"
+                     Foreground="#3B4560"
+                     HorizontalAlignment="Center"
+                     Margin="0,4"
+                     IsVisible="{Binding OutputColumnOrder.Count, Converter={x:Static BoolConverters.Not}}"/>
+
+        </StackPanel>
+      </Border>
 
     </Grid>
   </Border>

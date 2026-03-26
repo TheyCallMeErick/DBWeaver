@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using VisualSqlArchitect.UI.ViewModels;
 
@@ -46,6 +47,10 @@ public sealed class InfiniteCanvas : Panel
         PointerReleased     += OnReleased;
         KeyDown             += OnKey;
         Focusable            = true;
+        // Re-sync wire endpoints after every layout pass so that pin positions
+        // are computed from the real nc.Bounds.Width, not the 220px fallback
+        // that is used when NodeControls have not yet been measured/arranged.
+        LayoutUpdated       += (_, _) => { if (ViewModel is not null) SyncWires(); };
     }
 
     protected override Size MeasureOverride(Size s)
@@ -64,7 +69,8 @@ public sealed class InfiniteCanvas : Panel
             if (nc.DataContext is NodeViewModel vm)
             {
                 Canvas.SetLeft(nc,vm.Position.X); Canvas.SetTop(nc,vm.Position.Y);
-                nc.Measure(Size.Infinity); nc.Arrange(new Rect(nc.DesiredSize));
+                nc.Measure(Size.Infinity);
+                nc.Arrange(new Rect(new Point(vm.Position.X, vm.Position.Y), nc.DesiredSize));
             }
 
         _wires.Arrange(new Rect(new Size(20000,20000)));
@@ -85,7 +91,7 @@ public sealed class InfiniteCanvas : Panel
     private void SyncNodes()
     {
         if (ViewModel is null) return;
-        var existing = _scene.Children.OfType<NodeControl>().ToDictionary(nc=>nc.DataContext as NodeViewModel);
+        var existing = _scene.Children.OfType<NodeControl>().ToDictionary<NodeControl, NodeViewModel?>(nc=>nc.DataContext as NodeViewModel);
         foreach (var vm in ViewModel.Nodes)
         {
             if (existing.ContainsKey(vm)) continue;
@@ -134,15 +140,36 @@ public sealed class InfiniteCanvas : Panel
     private void UpdatePinPositions()
     {
         if (ViewModel is null) return;
-        const double headerH=46, pinH=26, padTop=4;
+        const double headerH=46, separatorH=1, pinH=26, padTop=4;
+        var pinYBase = headerH + separatorH + padTop + pinH / 2.0;
         foreach (var node in ViewModel.Nodes)
         {
             var nc = _scene.Children.OfType<NodeControl>().FirstOrDefault(c=>c.DataContext==node);
-            var nodeW = nc?.Bounds.Width>0 ? nc.Bounds.Width : 220;
-            for (int i=0;i<node.InputPins.Count;i++)
-                node.InputPins[i].AbsolutePosition = new Point(node.Position.X, node.Position.Y+headerH+padTop+i*(pinH+2)+pinH/2.0);
-            for (int i=0;i<node.OutputPins.Count;i++)
-                node.OutputPins[i].AbsolutePosition = new Point(node.Position.X+nodeW, node.Position.Y+headerH+padTop+i*(pinH+2)+pinH/2.0);
+            // After layout: use TranslatePoint from each pin Border for pixel-accurate positions.
+            // nc.Bounds.Width > 0 means layout has run and nc is at its real canvas position.
+            if (nc is not null && nc.Bounds.Width > 0)
+            {
+                foreach (var b in nc.GetLogicalDescendants().OfType<Border>())
+                {
+                    if (b.DataContext is not PinViewModel pvm) continue;
+                    var center = new Point(b.Bounds.Width / 2, b.Bounds.Height / 2);
+                    var inScene = b.TranslatePoint(center, _scene);
+                    if (inScene.HasValue) pvm.AbsolutePosition = inScene.Value;
+                }
+            }
+            else
+            {
+                // Geometric fallback used on the first frame before layout completes
+                var nodeW = nc?.Bounds.Width > 0 ? nc.Bounds.Width : node.Width;
+                for (int i = 0; i < node.InputPins.Count; i++)
+                    node.InputPins[i].AbsolutePosition = new Point(
+                        node.Position.X,
+                        node.Position.Y + pinYBase + i * (pinH + 2));
+                for (int i = 0; i < node.OutputPins.Count; i++)
+                    node.OutputPins[i].AbsolutePosition = new Point(
+                        node.Position.X + nodeW,
+                        node.Position.Y + pinYBase + i * (pinH + 2));
+            }
         }
     }
 

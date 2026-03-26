@@ -8,6 +8,9 @@ public static class SqlFn
 {
     // String
     public const string Regex        = "REGEX";
+    public const string RegexReplace = "REGEX_REPLACE";
+    public const string RegexExtract = "REGEX_EXTRACT";
+    public const string Replace      = "REPLACE";
     public const string Contains     = "CONTAINS";
     public const string StartsWith   = "STARTS_WITH";
     public const string EndsWith     = "ENDS_WITH";
@@ -106,7 +109,10 @@ public sealed class SqlFunctionRegistry : ISqlFunctionRegistry
     // ─────────────────────────────────────────────────────────────────────────
     private static Dictionary<string, FnRenderer> PostgresMap() => new()
     {
-        [SqlFn.Regex]       = a => $"{a[0]} ~ {a[1]}",
+        [SqlFn.Regex]        = a => $"{a[0]} ~ {a[1]}",
+        [SqlFn.RegexReplace] = a => $"regexp_replace({a[0]}, {a[1]}, {a[2]})",
+        [SqlFn.RegexExtract] = a => $"substring({a[0]} from {a[1]})",
+        [SqlFn.Replace]      = a => $"REPLACE({a[0]}, {a[1]}, {a[2]})",
         [SqlFn.Contains]    = a => $"{a[0]} ILIKE '%' || {a[1]} || '%'",
         [SqlFn.StartsWith]  = a => $"{a[0]} ILIKE {a[1]} || '%'",
         [SqlFn.EndsWith]    = a => $"{a[0]} ILIKE '%' || {a[1]}",
@@ -153,7 +159,10 @@ public sealed class SqlFunctionRegistry : ISqlFunctionRegistry
     // ─────────────────────────────────────────────────────────────────────────
     private static Dictionary<string, FnRenderer> MySqlMap() => new()
     {
-        [SqlFn.Regex]       = a => $"{a[0]} REGEXP {a[1]}",
+        [SqlFn.Regex]        = a => $"{a[0]} REGEXP {a[1]}",
+        [SqlFn.RegexReplace] = a => $"REGEXP_REPLACE({a[0]}, {a[1]}, {a[2]})",
+        [SqlFn.RegexExtract] = a => $"REGEXP_SUBSTR({a[0]}, {a[1]})",
+        [SqlFn.Replace]      = a => $"REPLACE({a[0]}, {a[1]}, {a[2]})",
         [SqlFn.Contains]    = a => $"{a[0]} LIKE CONCAT('%', {a[1]}, '%')",
         [SqlFn.StartsWith]  = a => $"{a[0]} LIKE CONCAT({a[1]}, '%')",
         [SqlFn.EndsWith]    = a => $"{a[0]} LIKE CONCAT('%', {a[1]})",
@@ -197,7 +206,10 @@ public sealed class SqlFunctionRegistry : ISqlFunctionRegistry
     // ─────────────────────────────────────────────────────────────────────────
     private static Dictionary<string, FnRenderer> SqlServerMap() => new()
     {
-        [SqlFn.Regex]       = a => $"PATINDEX({a[1]}, {a[0]}) > 0",
+        [SqlFn.Regex]        = a => $"PATINDEX({a[1]}, {a[0]}) > 0",
+        [SqlFn.RegexReplace] = a => throw new NotSupportedException("REGEXP_REPLACE is not natively supported in SQL Server. Use a CLR function or switch to Postgres/MySQL."),
+        [SqlFn.RegexExtract] = a => throw new NotSupportedException("REGEXP_SUBSTR is not natively supported in SQL Server. Use a CLR function or switch to Postgres/MySQL."),
+        [SqlFn.Replace]      = a => $"REPLACE({a[0]}, {a[1]}, {a[2]})",
         [SqlFn.Contains]    = a => $"{a[0]} LIKE '%' + {a[1]} + '%'",
         [SqlFn.StartsWith]  = a => $"{a[0]} LIKE {a[1]} + '%'",
         [SqlFn.EndsWith]    = a => $"{a[0]} LIKE '%' + {a[1]}",

@@ -38,6 +38,26 @@
     </Setter>
   </Style>
 
+  <!-- ── Keyboard focus ring ─────────────────────────────────────────────── -->
+  <!-- Shown only when focused via keyboard (:focus-visible), not mouse click  -->
+  <Style Selector="Button:focus-visible">
+    <Setter Property="BorderThickness" Value="2"/>
+    <Setter Property="BorderBrush"     Value="#3B82F6"/>
+  </Style>
+
+  <!-- TreeView keyboard focus -->
+  <Style Selector="TreeViewItem:focus-visible /template/ Border#headerBorder">
+    <Setter Property="BorderBrush"     Value="#3B82F6"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius"    Value="4"/>
+  </Style>
+
+  <!-- ComboBox / ListBoxItem keyboard focus -->
+  <Style Selector="ListBoxItem:focus-visible">
+    <Setter Property="BorderBrush"     Value="#3B82F6"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+
   <!-- ── ScrollBar (minimal) ─────────────────────────────────────────────── -->
   <Style Selector="ScrollBar">
     <Setter Property="Background"  Value="Transparent"/>

@@ -69,11 +69,31 @@
           BorderBrush="#1E2335"
           BorderThickness="0,1,0,0">
 
-    <Grid RowDefinitions="Auto,Auto" Margin="0">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto" Margin="0">
+
+      <!-- ── Safe Preview blocked banner ──────────────────────────────────────── -->
+      <Border Grid.Row="0"
+              Background="#1A0A0A"
+              BorderBrush="#EF4444"
+              BorderThickness="0,0,0,1"
+              Padding="12,5"
+              IsVisible="{Binding IsMutatingCommand}">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Border CornerRadius="4" Background="#EF4444" Padding="5,2" VerticalAlignment="Center">
+            <TextBlock Text="🔒 SAFE PREVIEW MODE"
+                       FontSize="9" FontWeight="Bold" Foreground="White" LetterSpacing="0.8"/>
+          </Border>
+          <TextBlock Text="{Binding BlockedReason}"
+                     FontSize="10"
+                     Foreground="#FB7185"
+                     VerticalAlignment="Center"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
 
       <!-- ── Top strip: label + provider + actions ───────────────────────────── -->
-      <Grid Grid.Row="0"
-            ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto"
+      <Grid Grid.Row="1"
+            ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto"
             Margin="12,6,8,4">
 
         <!-- Status dot -->
@@ -96,7 +116,22 @@
                    VerticalAlignment="Center"
                    Margin="0,0,10,0"/>
 
-        <!-- Error hint (shown inline when invalid) -->
+        <!-- Safe Preview badge (shown when mutating command detected) -->
+        <Border Grid.Column="2"
+                CornerRadius="4"
+                Background="#EF4444"
+                Padding="5,2"
+                Margin="0,0,8,0"
+                VerticalAlignment="Center"
+                IsVisible="{Binding IsMutatingCommand}"
+                ToolTip.Tip="This SQL contains a data-mutating command and cannot be run in Safe Preview Mode">
+          <TextBlock Text="🔒 BLOCKED"
+                     FontSize="9"
+                     FontWeight="Bold"
+                     Foreground="White"/>
+        </Border>
+
+        <!-- Error hint (shown inline when invalid and not a mutating block) -->
         <TextBlock Grid.Column="2"
                    Text="{Binding CompileError}"
                    FontSize="10"
@@ -136,9 +171,8 @@
                 Classes="sql-action"
                 Content="≡ Format"
                 Name="FormatBtn"
-                ToolTip.Tip="Format SQL (coming soon)"
-                IsEnabled="False"
-                Opacity="0.4"/>
+                ToolTip.Tip="Format SQL"
+                IsEnabled="{Binding HasSql}"/>
 
         <!-- Recompile indicator (spinning when active) -->
         <ProgressBar Grid.Column="6"
@@ -152,7 +186,7 @@
       </Grid>
 
       <!-- ── SQL token display ──────────────────────────────────────────────── -->
-      <ScrollViewer Grid.Row="1"
+      <ScrollViewer Grid.Row="2"
                     HorizontalScrollBarVisibility="Auto"
                     VerticalScrollBarVisibility="Disabled"
                     Margin="0,0,0,4">
@@ -182,6 +216,46 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
+
+      <!-- ── Guardrail warnings strip ──────────────────────────────────────── -->
+      <ItemsControl Grid.Row="3"
+                    ItemsSource="{Binding GuardIssues}"
+                    IsVisible="{Binding HasGuardWarning}"
+                    Margin="12,2,12,5">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GuardIssue">
+            <Border CornerRadius="4"
+                    Background="#241A00"
+                    BorderBrush="#FBBF24"
+                    BorderThickness="1"
+                    Padding="6,3"
+                    Margin="0,2,6,0">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="⚠"
+                           FontSize="9"
+                           Foreground="#FBBF24"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Message}"
+                           FontSize="10"
+                           Foreground="#D4A017"
+                           VerticalAlignment="Center">
+                  <ToolTip.Tip>
+                    <StackPanel Spacing="3" MaxWidth="340">
+                      <TextBlock Text="{Binding Message}"  FontWeight="Bold" Foreground="White" FontSize="11"/>
+                      <TextBlock Text="{Binding Suggestion}" Foreground="#60A5FA" FontSize="10" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </ToolTip.Tip>
+                </TextBlock>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
 
     </Grid>
   </Border>

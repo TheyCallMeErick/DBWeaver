@@ -74,16 +74,24 @@ public static class CanvasSerializer
         return JsonSerializer.Serialize(saved, _opts);
     }
 
-    private static SavedNode SerialiseNode(NodeViewModel n) => new(
-        NodeId:       n.Id,
-        NodeType:     n.Type.ToString(),
-        X:            n.Position.X,
-        Y:            n.Position.Y,
-        Alias:        n.Alias,
-        TableFullName: n.Type == NodeType.TableSource ? n.Subtitle : null,
-        Parameters:   new Dictionary<string, string>(n.Parameters),
-        PinLiterals:  new Dictionary<string, string>(n.PinLiterals)
-    );
+    private static SavedNode SerialiseNode(NodeViewModel n)
+    {
+        var parameters = new Dictionary<string, string>(n.Parameters);
+        // Persist ResultOutput column order as a joined string
+        if (n.Type == NodeType.ResultOutput && n.OutputColumnOrder.Count > 0)
+            parameters["__colOrder"] = string.Join("|", n.OutputColumnOrder.Select(e => e.Key));
+
+        return new(
+            NodeId:        n.Id,
+            NodeType:      n.Type.ToString(),
+            X:             n.Position.X,
+            Y:             n.Position.Y,
+            Alias:         n.Alias,
+            TableFullName: n.Type == NodeType.TableSource ? n.Subtitle : null,
+            Parameters:    parameters,
+            PinLiterals:   new Dictionary<string, string>(n.PinLiterals)
+        );
+    }
 
     private static SavedConnection SerialiseConnection(ConnectionViewModel c) => new(
         FromNodeId:  c.FromPin.Owner.Id,
@@ -98,8 +106,10 @@ public static class CanvasSerializer
     /// Rebuilds a <see cref="CanvasViewModel"/> from JSON.
     /// Clears the existing canvas before loading.
     /// </summary>
+    /// <param name="columnLookup">Optional catalog to restore TableSource column pins.</param>
     /// <exception cref="InvalidOperationException">On version mismatch or corrupt JSON.</exception>
-    public static void Deserialize(string json, CanvasViewModel vm)
+    public static void Deserialize(string json, CanvasViewModel vm,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup = null)
     {
         var saved = JsonSerializer.Deserialize<SavedCanvas>(json, _opts)
             ?? throw new InvalidOperationException("Failed to parse canvas JSON.");
@@ -119,7 +129,7 @@ public static class CanvasSerializer
         var nodeMap = new Dictionary<string, NodeViewModel>(StringComparer.Ordinal);
         foreach (var sn in saved.Nodes)
         {
-            var nodeVm = BuildNodeVm(sn);
+            var nodeVm = BuildNodeVm(sn, columnLookup);
             if (nodeVm is null) continue;
             nodeMap[sn.NodeId] = nodeVm;
             vm.Nodes.Add(nodeVm);
@@ -146,9 +156,33 @@ public static class CanvasSerializer
             toPin.IsConnected   = true;
             vm.Connections.Add(conn);
         }
+
+        // Restore ResultOutput column order after all connections exist
+        foreach (var sn in saved.Nodes)
+        {
+            if (!nodeMap.TryGetValue(sn.NodeId, out var nodeVm)) continue;
+            if (nodeVm.Type != NodeType.ResultOutput) continue;
+
+            // First sync normally (builds entries from connections)
+            nodeVm.SyncOutputColumns(vm.Connections);
+
+            // Then apply saved order if present
+            if (!sn.Parameters.TryGetValue("__colOrder", out var colOrderStr)) continue;
+            var savedOrder = colOrderStr.Split('|', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < savedOrder.Length; i++)
+            {
+                var key = savedOrder[i];
+                var cur = nodeVm.OutputColumnOrder.Select((e, idx) => (e, idx))
+                              .FirstOrDefault(x => x.e.Key == key);
+                if (cur.e is null) continue;
+                if (cur.idx != i && i < nodeVm.OutputColumnOrder.Count)
+                    nodeVm.OutputColumnOrder.Move(cur.idx, i);
+            }
+        }
     }
 
-    private static NodeViewModel? BuildNodeVm(SavedNode sn)
+    private static NodeViewModel? BuildNodeVm(SavedNode sn,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup)
     {
         if (!Enum.TryParse<NodeType>(sn.NodeType, out var nodeType))
             return null;
@@ -157,11 +191,11 @@ public static class CanvasSerializer
 
         if (nodeType == NodeType.TableSource && sn.TableFullName is not null)
         {
-            // TableSource nodes need special reconstruction
-            // (we don't have column metadata here so use minimal pins)
-            vm = new NodeViewModel(sn.TableFullName,
-                [], // columns re-populated on metadata refresh
-                new Point(sn.X, sn.Y));
+            // Restore columns from lookup catalog when available
+            IEnumerable<(string, PinDataType)> cols = [];
+            if (columnLookup is not null && columnLookup.TryGetValue(sn.TableFullName, out var found))
+                cols = found;
+            vm = new NodeViewModel(sn.TableFullName, cols, new Point(sn.X, sn.Y));
         }
         else
         {
@@ -197,10 +231,11 @@ public static class CanvasSerializer
         await File.WriteAllTextAsync(path, json);
     }
 
-    public static async Task LoadFromFileAsync(string path, CanvasViewModel vm)
+    public static async Task LoadFromFileAsync(string path, CanvasViewModel vm,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup = null)
     {
         var json = await File.ReadAllTextAsync(path);
-        Deserialize(json, vm);
+        Deserialize(json, vm, columnLookup);
     }
 
     /// <summary>Returns true if the file looks like a valid saved canvas.</summary>

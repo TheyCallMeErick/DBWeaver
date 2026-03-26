@@ -48,12 +48,14 @@ public enum NodeType
 {
     // ── Data Source ───────────────────────────────────────────────────────────
     TableSource,
+    Alias,
 
     // ── String Transforms ─────────────────────────────────────────────────────
     Upper, Lower, Trim,
     Substring,
-    RegexMatch, RegexReplace,
+    RegexMatch, RegexReplace, RegexExtract,
     Concat, StringLength,
+    Replace,
 
     // ── Math Transforms ───────────────────────────────────────────────────────
     Round, Abs, Ceil, Floor,
@@ -83,10 +85,14 @@ public enum NodeType
 
     // ── Conditional ───────────────────────────────────────────────────────────
     Case,
+    NullFill,    // COALESCE(value, fallback) — replaces NULL with a default
+    EmptyFill,   // COALESCE(NULLIF(TRIM(value),''), fallback) — replaces NULL or empty
+    ValueMap,    // CASE WHEN value = src THEN dst ELSE value END
 
     // ── Output ────────────────────────────────────────────────────────────────
     SelectOutput,
-    WhereOutput
+    WhereOutput,
+    ResultOutput
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -174,6 +180,13 @@ public static class NodeDefinitionRegistry
 
     private static Dictionary<NodeType, NodeDefinition> BuildAll() => new()
     {
+        // ── Data Source ───────────────────────────────────────────────────────
+
+        [NodeType.Alias] = new(NodeType.Alias, NodeCategory.DataSource,
+            "ALIAS (AS)", "Renames a column or expression with AS",
+            new[] { In("expression", PinDataType.Any), Out("result", PinDataType.Any) },
+            new[] { Param("alias", ParameterKind.Text, null, "New alias name (e.g. total_price)") }),
+
         // ── String transforms ─────────────────────────────────────────────────
 
         [NodeType.Upper] = new(NodeType.Upper, NodeCategory.StringTransform,
@@ -215,6 +228,29 @@ public static class NodeDefinitionRegistry
             "REGEX Match", "Tests if a column matches a regular expression",
             new[] { In("text", PinDataType.Text), Out("matches", PinDataType.Boolean) },
             new[] { Param("pattern", ParameterKind.Text, desc: "Regular expression pattern") }),
+
+        [NodeType.RegexReplace] = new(NodeType.RegexReplace, NodeCategory.StringTransform,
+            "REGEX Replace", "Replaces matches of a regular expression with a replacement string",
+            new[] { In("text", PinDataType.Text), Out("result", PinDataType.Text) },
+            new[]
+            {
+                Param("pattern",     ParameterKind.Text, desc: "Regular expression pattern"),
+                Param("replacement", ParameterKind.Text, "",   "Replacement string (\\1, \\2 for backreferences)")
+            }),
+
+        [NodeType.RegexExtract] = new(NodeType.RegexExtract, NodeCategory.StringTransform,
+            "REGEX Extract", "Extracts the first match (or first capture group) of a regular expression",
+            new[] { In("text", PinDataType.Text), Out("result", PinDataType.Text) },
+            new[] { Param("pattern", ParameterKind.Text, desc: "Regular expression pattern (use a capture group for group extraction)") }),
+
+        [NodeType.Replace] = new(NodeType.Replace, NodeCategory.StringTransform,
+            "REPLACE", "Replaces all occurrences of a literal substring within a value",
+            new[] { In("value", PinDataType.Text), Out("result", PinDataType.Text) },
+            new[]
+            {
+                Param("search",      ParameterKind.Text, desc: "Literal text to search for"),
+                Param("replacement", ParameterKind.Text, "", "Replacement text (empty to delete matches)")
+            }),
 
         [NodeType.Concat] = new(NodeType.Concat, NodeCategory.StringTransform,
             "CONCAT", "Concatenates two or more strings",
@@ -409,6 +445,35 @@ public static class NodeDefinitionRegistry
             "JSON Array Length", "Returns the number of elements in a JSON array",
             new[] { In("json", PinDataType.Json), Out("length", PinDataType.Number) },
             new[] { Param("path", ParameterKind.JsonPath, "$", "Path to the array") }),
+
+        // ── Value Transform (Conditional) ─────────────────────────────────────
+
+        [NodeType.NullFill] = new(NodeType.NullFill, NodeCategory.Conditional,
+            "NULL Fill", "Returns a fallback value when input is NULL — COALESCE(value, fallback)",
+            new[] { In("value", PinDataType.Any), Out("result", PinDataType.Any) },
+            new[] { Param("fallback", ParameterKind.Text, "", "Value returned when input is NULL") }),
+
+        [NodeType.EmptyFill] = new(NodeType.EmptyFill, NodeCategory.Conditional,
+            "Empty Fill", "Returns a fallback when input is NULL or an empty/whitespace string",
+            new[] { In("value", PinDataType.Text), Out("result", PinDataType.Text) },
+            new[] { Param("fallback", ParameterKind.Text, "", "Value returned when input is NULL or empty") }),
+
+        [NodeType.ValueMap] = new(NodeType.ValueMap, NodeCategory.Conditional,
+            "Value Map", "Maps a specific input value to a new output value — CASE WHEN value = src THEN dst ELSE passthrough",
+            new[] { In("value", PinDataType.Any), Out("result", PinDataType.Any) },
+            new[]
+            {
+                Param("src", ParameterKind.Text, desc: "Input value to match"),
+                Param("dst", ParameterKind.Text, desc: "Output value when matched")
+            }),
+
+        // ── Output ────────────────────────────────────────────────────────────
+
+        [NodeType.ResultOutput] = new(NodeType.ResultOutput, NodeCategory.Output,
+            "Result Output", "Defines the final SELECT column list and their order",
+            new[] { In("columns", PinDataType.Any, required: false, multi: true,
+                       desc: "Connect column/expression pins to include in SELECT") },
+            Array.Empty<NodeParameter>()),
     };
 
     // Overload accepting varargs for pins (convenience)

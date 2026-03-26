@@ -1,33 +1,32 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
-             x:Class="VisualSqlArchitect.UI.Controls.SearchMenuControl"
-             x:DataType="vm:SearchMenuViewModel">
+             x:Class="VisualSqlArchitect.UI.Controls.CommandPaletteControl"
+             x:DataType="vm:CommandPaletteViewModel">
 
   <UserControl.Styles>
-    <!-- Result item default -->
-    <Style Selector="Border.result-item">
-      <Setter Property="Background"    Value="Transparent"/>
-      <Setter Property="CornerRadius"  Value="8"/>
-      <Setter Property="Padding"       Value="10,7"/>
-      <Setter Property="Margin"        Value="4,1"/>
-      <Setter Property="Cursor"        Value="Hand"/>
+    <Style Selector="Border.cmd-item">
+      <Setter Property="Background"   Value="Transparent"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding"      Value="10,7"/>
+      <Setter Property="Margin"       Value="4,1"/>
+      <Setter Property="Cursor"       Value="Hand"/>
       <Setter Property="Transitions">
         <Transitions>
           <BrushTransition Property="Background" Duration="0:0:0.08"/>
         </Transitions>
       </Setter>
     </Style>
-    <Style Selector="Border.result-item:pointerover">
+    <Style Selector="Border.cmd-item:pointerover">
       <Setter Property="Background" Value="#1E2335"/>
     </Style>
-    <Style Selector="Border.result-item.selected">
+    <Style Selector="Border.cmd-item.selected">
       <Setter Property="Background" Value="#1A2845"/>
     </Style>
   </UserControl.Styles>
 
-  <!-- ══ Floating panel ═════════════════════════════════════════════════════ -->
-  <Border Width="340"
+  <!-- ══ Floating panel ══════════════════════════════════════════════════════ -->
+  <Border Width="420"
           CornerRadius="12"
           Background="#13161F"
           BorderBrush="#252C3F"
@@ -36,35 +35,36 @@
 
     <StackPanel>
 
-      <!-- ── Search input ──────────────────────────────────────────────────── -->
+      <!-- ── Search input ────────────────────────────────────────────────── -->
       <Border Background="#1A1E2C"
               CornerRadius="12,12,0,0"
               Padding="12,10">
 
         <Grid ColumnDefinitions="Auto,*,Auto">
 
-          <!-- Search icon -->
+          <!-- Command palette icon -->
           <Border Grid.Column="0"
                   Width="18" Height="18"
                   Margin="0,0,8,0"
                   VerticalAlignment="Center">
-            <Path Data="M 11 2 A 9 9 0 1 0 11 20 A 9 9 0 1 0 11 2 Z M 20 20 L 15.5 15.5"
-                  Stroke="#60A5FA"
-                  StrokeThickness="1.8"
-                  StrokeLineCap="Round"
-                  Stretch="Uniform"/>
+            <TextBlock Text="⌘"
+                       FontSize="15"
+                       Foreground="#60A5FA"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
           </Border>
 
           <!-- Text input -->
           <TextBox Grid.Column="1"
                    Text="{Binding Query, Mode=TwoWay}"
-                   Watermark="Search nodes… (Esc to close)"
+                   Watermark="Run a command… (Esc to close)"
                    FontSize="13"
                    Background="Transparent"
                    BorderThickness="0"
                    CaretBrush="#60A5FA"
                    Foreground="#E8EAED"
-                   Name="SearchInput">
+                   Name="SearchInput"
+                   AutomationProperties.Name="Command search">
             <TextBox.Styles>
               <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
                 <Setter Property="BorderBrush" Value="Transparent"/>
@@ -72,13 +72,13 @@
             </TextBox.Styles>
           </TextBox>
 
-          <!-- Keyboard shortcut badge -->
+          <!-- Shortcut badge -->
           <Border Grid.Column="2"
                   Background="#252C3F"
                   CornerRadius="4"
                   Padding="5,2"
                   VerticalAlignment="Center">
-            <TextBlock Text="⇧A"
+            <TextBlock Text="Ctrl+K"
                        FontSize="10"
                        Foreground="#4A5568"/>
           </Border>
@@ -88,50 +88,47 @@
       <!-- Divider -->
       <Border Height="1" Background="#1E2335"/>
 
-      <!-- ── Results list ───────────────────────────────────────────────────── -->
-      <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
+      <!-- ── Results list ──────────────────────────────────────────────── -->
+      <ScrollViewer MaxHeight="360" HorizontalScrollBarVisibility="Disabled">
         <ItemsControl ItemsSource="{Binding Results}" Margin="0,4,0,4" Name="ResultsList">
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:NodeSearchResultViewModel">
+            <DataTemplate x:DataType="vm:PaletteCommandItem">
 
-              <Border Classes="result-item">
+              <Border Classes="cmd-item">
+                <Grid ColumnDefinitions="32,*,Auto">
 
-                <Grid ColumnDefinitions="34,*,Auto">
+                  <!-- Icon badge -->
+                  <TextBlock Grid.Column="0"
+                             Text="{Binding Icon}"
+                             FontSize="14"
+                             Foreground="#60A5FA"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
 
-                  <!-- Category icon badge -->
-                  <Border Grid.Column="0"
-                          Width="28" Height="28"
-                          CornerRadius="7"
-                          VerticalAlignment="Center"
-                          Margin="0,0,8,0">
-                    <Border.Background>
-                      <SolidColorBrush Color="{Binding AccentColor}" Opacity="0.18"/>
-                    </Border.Background>
-                    <TextBlock Text="{Binding Icon}"
-                               FontSize="13"
-                               FontWeight="Bold"
-                               Foreground="{Binding AccentBrush}"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
-                  </Border>
-
-                  <!-- Name + category -->
+                  <!-- Name + description -->
                   <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Title}"
+                    <TextBlock Text="{Binding Name}"
                                FontSize="12"
                                FontWeight="Medium"
                                Foreground="#E8EAED"/>
-                    <TextBlock Text="{Binding Category}"
+                    <TextBlock Text="{Binding Description}"
                                FontSize="10"
                                Foreground="#4A5568"/>
                   </StackPanel>
 
-                  <!-- Accent dot -->
-                  <Ellipse Grid.Column="2"
-                           Width="6" Height="6"
-                           Fill="{Binding AccentBrush}"
-                           VerticalAlignment="Center"
-                           Margin="8,0"/>
+                  <!-- Shortcut badge -->
+                  <Border Grid.Column="2"
+                          Background="#1E2335"
+                          CornerRadius="4"
+                          Padding="6,2"
+                          VerticalAlignment="Center"
+                          Margin="8,0,0,0"
+                          IsVisible="{Binding Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding Shortcut}"
+                               FontSize="10"
+                               Foreground="#4A5568"
+                               FontFamily="Consolas,Monospace"/>
+                  </Border>
                 </Grid>
               </Border>
 
@@ -143,19 +140,13 @@
       <!-- Empty state -->
       <Border Padding="16,20"
               IsVisible="{Binding Results.Count, Converter={x:Static BoolConverters.Not}}">
-        <StackPanel HorizontalAlignment="Center" Spacing="6">
-          <TextBlock Text="No nodes found"
-                     FontSize="13"
-                     Foreground="#4A5568"
-                     HorizontalAlignment="Center"/>
-          <TextBlock Text="Try searching for UPPER, JSON, CAST, AND…"
-                     FontSize="10"
-                     Foreground="#3B4560"
-                     HorizontalAlignment="Center"/>
-        </StackPanel>
+        <TextBlock Text="No commands match your search"
+                   FontSize="13"
+                   Foreground="#4A5568"
+                   HorizontalAlignment="Center"/>
       </Border>
 
-      <!-- ── Footer keyboard hints ─────────────────────────────────────────── -->
+      <!-- ── Footer keyboard hints ────────────────────────────────────── -->
       <Border Background="#0E1018"
               CornerRadius="0,0,12,12"
               Padding="12,7">
@@ -170,7 +161,7 @@
             <Border Background="#1E2335" CornerRadius="3" Padding="4,1">
               <TextBlock Text="↵" FontSize="10" Foreground="#4A5568"/>
             </Border>
-            <TextBlock Text="Spawn" FontSize="10" Foreground="#4A5568" VerticalAlignment="Center"/>
+            <TextBlock Text="Execute" FontSize="10" Foreground="#4A5568" VerticalAlignment="Center"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Border Background="#1E2335" CornerRadius="3" Padding="4,1">

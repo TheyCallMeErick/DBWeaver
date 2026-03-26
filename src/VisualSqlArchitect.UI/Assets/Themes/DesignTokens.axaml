@@ -120,8 +120,8 @@
   <!-- ══════════════════════════════════════════════════════════════════════════
        TYPOGRAPHY
   ═══════════════════════════════════════════════════════════════════════════ -->
-  <FontFamily x:Key="MonoFont">avares://VisualSqlArchitect.UI/Assets/Fonts#JetBrains Mono,Cascadia Code,Consolas,monospace</FontFamily>
-  <FontFamily x:Key="UIFont">avares://VisualSqlArchitect.UI/Assets/Fonts#Inter,Segoe UI,system-ui,sans-serif</FontFamily>
+  <FontFamily x:Key="MonoFont">JetBrains Mono,Cascadia Code,Consolas,monospace</FontFamily>
+  <FontFamily x:Key="UIFont">Inter,Segoe UI,system-ui,sans-serif</FontFamily>
 
   <x:Double x:Key="FontSizeXS">10</x:Double>
   <x:Double x:Key="FontSizeSM">11</x:Double>

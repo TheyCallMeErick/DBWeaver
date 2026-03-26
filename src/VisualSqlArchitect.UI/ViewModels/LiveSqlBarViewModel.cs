@@ -39,16 +39,22 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
 {
     private readonly CanvasViewModel _canvas;
 
-    private string  _rawSql      = string.Empty;
-    private bool    _isValid     = true;
+    private string  _rawSql           = string.Empty;
+    private bool    _isValid          = true;
     private bool    _isCompiling;
     private string? _compileError;
+    private bool    _isMutatingCommand;
     private DatabaseProvider _provider = DatabaseProvider.Postgres;
+
+    // Mutating SQL keywords that must be blocked in Safe Preview Mode
+    private static readonly string[] MutatingKeywords =
+        ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "CREATE", "REPLACE", "MERGE"];
 
     // ── Observable collections ────────────────────────────────────────────────
 
-    public ObservableCollection<SqlToken>   Tokens     { get; } = [];
-    public ObservableCollection<string>     ErrorHints { get; } = [];
+    public ObservableCollection<SqlToken>    Tokens      { get; } = [];
+    public ObservableCollection<string>      ErrorHints  { get; } = [];
+    public ObservableCollection<GuardIssue>  GuardIssues { get; } = [];
 
     // ── Properties ────────────────────────────────────────────────────────────
 
@@ -90,6 +96,18 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
     };
 
     public bool HasSql => !string.IsNullOrWhiteSpace(RawSql);
+
+    public bool IsMutatingCommand
+    {
+        get => _isMutatingCommand;
+        private set => Set(ref _isMutatingCommand, value);
+    }
+
+    public string? BlockedReason => IsMutatingCommand
+        ? "Blocked in Safe Preview Mode — SQL contains a data-mutating command (INSERT/UPDATE/DELETE/DROP/ALTER/TRUNCATE)"
+        : null;
+
+    public bool HasGuardWarning => GuardIssues.Count > 0;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -135,6 +153,7 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
     public void Recompile()
     {
         ErrorHints.Clear();
+        GuardIssues.Clear();
         IsCompiling = true;
 
         try
@@ -145,15 +164,28 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
             IsValid      = errors.Count == 0;
             CompileError = errors.Count > 0 ? errors[0] : null;
 
+            // Detect mutating commands — block preview execution
+            IsMutatingCommand = IsMutating(sql);
+            RaisePropertyChanged(nameof(BlockedReason));
+
+            // Run guardrails (only when not a mutating command — those are already blocked)
+            if (!IsMutatingCommand)
+            {
+                foreach (var issue in QueryGuardrails.Check(sql))
+                    GuardIssues.Add(issue);
+            }
+            RaisePropertyChanged(nameof(HasGuardWarning));
+
             foreach (var err in errors) ErrorHints.Add(err);
 
             TokenizeSql(sql);
         }
         catch (Exception ex)
         {
-            RawSql       = string.Empty;
-            IsValid      = false;
-            CompileError = ex.Message;
+            RawSql            = string.Empty;
+            IsValid           = false;
+            CompileError      = ex.Message;
+            IsMutatingCommand = false;
             ErrorHints.Add($"Compile error: {ex.Message}");
             Tokens.Clear();
         }
@@ -162,6 +194,8 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
             IsCompiling = false;
             RaisePropertyChanged(nameof(HasSql));
             RaisePropertyChanged(nameof(ProviderLabel));
+            RaisePropertyChanged(nameof(BlockedReason));
+            RaisePropertyChanged(nameof(HasGuardWarning));
         }
     }
 
@@ -227,15 +261,36 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
                 c.ToPin!.Owner.Id,  c.ToPin.Name))
             .ToList();
 
-        // Determine SELECT and WHERE bindings from what's connected
-        var selectBindings = _canvas.Connections
-            .Where(c => c.ToPin?.Owner.Type == NodeType.TableSource == false
-                     && c.FromPin.Direction == Nodes.PinDirection.Output
-                     && (c.ToPin?.DataType == PinDataType.Any
-                      || c.FromPin.DataType != PinDataType.Boolean))
-            .Select(c => new VisualSqlArchitect.Nodes.SelectBinding(c.FromPin.Owner.Id, c.FromPin.Name, c.FromPin.Owner.Alias))
-            .DistinctBy(b => b.NodeId + b.PinName)
-            .ToList();
+        // Determine SELECT bindings —————————————————————————————————————————
+        // If a ResultOutput node is present, use its ordered column list.
+        // Otherwise fall back to the generic heuristic (all non-boolean outputs).
+        var resultOutputNode = _canvas.Nodes.FirstOrDefault(n => n.Type == NodeType.ResultOutput);
+
+        List<VisualSqlArchitect.Nodes.SelectBinding> selectBindings;
+
+        if (resultOutputNode is not null && resultOutputNode.OutputColumnOrder.Count > 0)
+        {
+            // Ordered columns from the ResultOutput node
+            selectBindings = resultOutputNode.GetOrderedColumns()
+                .Select(col =>
+                {
+                    var ownerAlias = _canvas.Nodes.FirstOrDefault(n => n.Id == col.NodeId)?.Alias;
+                    return new VisualSqlArchitect.Nodes.SelectBinding(col.NodeId, col.PinName, ownerAlias);
+                })
+                .ToList();
+        }
+        else
+        {
+            // Generic heuristic: all non-boolean output connections
+            selectBindings = _canvas.Connections
+                .Where(c => c.ToPin?.Owner.Type == NodeType.TableSource == false
+                         && c.FromPin.Direction == Nodes.PinDirection.Output
+                         && (c.ToPin?.DataType == PinDataType.Any
+                          || c.FromPin.DataType != PinDataType.Boolean))
+                .Select(c => new VisualSqlArchitect.Nodes.SelectBinding(c.FromPin.Owner.Id, c.FromPin.Name, c.FromPin.Owner.Alias))
+                .DistinctBy(b => b.NodeId + b.PinName)
+                .ToList();
+        }
 
         var whereBindings = _canvas.Connections
             .Where(c => c.FromPin.DataType == PinDataType.Boolean
@@ -285,6 +340,87 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
             sb.Append($"\n{j.Type} JOIN {j.TargetTable} ON {j.LeftColumn} = {j.RightColumn}");
 
         return sb.ToString();
+    }
+
+    // ── Safe Preview — mutating command detection ─────────────────────────────
+
+    private static bool IsMutating(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql)) return false;
+        var trimmed = sql.TrimStart();
+        // Skip leading comments (-- ...\n)
+        while (trimmed.StartsWith("--"))
+        {
+            var nl = trimmed.IndexOf('\n');
+            trimmed = nl < 0 ? string.Empty : trimmed[(nl + 1)..].TrimStart();
+        }
+        foreach (var kw in MutatingKeywords)
+        {
+            if (trimmed.StartsWith(kw, StringComparison.OrdinalIgnoreCase))
+            {
+                // Ensure it's a full word (not e.g. "CREATES_TABLE")
+                if (trimmed.Length == kw.Length || !char.IsLetterOrDigit(trimmed[kw.Length]))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    // ── Format SQL ────────────────────────────────────────────────────────────
+
+    public void FormatSql()
+    {
+        if (string.IsNullOrWhiteSpace(RawSql)) return;
+
+        // Major clause keywords that get their own line
+        var clauses = new[] { "SELECT", "FROM", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN",
+                              "JOIN", "WHERE", "GROUP BY", "HAVING", "ORDER BY", "LIMIT",
+                              "OFFSET", "UNION ALL", "UNION" };
+
+        var sql = RawSql.Trim();
+
+        // Replace each clause keyword with newline + keyword
+        foreach (var kw in clauses)
+        {
+            // Use a regex-free approach: find the keyword surrounded by whitespace
+            var idx = 0;
+            while (true)
+            {
+                idx = sql.IndexOf(kw, idx, StringComparison.OrdinalIgnoreCase);
+                if (idx < 0) break;
+                // Ensure it's a word boundary (preceded by space/newline or start)
+                bool startOk = idx == 0 || char.IsWhiteSpace(sql[idx - 1]);
+                bool endOk   = idx + kw.Length >= sql.Length || !char.IsLetterOrDigit(sql[idx + kw.Length]);
+                if (startOk && endOk)
+                {
+                    var before = sql[..idx].TrimEnd();
+                    var after  = sql[(idx + kw.Length)..];
+                    sql = before + (before.Length > 0 ? "\n" : "") + kw.ToUpperInvariant() + after;
+                    idx = before.Length + kw.Length;
+                }
+                else
+                {
+                    idx += kw.Length;
+                }
+            }
+        }
+
+        // Indent items in SELECT clause (comma-separated columns → one per line)
+        var selectEnd = sql.IndexOf("\nFROM", StringComparison.OrdinalIgnoreCase);
+        if (sql.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) && selectEnd > 0)
+        {
+            var selectBody = sql[6..selectEnd].Trim();
+            var columns    = selectBody.Split(',');
+            if (columns.Length > 1)
+            {
+                var formatted = string.Join(",\n    ", columns.Select(c => c.Trim()));
+                sql = "SELECT\n    " + formatted + sql[selectEnd..];
+            }
+        }
+
+        RawSql = sql;
+        TokenizeSql(RawSql);
+        RaisePropertyChanged(nameof(HasSql));
     }
 
     // ── Syntax tokenizer ──────────────────────────────────────────────────────

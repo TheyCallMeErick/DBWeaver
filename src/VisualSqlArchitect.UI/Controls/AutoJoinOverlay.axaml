@@ -189,12 +189,12 @@
                             Classes="accept-btn"
                             Content="✓ Accept"
                             Margin="0,0,4,0"
-                            Name="AcceptCardBtn"/>
+                            Command="{Binding AcceptCommand}"/>
 
                     <Button Grid.Column="2"
                             Classes="dismiss-btn"
                             Content="Skip"
-                            Name="DismissCardBtn"/>
+                            Command="{Binding DismissCommand}"/>
                   </Grid>
 
                 </Grid>

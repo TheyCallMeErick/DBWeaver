@@ -115,6 +115,7 @@ public sealed class NodeGraphCompiler
         {
             // ── Data Source ───────────────────────────────────────────────────
             NodeType.TableSource   => CompileTableSourcePin(node, pinName),
+            NodeType.Alias         => CompileAlias(node),
 
             // ── String ────────────────────────────────────────────────────────
             NodeType.Upper         => new FunctionCallExpr(SqlFn.Upper,
@@ -136,6 +137,9 @@ public sealed class NodeGraphCompiler
             NodeType.Concat        => CompileConcat(node),
             NodeType.Substring     => CompileSubstring(node),
             NodeType.RegexMatch    => CompileRegexMatch(node),
+            NodeType.RegexReplace  => CompileRegexReplace(node),
+            NodeType.RegexExtract  => CompileRegexExtract(node),
+            NodeType.Replace       => CompileReplace(node),
 
             // ── Math ──────────────────────────────────────────────────────────
             NodeType.Round         => CompileRound(node),
@@ -187,6 +191,11 @@ public sealed class NodeGraphCompiler
                 or NodeType.JsonValue => CompileJsonExtract(node),
             NodeType.JsonArrayLength  => CompileJsonArrayLength(node),
 
+            // ── Value Transform ───────────────────────────────────────────────
+            NodeType.NullFill  => CompileNullFill(node),
+            NodeType.EmptyFill => CompileEmptyFill(node),
+            NodeType.ValueMap  => CompileValueMap(node),
+
             _ => throw new NotSupportedException(
                 $"NodeType.{node.Type} has no compiler implementation.")
         };
@@ -210,6 +219,15 @@ public sealed class NodeGraphCompiler
         var parts = node.TableFullName.Split('.');
         var alias = parts.Last();
         return new ColumnExpr(alias, pinName);
+    }
+
+    private ISqlExpression CompileAlias(NodeInstance node)
+    {
+        var inner = ResolveInput(node.Id, "expression");
+        var aliasName = node.Parameters.TryGetValue("alias", out var a) && !string.IsNullOrWhiteSpace(a)
+            ? a.Trim()
+            : "alias";
+        return new AliasExpr(inner, aliasName);
     }
 
     private ISqlExpression CompileConcat(NodeInstance node)
@@ -279,6 +297,71 @@ public sealed class NodeGraphCompiler
         } is var _ ? new RawSqlExpr(
             _ctx.Registry.GetFunction(SqlFn.Regex, text.Emit(_ctx), pattern),
             PinDataType.Boolean) : NullExpr.Instance;
+    }
+
+    private ISqlExpression CompileRegexReplace(NodeInstance node)
+    {
+        var text        = ResolveInput(node.Id, "text");
+        var pattern     = node.Parameters.TryGetValue("pattern",     out var p) ? $"'{p.Replace("'", "''")}'" : "''";
+        var replacement = node.Parameters.TryGetValue("replacement", out var r) ? $"'{r.Replace("'", "''")}'" : "''";
+        return new RawSqlExpr(
+            _ctx.Registry.GetFunction(SqlFn.RegexReplace, text.Emit(_ctx), pattern, replacement),
+            PinDataType.Text);
+    }
+
+    private ISqlExpression CompileRegexExtract(NodeInstance node)
+    {
+        var text    = ResolveInput(node.Id, "text");
+        var pattern = node.Parameters.TryGetValue("pattern", out var p) ? $"'{p.Replace("'", "''")}'" : "''";
+        return new RawSqlExpr(
+            _ctx.Registry.GetFunction(SqlFn.RegexExtract, text.Emit(_ctx), pattern),
+            PinDataType.Text);
+    }
+
+    private ISqlExpression CompileReplace(NodeInstance node)
+    {
+        var value  = ResolveInput(node.Id, "value");
+        var search = node.Parameters.TryGetValue("search",      out var s) ? $"'{s.Replace("'", "''")}'" : "''";
+        var repl   = node.Parameters.TryGetValue("replacement", out var r) ? $"'{r.Replace("'", "''")}'" : "''";
+        return new RawSqlExpr(
+            _ctx.Registry.GetFunction(SqlFn.Replace, value.Emit(_ctx), search, repl),
+            PinDataType.Text);
+    }
+
+    private ISqlExpression CompileNullFill(NodeInstance node)
+    {
+        var value    = ResolveInput(node.Id, "value");
+        var fallback = node.Parameters.TryGetValue("fallback", out var f) && !string.IsNullOrEmpty(f)
+            ? $"'{f.Replace("'", "''")}'"
+            : "NULL";
+        return new RawSqlExpr(
+            _ctx.Registry.GetFunction(SqlFn.Coalesce, value.Emit(_ctx), fallback),
+            PinDataType.Any);
+    }
+
+    private ISqlExpression CompileEmptyFill(NodeInstance node)
+    {
+        var value    = ResolveInput(node.Id, "value");
+        var fallback = node.Parameters.TryGetValue("fallback", out var f) && !string.IsNullOrEmpty(f)
+            ? $"'{f.Replace("'", "''")}'"
+            : "NULL";
+        // COALESCE(NULLIF(TRIM(value), ''), fallback)
+        var trimmed = _ctx.Registry.GetFunction(SqlFn.Trim,  value.Emit(_ctx));
+        var nulled  = _ctx.Registry.GetFunction(SqlFn.NullIf, trimmed, "''");
+        return new RawSqlExpr(
+            _ctx.Registry.GetFunction(SqlFn.Coalesce, nulled, fallback),
+            PinDataType.Text);
+    }
+
+    private ISqlExpression CompileValueMap(NodeInstance node)
+    {
+        var value = ResolveInput(node.Id, "value");
+        var src   = node.Parameters.TryGetValue("src", out var s) ? $"'{s.Replace("'", "''")}'" : "''";
+        var dst   = node.Parameters.TryGetValue("dst", out var d) ? $"'{d.Replace("'", "''")}'" : "NULL";
+        var val   = value.Emit(_ctx);
+        return new RawSqlExpr(
+            $"CASE WHEN ({val}) = {src} THEN {dst} ELSE ({val}) END",
+            PinDataType.Any);
     }
 
     private ISqlExpression CompileRound(NodeInstance node)

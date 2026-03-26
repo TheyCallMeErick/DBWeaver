@@ -189,26 +189,85 @@
                      HorizontalAlignment="Center"/>
         </StackPanel>
 
-        <!-- Error state -->
+        <!-- Error state — structured diagnostic card -->
         <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Background="#1A0B0B"
+                Background="#130D0D"
                 BorderBrush="#5C1A1A"
                 BorderThickness="1"
                 CornerRadius="10"
                 Padding="20,16"
-                MaxWidth="500">
-          <StackPanel Spacing="8">
-            <TextBlock Text="⚠  Query Error"
+                MaxWidth="520">
+          <StackPanel Spacing="12">
+
+            <!-- Header: icon badge + category label -->
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Border CornerRadius="6"
+                      Background="#5C1A1A"
+                      Padding="7,4"
+                      VerticalAlignment="Center">
+                <TextBlock Text="{Binding DiagnosticIcon}"
+                           FontSize="14"
+                           VerticalAlignment="Center"/>
+              </Border>
+              <StackPanel Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding DiagnosticLabel}"
+                           FontSize="12"
+                           FontWeight="Bold"
+                           Foreground="#FB7185"/>
+                <TextBlock Text="Preview execution failed"
+                           FontSize="10"
+                           Foreground="#5C1A1A"/>
+              </StackPanel>
+            </StackPanel>
+
+            <!-- Friendly message -->
+            <TextBlock Text="{Binding ErrorMessage}"
                        FontSize="12"
-                       FontWeight="SemiBold"
-                       Foreground="#FB7185"/>
-            <SelectableTextBlock Text="{Binding ErrorMessage}"
-                                 FontFamily="Consolas,monospace"
-                                 FontSize="11"
-                                 Foreground="#F87171"
-                                 TextWrapping="Wrap"/>
+                       Foreground="#F87171"
+                       TextWrapping="Wrap"/>
+
+            <!-- Suggestion box -->
+            <Border CornerRadius="6"
+                    Background="#0F1A0F"
+                    BorderBrush="#1A4A1A"
+                    BorderThickness="1"
+                    Padding="10,8"
+                    IsVisible="{Binding HasDiagnostic}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="💡"
+                           FontSize="11"
+                           VerticalAlignment="Top"
+                           Margin="0,1,0,0"/>
+                <TextBlock Text="{Binding DiagnosticSuggestion}"
+                           FontSize="11"
+                           Foreground="#4ADE80"
+                           TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+
+            <!-- Technical details (collapsible) -->
+            <Border CornerRadius="6"
+                    Background="#0A0C11"
+                    BorderBrush="#252C3F"
+                    BorderThickness="1"
+                    Padding="10,8"
+                    IsVisible="{Binding HasTechnicalDetail}">
+              <StackPanel Spacing="4">
+                <TextBlock Text="Technical details"
+                           FontSize="9"
+                           FontWeight="Bold"
+                           Foreground="#4A5568"
+                           LetterSpacing="1"/>
+                <SelectableTextBlock Text="{Binding DiagnosticTechnical}"
+                                     FontFamily="Consolas,monospace"
+                                     FontSize="10"
+                                     Foreground="#6B7280"
+                                     TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+
           </StackPanel>
         </Border>
 
@@ -220,12 +279,12 @@
           <!-- Only show when NOT loading and NOT error -->
           <TextBlock Text="No data yet"
                      FontSize="13"
-                     Foreground="#2D3748"
+                     Foreground="#4A5568"
                      HorizontalAlignment="Center"
                      IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
           <TextBlock Text="Press F3 or Space to run the current query"
                      FontSize="11"
-                     Foreground="#1E2335"
+                     Foreground="#3B4560"
                      HorizontalAlignment="Center"
                      IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
         </StackPanel>

@@ -14,6 +14,13 @@
         WindowStartupLocation="CenterScreen">
 
   <Window.Styles>
+    <!-- Splitter default / hover -->
+    <Style Selector="GridSplitter">
+      <Setter Property="Background" Value="#1E2335"/>
+    </Style>
+    <Style Selector="GridSplitter:pointerover">
+      <Setter Property="Background" Value="#3B82F6"/>
+    </Style>
     <Style Selector="Button.tb">
       <Setter Property="Background"      Value="Transparent"/>
       <Setter Property="BorderThickness" Value="0"/>
@@ -36,7 +43,7 @@
   <!-- ══════════════════════════════════════════════════════════════════
        ROOT: TitleBar | Body | StatusBar
   ═══════════════════════════════════════════════════════════════════ -->
-  <Grid RowDefinitions="36,*,28">
+  <Grid RowDefinitions="36,Auto,*,28">
 
     <!-- ╔══ TITLE BAR ══════════════════════════════════════════════════╗ -->
     <Border Grid.Row="0"
@@ -82,7 +89,8 @@
             </StackPanel>
           </Border>
           <Button Content="+" Classes="tb" Width="26" Height="26" Padding="0"
-                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                  Name="NewTabBtn" ToolTip.Tip="New canvas (Ctrl+N)"/>
         </StackPanel>
 
         <!-- Right controls -->
@@ -92,17 +100,25 @@
           <!-- Undo/Redo -->
           <Button Classes="tb" Content="↩" Command="{Binding UndoCommand}"
                   ToolTip.Tip="{Binding UndoRedo.UndoDescription}" Width="28" Height="28"
-                  Padding="0" HorizontalContentAlignment="Center"/>
+                  Padding="0" HorizontalContentAlignment="Center"
+                  AutomationProperties.Name="Undo"/>
           <Button Classes="tb" Content="↪" Command="{Binding RedoCommand}"
                   ToolTip.Tip="{Binding UndoRedo.RedoDescription}" Width="28" Height="28"
-                  Padding="0" HorizontalContentAlignment="Center"/>
+                  Padding="0" HorizontalContentAlignment="Center"
+                  AutomationProperties.Name="Redo"/>
 
           <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
 
           <!-- File -->
-          <Button Classes="tb" Content="⊞ New"   Name="NewBtn"  FontSize="11"/>
-          <Button Classes="tb" Content="⊟ Open"  Name="OpenBtn" FontSize="11"/>
-          <Button Classes="tb" Content="⊠ Save"  Name="SaveBtn" FontSize="11"/>
+          <Button Classes="tb" Content="⊞ New"   Name="NewBtn"  FontSize="11"
+                  ToolTip.Tip="New canvas (Ctrl+N)"
+                  AutomationProperties.Name="New canvas"/>
+          <Button Classes="tb" Content="⊟ Open"  Name="OpenBtn" FontSize="11"
+                  ToolTip.Tip="Open canvas (Ctrl+O)"
+                  AutomationProperties.Name="Open canvas"/>
+          <Button Classes="tb" Content="⊠ Save"  Name="SaveBtn" FontSize="11"
+                  ToolTip.Tip="Save canvas (Ctrl+S)"
+                  AutomationProperties.Name="Save canvas"/>
 
           <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
 
@@ -111,15 +127,20 @@
             <TextBlock Text="{Binding ZoomPercent}" FontSize="10" Foreground="#4A5568"/>
           </Border>
           <Button Classes="tb" Content="−" Command="{Binding ZoomOutCommand}"
-                  Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center"/>
+                  Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center"
+                  ToolTip.Tip="Zoom out (Ctrl+-)"
+                  AutomationProperties.Name="Zoom out"/>
           <Button Classes="tb" Content="+" Command="{Binding ZoomInCommand}"
-                  Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center"/>
+                  Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center"
+                  ToolTip.Tip="Zoom in (Ctrl++)"
+                  AutomationProperties.Name="Zoom in"/>
 
           <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
 
           <!-- Preview toggle -->
           <Button Classes="tb" Content="⊡ Preview" Name="TogglePreviewBtn"
-                  ToolTip.Tip="Data preview (F3)"/>
+                  ToolTip.Tip="Data preview (F3)"
+                  AutomationProperties.Name="Toggle data preview"/>
 
           <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
 
@@ -134,8 +155,36 @@
       </Grid>
     </Border>
 
+    <!-- ╔══ RESTORE BANNER ══════════════════════════════════════════════╗ -->
+    <Border Grid.Row="1" Name="RestoreBanner" IsVisible="False"
+            Background="#0F1A30" BorderBrush="#1E3A60" BorderThickness="0,0,0,1"
+            Padding="12,7">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+        <TextBlock Grid.Column="0" Text="↺" FontSize="13" Foreground="#60A5FA"
+                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <TextBlock Grid.Column="1" FontSize="11" Foreground="#C8D0DC" VerticalAlignment="Center">
+          <Run Text="Session anterior encontrada — deseja restaurar o último canvas?"/>
+        </TextBlock>
+        <Button Grid.Column="2" Name="RestoreSessionBtn"
+                Content="Restaurar sessão"
+                Background="#1E3A60" BorderBrush="#3B82F6" BorderThickness="1"
+                Foreground="#60A5FA" FontSize="11" CornerRadius="5"
+                Padding="10,4" Margin="8,0,4,0" Cursor="Hand"/>
+        <Button Grid.Column="3" Name="DismissRestoreBtn"
+                Content="✕" Background="Transparent" BorderThickness="0"
+                Foreground="#4A5568" FontSize="13" Padding="6,4" Cursor="Hand"/>
+      </Grid>
+    </Border>
+
     <!-- ╔══ BODY ════════════════════════════════════════════════════════╗ -->
-    <Grid Grid.Row="1" ColumnDefinitions="200,*,240">
+    <Grid Grid.Row="2" Name="BodyGrid">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="200" MinWidth="180" MaxWidth="400"/>
+        <ColumnDefinition Width="8"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="8"/>
+        <ColumnDefinition Width="240" MinWidth="200" MaxWidth="500"/>
+      </Grid.ColumnDefinitions>
 
       <!-- ╠═ LEFT: Schema Explorer ═══════════════════════════════════════╣ -->
       <Border Grid.Column="0"
@@ -233,7 +282,9 @@
                   BorderThickness="0,1,0,0" Padding="8,7">
             <StackPanel Spacing="4">
               <Button Classes="tb" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                      Name="OpenSearchBtn">
+                      Name="OpenSearchBtn"
+                      ToolTip.Tip="Add node to canvas (Shift+A or Ctrl+F)"
+                      AutomationProperties.Name="Add node">
                 <StackPanel Orientation="Horizontal" Spacing="7">
                   <TextBlock Text="＋" Foreground="#3B82F6" FontSize="13"/>
                   <TextBlock Text="Add Node" FontSize="11"/>
@@ -243,7 +294,9 @@
                 </StackPanel>
               </Button>
               <Button Classes="tb" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                      Command="{Binding TogglePreviewCommand}">
+                      Command="{Binding TogglePreviewCommand}"
+                      ToolTip.Tip="Toggle data preview panel (F3)"
+                      AutomationProperties.Name="Toggle data preview">
                 <StackPanel Orientation="Horizontal" Spacing="7">
                   <TextBlock Text="⊟" Foreground="#4A5568" FontSize="12"/>
                   <TextBlock Text="Preview" FontSize="11"/>
@@ -257,8 +310,20 @@
         </Grid>
       </Border>
 
+      <!-- Vertical splitters -->
+      <GridSplitter Grid.Column="1" Width="8" VerticalAlignment="Stretch"
+                    ResizeDirection="Columns" Cursor="SizeWestEast" Name="LeftSplitter"/>
+      <GridSplitter Grid.Column="3" Width="8" VerticalAlignment="Stretch"
+                    ResizeDirection="Columns" Cursor="SizeWestEast" Name="RightSplitter"/>
+
       <!-- ╠═ CENTRE: Canvas + SQL bar + Preview ════════════════════════════╣ -->
-      <Grid Grid.Column="1" RowDefinitions="*,Auto,Auto">
+      <Grid Grid.Column="2" Name="CenterGrid">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="8"/>
+          <RowDefinition Height="220" MinHeight="150"/>
+        </Grid.RowDefinitions>
 
         <!-- Canvas + overlays -->
         <Panel Grid.Row="0" ClipToBounds="True">
@@ -268,6 +333,12 @@
           <Panel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,70,0,0"
                  IsVisible="{Binding SearchMenu.IsVisible}">
             <ctrl:SearchMenuControl DataContext="{Binding SearchMenu}" Name="SearchOverlay"/>
+          </Panel>
+
+          <!-- Command Palette overlay (Ctrl+K) -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,60,0,0"
+                 IsVisible="{Binding CommandPalette.IsVisible}">
+            <ctrl:CommandPaletteControl DataContext="{Binding CommandPalette}" Name="CommandPaletteOverlay"/>
           </Panel>
 
           <!-- Auto-Join overlay -->
@@ -280,7 +351,7 @@
 
           <!-- Empty canvas hint -->
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10"
-                      IsVisible="{Binding Nodes.Count, Converter={x:Static BoolConverters.Not}}">
+                      IsVisible="{Binding IsCanvasEmpty}">
             <TextBlock Text="Visual SQL Architect"
                        FontSize="30" FontWeight="Light" Foreground="#161A26" HorizontalAlignment="Center"/>
             <TextBlock Text="Press  ⇧A  to add your first node, or drag a table from the sidebar"
@@ -294,17 +365,23 @@
                   CornerRadius="9" Padding="5,3" ZIndex="5">
             <StackPanel Orientation="Horizontal" Spacing="2">
               <Button Classes="tb" Content="−" Command="{Binding ZoomOutCommand}"
-                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"/>
+                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"
+                      ToolTip.Tip="Zoom out (Ctrl+-)"
+                      AutomationProperties.Name="Zoom out"/>
               <Border Width="38" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <TextBlock Text="{Binding ZoomPercent}" FontSize="10" Foreground="#4A5568"
-                           HorizontalAlignment="Center"/>
+                           HorizontalAlignment="Center"
+                           AutomationProperties.Name="Zoom level"/>
               </Border>
               <Button Classes="tb" Content="+" Command="{Binding ZoomInCommand}"
-                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"/>
+                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"
+                      ToolTip.Tip="Zoom in (Ctrl++)"
+                      AutomationProperties.Name="Zoom in"/>
               <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
               <Button Classes="tb" Content="⊡" Command="{Binding FitToScreenCommand}"
                       Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"
-                      ToolTip.Tip="Fit to screen"/>
+                      ToolTip.Tip="Fit to screen (Ctrl+0)"
+                      AutomationProperties.Name="Fit to screen"/>
             </StackPanel>
           </Border>
         </Panel>
@@ -314,22 +391,27 @@
                          Name="SqlBar"
                          DataContext="{Binding LiveSql}"/>
 
-        <!-- Data Preview panel (slide up) -->
-        <Border Grid.Row="2" IsVisible="{Binding DataPreview.IsVisible}">
+        <!-- Horizontal splitter above DataPreview -->
+        <GridSplitter Grid.Row="2" Height="8" HorizontalAlignment="Stretch"
+                      ResizeDirection="Rows" Cursor="SizeNorthSouth" Name="BottomSplitter"
+                      IsVisible="{Binding DataPreview.IsVisible}"/>
+
+        <!-- Data Preview panel -->
+        <Border Grid.Row="3" IsVisible="{Binding DataPreview.IsVisible}">
           <ctrl:DataPreviewPanel Name="PreviewPanel"
                                  DataContext="{Binding DataPreview}"/>
         </Border>
       </Grid>
 
       <!-- ╠═ RIGHT: Property Panel ══════════════════════════════════════════╣ -->
-      <ctrl:PropertyPanelControl Grid.Column="2"
+      <ctrl:PropertyPanelControl Grid.Column="4"
                                  DataContext="{Binding PropertyPanel}"
                                  Name="PropPanel"/>
 
     </Grid>
 
     <!-- ╔══ STATUS BAR ════════════════════════════════════════════════════╗ -->
-    <Border Grid.Row="2" Background="#0B0D12"
+    <Border Grid.Row="3" Background="#0B0D12"
             BorderBrush="#1A1D26" BorderThickness="0,1,0,0" Padding="12,0">
 
       <Grid ColumnDefinitions="*,Auto">
@@ -337,12 +419,12 @@
 
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Ellipse Width="5" Height="5" Fill="#4ADE80"/>
-            <TextBlock Text="Connected · PostgreSQL 16.2" FontSize="10" Foreground="#3B4560"/>
+            <TextBlock Text="Connected · PostgreSQL 16.2" FontSize="10" Foreground="#6B7A99"/>
           </StackPanel>
 
           <Border Width="1" Height="12" Background="#1E2335"/>
 
-          <TextBlock FontSize="10" Foreground="#3B4560" VerticalAlignment="Center">
+          <TextBlock FontSize="10" Foreground="#6B7A99" VerticalAlignment="Center">
             <Run Text="{Binding Nodes.Count}"/>
             <Run Text=" nodes · "/>
             <Run Text="{Binding Connections.Count}"/>
@@ -353,14 +435,14 @@
 
           <!-- Undo history depth indicator -->
           <StackPanel Orientation="Horizontal" Spacing="4">
-            <TextBlock FontSize="10" Foreground="#3B4560" VerticalAlignment="Center">
+            <TextBlock FontSize="10" Foreground="#6B7A99" VerticalAlignment="Center">
               <Run Text="Undo: "/>
               <Run Text="{Binding UndoRedo.UndoDescription}"/>
             </TextBlock>
           </StackPanel>
         </StackPanel>
 
-        <TextBlock Grid.Column="1" FontSize="10" Foreground="#252C3F"
+        <TextBlock Grid.Column="1" FontSize="10" Foreground="#4A5568"
                    VerticalAlignment="Center"
                    Text="⇧A Nodes · F3 Preview · Ctrl+Z Undo · Del Remove · Alt+Drag Pan"/>
       </Grid>

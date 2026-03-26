@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Input;
 using Avalonia.Media;
 using VisualSqlArchitect.Metadata;
 
@@ -42,10 +43,18 @@ public sealed class JoinSuggestionCardViewModel : ViewModelBase
     public bool IsDismissed { get => _isDismissed; private set => Set(ref _isDismissed, value); }
     public bool IsVisible   => !IsAccepted && !IsDismissed;
 
+    public ICommand AcceptCommand  { get; }
+    public ICommand DismissCommand { get; }
+
     public event EventHandler<JoinSuggestion>? Accepted;
     public event EventHandler<JoinSuggestion>? Dismissed;
 
-    public JoinSuggestionCardViewModel(JoinSuggestion suggestion) => Suggestion = suggestion;
+    public JoinSuggestionCardViewModel(JoinSuggestion suggestion)
+    {
+        Suggestion     = suggestion;
+        AcceptCommand  = new RelayCommand(Accept);
+        DismissCommand = new RelayCommand(Dismiss);
+    }
 
     public void Accept()
     {

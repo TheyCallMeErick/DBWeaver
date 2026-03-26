@@ -29,6 +29,24 @@ public sealed class RelayCommand(Action execute, Func<bool>? canExecute = null) 
     public void NotifyCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
 
+// ── OUTPUT COLUMN ENTRY (for ResultOutput node ordering) ─────────────────────
+
+public sealed class OutputColumnEntry : ViewModelBase
+{
+    public string Key         { get; }
+    public string DisplayName { get; }
+    public ICommand MoveUpCommand   { get; }
+    public ICommand MoveDownCommand { get; }
+
+    public OutputColumnEntry(string key, string displayName, Action moveUp, Action moveDown)
+    {
+        Key             = key;
+        DisplayName     = displayName;
+        MoveUpCommand   = new RelayCommand(moveUp);
+        MoveDownCommand = new RelayCommand(moveDown);
+    }
+}
+
 // ── PIN VM ──────────────────────────────────────────────────────────────────
 
 public sealed class PinViewModel : ViewModelBase
@@ -100,6 +118,7 @@ public sealed class NodeViewModel : ViewModelBase
     private bool _isSelected, _isHovered;
     private string? _alias;
     private double _width = 220;
+    private List<ValidationIssue> _validationIssues = [];
 
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
     public NodeType Type { get; }
@@ -110,9 +129,12 @@ public sealed class NodeViewModel : ViewModelBase
     public Dictionary<string, string> Parameters  { get; } = new();
     public Dictionary<string, string> PinLiterals { get; } = new();
 
-    public ObservableCollection<PinViewModel> InputPins  { get; } = [];
-    public ObservableCollection<PinViewModel> OutputPins { get; } = [];
+    public ObservableCollection<PinViewModel>     InputPins         { get; } = [];
+    public ObservableCollection<PinViewModel>     OutputPins        { get; } = [];
+    public ObservableCollection<OutputColumnEntry> OutputColumnOrder { get; } = [];
     public IEnumerable<PinViewModel> AllPins => InputPins.Concat(OutputPins);
+
+    public bool IsResultOutput => Type == NodeType.ResultOutput;
 
     public Point Position
     { get => _position; set => Set(ref _position, value); }
@@ -167,27 +189,111 @@ public sealed class NodeViewModel : ViewModelBase
         GradientStops = [ new GradientStop(HeaderColor, 0.0), new GradientStop(HeaderColorLight, 1.0) ]
     };
 
-    public SolidColorBrush NodeBorderBrush => IsSelected
-        ? new SolidColorBrush(Color.Parse("#3B82F6"))
+    // ── Validation state ──────────────────────────────────────────────────────
+    public IReadOnlyList<ValidationIssue> ValidationIssues => _validationIssues;
+    public bool HasError   => _validationIssues.Any(i => i.Severity == IssueSeverity.Error);
+    public bool HasWarning => !HasError && _validationIssues.Any(i => i.Severity == IssueSeverity.Warning);
+    public string? ValidationTooltip => _validationIssues.Count > 0
+        ? string.Join("\n", _validationIssues.Select(i =>
+            $"{(i.Severity == IssueSeverity.Error ? "✕" : "⚠")} {i.Message}" +
+            (i.Suggestion is not null ? $"\n   → {i.Suggestion}" : "")))
+        : null;
+
+    internal void SetValidation(IEnumerable<ValidationIssue> issues)
+    {
+        _validationIssues = issues.ToList();
+        RaisePropertyChanged(nameof(ValidationIssues));
+        RaisePropertyChanged(nameof(HasError));
+        RaisePropertyChanged(nameof(HasWarning));
+        RaisePropertyChanged(nameof(ValidationTooltip));
+        RaisePropertyChanged(nameof(NodeBorderBrush));
+        RaisePropertyChanged(nameof(NodeShadow));
+    }
+
+    // ── ResultOutput column ordering ──────────────────────────────────────────
+
+    /// <summary>
+    /// Rebuilds <see cref="OutputColumnOrder"/> from current canvas connections.
+    /// Keeps existing entries in their user-defined order; appends new ones and
+    /// removes entries whose connections were deleted.
+    /// </summary>
+    internal void SyncOutputColumns(IEnumerable<ConnectionViewModel> allConnections)
+    {
+        if (!IsResultOutput) return;
+
+        var incoming = allConnections
+            .Where(c => c.ToPin?.Owner == this)
+            .ToList();
+
+        var existingKeys = OutputColumnOrder.Select(e => e.Key).ToHashSet();
+        var newKeys      = incoming.Select(c => MakeKey(c.FromPin)).ToHashSet();
+
+        // Remove orphaned entries
+        foreach (var entry in OutputColumnOrder.ToList())
+            if (!newKeys.Contains(entry.Key))
+                OutputColumnOrder.Remove(entry);
+
+        // Append newly connected columns
+        foreach (var conn in incoming)
+        {
+            var key = MakeKey(conn.FromPin);
+            if (!existingKeys.Contains(key))
+            {
+                var display = conn.FromPin.Owner.Type == NodeType.TableSource
+                    ? $"{conn.FromPin.Owner.Subtitle?.Split('.').Last() ?? conn.FromPin.Owner.Title}.{conn.FromPin.Name}"
+                    : $"{conn.FromPin.Owner.Title} → {conn.FromPin.Name}";
+                OutputColumnOrder.Add(new OutputColumnEntry(
+                    key, display,
+                    () => MoveColumnUp(key),
+                    () => MoveColumnDown(key)));
+            }
+        }
+    }
+
+    private static string MakeKey(PinViewModel pin) => $"{pin.Owner.Id}::{pin.Name}";
+
+    private void MoveColumnUp(string key)
+    {
+        var idx = IndexOf(key);
+        if (idx > 0) OutputColumnOrder.Move(idx, idx - 1);
+    }
+
+    private void MoveColumnDown(string key)
+    {
+        var idx = IndexOf(key);
+        if (idx >= 0 && idx < OutputColumnOrder.Count - 1) OutputColumnOrder.Move(idx, idx + 1);
+    }
+
+    private int IndexOf(string key)
+    {
+        for (int i = 0; i < OutputColumnOrder.Count; i++)
+            if (OutputColumnOrder[i].Key == key) return i;
+        return -1;
+    }
+
+    /// <summary>
+    /// Returns the ordered (nodeId, pinName) pairs for SQL compilation.
+    /// </summary>
+    public IReadOnlyList<(string NodeId, string PinName)> GetOrderedColumns() =>
+        OutputColumnOrder
+            .Select(e => e.Key.Split("::", 2))
+            .Where(p => p.Length == 2)
+            .Select(p => (p[0], p[1]))
+            .ToList();
+
+    public SolidColorBrush NodeBorderBrush =>
+        IsSelected   ? new SolidColorBrush(Color.Parse("#3B82F6"))
+        : HasError   ? new SolidColorBrush(Color.Parse("#EF4444"))
+        : HasWarning ? new SolidColorBrush(Color.Parse("#FBBF24"))
         : new SolidColorBrush(Color.Parse("#252C3F"));
 
-    public BoxShadows NodeShadow => IsSelected
-        ? BoxShadows.Parse("0 0 0 2 #3B82F6, 0 8 32 0 #603B82F6")
+    public BoxShadows NodeShadow =>
+        IsSelected   ? BoxShadows.Parse("0 0 0 2 #3B82F6, 0 8 32 0 #603B82F6")
+        : HasError   ? BoxShadows.Parse("0 0 0 2 #EF4444, 0 4 16 0 #40EF4444")
+        : HasWarning ? BoxShadows.Parse("0 0 0 1 #FBBF24, 0 4 12 0 #30FBBF24")
         : BoxShadows.Parse("0 4 24 0 #40000000, 0 1 4 0 #50000000");
 
-    public string CategoryIcon => Category switch
-    {
-        NodeCategory.DataSource      => "⊞",
-        NodeCategory.StringTransform => "Aa",
-        NodeCategory.MathTransform   => "∑",
-        NodeCategory.TypeCast        => "⇌",
-        NodeCategory.Comparison      => "≈",
-        NodeCategory.LogicGate       => "&",
-        NodeCategory.Json            => "{}",
-        NodeCategory.Aggregate       => "Σ",
-        NodeCategory.Conditional     => "?",
-        _                            => "○"
-    };
+    public string CategoryIcon => NodeIconCatalog.GetForCategory(Category);
 
     public NodeViewModel(NodeDefinition def, Point pos)
     {
@@ -300,17 +406,36 @@ public sealed class SearchMenuViewModel : ViewModelBase
     private static readonly IReadOnlyList<NodeDefinition> AllDefs =
         NodeDefinitionRegistry.All.OrderBy(d => d.Category).ThenBy(d => d.DisplayName).ToList();
 
+    private readonly List<NodeSearchResultViewModel> _tables = [];
+
+    public void LoadTables(IEnumerable<(string FullName, IReadOnlyList<(string Name, PinDataType Type)> Cols)> tables)
+    {
+        _tables.Clear();
+        _tables.AddRange(tables.Select(t => NodeSearchResultViewModel.ForTable(t.FullName, t.Cols)));
+        FilterResults();
+    }
+
     public void Open(Point pos) { SpawnPosition = pos; Query = ""; FilterResults(); IsVisible = true; }
     public void Close() { IsVisible = false; Query = ""; }
 
     private void FilterResults()
     {
         Results.Clear();
-        var q = Query.Trim().ToLower();
-        var filtered = string.IsNullOrEmpty(q) ? AllDefs
+        var q = Query.Trim();
+
+        // Tables first (up to 5)
+        var filteredTables = string.IsNullOrEmpty(q) ? _tables
+            : _tables.Where(t => t.TableFullName.Contains(q, StringComparison.OrdinalIgnoreCase)
+                               || t.Title.Contains(q, StringComparison.OrdinalIgnoreCase));
+        foreach (var t in filteredTables.Take(5)) Results.Add(t);
+
+        // Then node definitions (fill remaining slots up to 12 total)
+        var filteredNodes = string.IsNullOrEmpty(q) ? AllDefs
             : AllDefs.Where(d => d.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase)
                               || d.Category.ToString().Contains(q, StringComparison.OrdinalIgnoreCase));
-        foreach (var d in filtered.Take(12)) Results.Add(new NodeSearchResultViewModel(d));
+        foreach (var d in filteredNodes.Take(12 - Results.Count))
+            Results.Add(new NodeSearchResultViewModel(d));
+
         SelectedResult = Results.FirstOrDefault();
     }
 
@@ -318,25 +443,43 @@ public sealed class SearchMenuViewModel : ViewModelBase
     public void SelectPrev() { if (Results.Count == 0) return; SelectedResult = Results[(Results.IndexOf(SelectedResult!) - 1 + Results.Count) % Results.Count]; }
 }
 
-public sealed class NodeSearchResultViewModel(NodeDefinition def) : ViewModelBase
+public sealed class NodeSearchResultViewModel : ViewModelBase
 {
-    public NodeDefinition Definition { get; } = def;
-    public string Title    => def.DisplayName;
-    public string Category => def.Category.ToString();
-    public string Icon     => def.Category switch
-    {
-        NodeCategory.DataSource => "⊞", NodeCategory.StringTransform => "Aa",
-        NodeCategory.MathTransform => "∑", NodeCategory.TypeCast => "⇌",
-        NodeCategory.Comparison => "≈", NodeCategory.LogicGate => "&",
-        NodeCategory.Json => "{}", NodeCategory.Aggregate => "Σ", _ => "○"
-    };
-    public Color AccentColor => def.Category switch
+    private readonly NodeDefinition? _def;
+
+    public NodeSearchResultViewModel(NodeDefinition def) => _def = def;
+    private NodeSearchResultViewModel() { }
+
+    // ── Table-specific fields ─────────────────────────────────────────────────
+    public bool IsTable { get; init; }
+    public string TableFullName { get; init; } = "";
+    public IReadOnlyList<(string Name, PinDataType Type)> TableColumns { get; init; } = [];
+
+    public static NodeSearchResultViewModel ForTable(
+        string fullName,
+        IReadOnlyList<(string Name, PinDataType Type)> cols) =>
+        new() { IsTable = true, TableFullName = fullName, TableColumns = cols };
+
+    // ── Shared view properties ────────────────────────────────────────────────
+    public NodeDefinition Definition =>
+        _def ?? NodeDefinitionRegistry.Get(NodeType.TableSource);
+
+    public string Title =>
+        IsTable ? TableFullName.Split('.').Last() : _def!.DisplayName;
+
+    public string Category =>
+        IsTable ? "Table" : _def!.Category.ToString();
+
+    public string Icon => NodeIconCatalog.GetForCategory(_def?.Category ?? NodeCategory.DataSource);
+
+    public Color AccentColor => IsTable ? Color.Parse("#14B8A6") : _def!.Category switch
     {
         NodeCategory.DataSource => Color.Parse("#14B8A6"), NodeCategory.StringTransform => Color.Parse("#818CF8"),
         NodeCategory.MathTransform => Color.Parse("#FBBF24"), NodeCategory.TypeCast => Color.Parse("#C084FC"),
         NodeCategory.Comparison => Color.Parse("#FB7185"), NodeCategory.LogicGate => Color.Parse("#FB923C"),
         NodeCategory.Json => Color.Parse("#A78BFA"), NodeCategory.Aggregate => Color.Parse("#4ADE80"), _ => Color.Parse("#9CA3AF")
     };
+
     public SolidColorBrush AccentBrush => new(AccentColor);
 }
 
@@ -347,6 +490,7 @@ public sealed class DataPreviewViewModel : ViewModelBase
     private bool _isVisible, _isLoading; private string? _errorMsg;
     private string _queryText = ""; private DataTable? _data;
     private double _panelHeight = 280; private int _rows; private long _ms;
+    private DiagnosticResult? _diagnostic;
 
     public bool IsVisible { get => _isVisible; set => Set(ref _isVisible, value); }
     public bool IsLoading { get => _isLoading; set { Set(ref _isLoading, value); RaisePropertyChanged(nameof(StatusText)); } }
@@ -359,10 +503,37 @@ public sealed class DataPreviewViewModel : ViewModelBase
     public bool HasData => _data is { Rows.Count: > 0 };
     public string StatusText => IsLoading ? "Running…" : ErrorMessage is not null ? "Error" : HasData ? $"{_rows} rows · {_ms}ms" : "No results";
 
+    // ── Structured diagnostic ─────────────────────────────────────────────────
+    public DiagnosticResult? Diagnostic
+    {
+        get => _diagnostic;
+        private set
+        {
+            Set(ref _diagnostic, value);
+            RaisePropertyChanged(nameof(HasDiagnostic));
+            RaisePropertyChanged(nameof(DiagnosticIcon));
+            RaisePropertyChanged(nameof(DiagnosticLabel));
+            RaisePropertyChanged(nameof(DiagnosticSuggestion));
+            RaisePropertyChanged(nameof(DiagnosticTechnical));
+            RaisePropertyChanged(nameof(HasTechnicalDetail));
+        }
+    }
+    public bool    HasDiagnostic      => _diagnostic is not null;
+    public string  DiagnosticIcon     => _diagnostic?.CategoryIcon     ?? "⚠";
+    public string  DiagnosticLabel    => _diagnostic?.CategoryLabel    ?? "Error";
+    public string  DiagnosticSuggestion => _diagnostic?.Suggestion     ?? string.Empty;
+    public string? DiagnosticTechnical  => _diagnostic?.TechnicalDetail;
+    public bool    HasTechnicalDetail   => !string.IsNullOrWhiteSpace(_diagnostic?.TechnicalDetail);
+
     public void Toggle() => IsVisible = !IsVisible;
-    public void ShowLoading(string sql) { QueryText = sql; IsLoading = true; ErrorMessage = null; ResultData = null; IsVisible = true; }
-    public void ShowResults(DataTable dt, long ms) { ResultData = dt; RowCount = dt.Rows.Count; ExecutionMs = ms; IsLoading = false; ErrorMessage = null; }
-    public void ShowError(string msg) { ErrorMessage = msg; IsLoading = false; }
+    public void ShowLoading(string sql) { QueryText = sql; IsLoading = true; ErrorMessage = null; ResultData = null; Diagnostic = null; IsVisible = true; }
+    public void ShowResults(DataTable dt, long ms) { ResultData = dt; RowCount = dt.Rows.Count; ExecutionMs = ms; IsLoading = false; ErrorMessage = null; Diagnostic = null; }
+    public void ShowError(string msg, Exception? ex = null)
+    {
+        Diagnostic   = ErrorDiagnostics.Classify(msg, ex);
+        ErrorMessage = Diagnostic.FriendlyMessage;
+        IsLoading    = false;
+    }
 }
 
 // ── CANVAS VM ────────────────────────────────────────────────────────────────
@@ -371,16 +542,18 @@ public sealed class CanvasViewModel : ViewModelBase
 {
     private double _zoom = 1.0; private Point _panOffset; private string _queryText = "";
     private bool _isDirty; private string? _filePath;
+    private CancellationTokenSource? _validationCts;
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
     public ObservableCollection<ConnectionViewModel> Connections { get; } = [];
 
-    public SearchMenuViewModel    SearchMenu    { get; }
-    public DataPreviewViewModel   DataPreview   { get; } = new();
-    public UndoRedoStack          UndoRedo      { get; }
-    public PropertyPanelViewModel PropertyPanel { get; }
-    public LiveSqlBarViewModel    LiveSql       { get; set; }
-    public AutoJoinOverlayViewModel AutoJoin    { get; set; }
+    public SearchMenuViewModel      SearchMenu      { get; }
+    public CommandPaletteViewModel  CommandPalette  { get; } = new();
+    public DataPreviewViewModel     DataPreview     { get; } = new();
+    public UndoRedoStack            UndoRedo        { get; }
+    public PropertyPanelViewModel   PropertyPanel   { get; }
+    public LiveSqlBarViewModel      LiveSql         { get; set; }
+    public AutoJoinOverlayViewModel AutoJoin        { get; set; }
 
     public double Zoom
     { get => _zoom; set { Set(ref _zoom, Math.Clamp(value,0.15,4.0)); RaisePropertyChanged(nameof(ZoomPercent)); } }
@@ -391,6 +564,12 @@ public sealed class CanvasViewModel : ViewModelBase
     public bool IsDirty { get => _isDirty; set => Set(ref _isDirty, value); }
     public string? CurrentFilePath { get => _filePath; set { Set(ref _filePath, value); RaisePropertyChanged(nameof(WindowTitle)); } }
     public string WindowTitle => (CurrentFilePath is not null ? Path.GetFileNameWithoutExtension(CurrentFilePath) : "Untitled") + (IsDirty ? " •" : "") + " — Visual SQL Architect";
+    public bool IsCanvasEmpty => Nodes.Count == 0;
+
+    // ── Validation summary ────────────────────────────────────────────────────
+    public bool HasErrors    => Nodes.Any(n => n.HasError);
+    public int  ErrorCount   => Nodes.Sum(n => n.ValidationIssues.Count(i => i.Severity == IssueSeverity.Error));
+    public int  WarningCount => Nodes.Sum(n => n.ValidationIssues.Count(i => i.Severity == IssueSeverity.Warning));
 
     public RelayCommand UndoCommand { get; }
     public RelayCommand RedoCommand { get; }
@@ -423,6 +602,9 @@ public sealed class CanvasViewModel : ViewModelBase
         LiveSql  = new LiveSqlBarViewModel(this);
         AutoJoin = new AutoJoinOverlayViewModel();
 
+        // Populate the search menu table catalog with demo/northwind tables
+        SearchMenu.LoadTables(DemoCatalog);
+
         // When a join is accepted, wire the pins on the canvas
         AutoJoin.JoinAccepted += (_, suggestion) =>
         {
@@ -446,8 +628,24 @@ public sealed class CanvasViewModel : ViewModelBase
                 ConnectPins(fromPin, toPin);
         };
 
-        Nodes.CollectionChanged       += (_, _) => IsDirty = true;
-        Connections.CollectionChanged += (_, _) => IsDirty = true;
+        Nodes.CollectionChanged += (_, e) =>
+        {
+            IsDirty = true;
+            RaisePropertyChanged(nameof(IsCanvasEmpty));
+            // Subscribe to per-node property changes so validation re-runs on alias/param edits
+            if (e.NewItems is not null)
+                foreach (NodeViewModel n in e.NewItems)
+                    n.PropertyChanged += (_, _) => ScheduleValidation();
+            ScheduleValidation();
+        };
+        Connections.CollectionChanged += (_, _) =>
+        {
+            IsDirty = true;
+            ScheduleValidation();
+            // Keep ResultOutput column order in sync with canvas connections
+            foreach (var n in Nodes.Where(n => n.IsResultOutput))
+                n.SyncOutputColumns(Connections);
+        };
 
         SpawnDemoNodes();
     }
@@ -460,10 +658,22 @@ public sealed class CanvasViewModel : ViewModelBase
         return vm;
     }
 
+    // ── Demo table catalog (northwind schema) ────────────────────────────────
+    internal static readonly IReadOnlyList<(string FullName, IReadOnlyList<(string Name, PinDataType Type)> Cols)>
+        DemoCatalog = new (string, IReadOnlyList<(string, PinDataType)>)[]
+    {
+        ("public.orders",      new[] { ("id",PinDataType.Number),   ("customer_id",PinDataType.Number), ("status",PinDataType.Text),   ("total",PinDataType.Number), ("created_at",PinDataType.DateTime), ("metadata",PinDataType.Json) }),
+        ("public.customers",   new[] { ("id",PinDataType.Number),   ("name",PinDataType.Text),          ("email",PinDataType.Text),    ("city",PinDataType.Text),    ("country",PinDataType.Text),        ("created_at",PinDataType.DateTime) }),
+        ("public.products",    new[] { ("id",PinDataType.Number),   ("name",PinDataType.Text),          ("category",PinDataType.Text), ("price",PinDataType.Number), ("stock",PinDataType.Number) }),
+        ("public.order_items", new[] { ("id",PinDataType.Number),   ("order_id",PinDataType.Number),    ("product_id",PinDataType.Number), ("qty",PinDataType.Number), ("unit_price",PinDataType.Number) }),
+        ("public.employees",   new[] { ("id",PinDataType.Number),   ("name",PinDataType.Text),          ("department",PinDataType.Text), ("salary",PinDataType.Number), ("hire_date",PinDataType.DateTime) }),
+    };
+
     public NodeViewModel SpawnTableNode(string table, IEnumerable<(string n, PinDataType t)> cols, Point pos)
     {
         var vm = new NodeViewModel(table, cols, pos);
         UndoRedo.Execute(new AddNodeCommand(vm));
+        SearchMenu.Close();
         return vm;
     }
 
@@ -512,6 +722,36 @@ public sealed class CanvasViewModel : ViewModelBase
     private void FitToScreen() { if (Nodes.Count == 0) return; Zoom = 0.85; PanOffset = new(80, 80); }
 
     public void UpdateQueryText(string sql) { QueryText = sql; DataPreview.QueryText = sql; }
+
+    // ── Graph validation ──────────────────────────────────────────────────────
+
+    public void ScheduleValidation()
+    {
+        _validationCts?.Cancel();
+        _validationCts = new CancellationTokenSource();
+        var token = _validationCts.Token;
+        Task.Delay(200, token).ContinueWith(_ =>
+        {
+            if (!token.IsCancellationRequested)
+                Avalonia.Threading.Dispatcher.UIThread.Post(RunValidation);
+        }, TaskScheduler.Default);
+    }
+
+    private void RunValidation()
+    {
+        var allIssues = GraphValidator.Validate(this);
+        var byNode    = allIssues
+            .Where(i => !string.IsNullOrEmpty(i.NodeId))
+            .GroupBy(i => i.NodeId)
+            .ToDictionary(g => g.Key, g => (IEnumerable<ValidationIssue>)g);
+
+        foreach (var node in Nodes)
+            node.SetValidation(byNode.TryGetValue(node.Id, out var issues) ? issues : []);
+
+        RaisePropertyChanged(nameof(HasErrors));
+        RaisePropertyChanged(nameof(ErrorCount));
+        RaisePropertyChanged(nameof(WarningCount));
+    }
 
     private void SpawnDemoNodes()
     {

@@ -10,9 +10,10 @@ public sealed partial class LiveSqlBar : UserControl
     {
         InitializeComponent();
 
-        var copyBtn = this.FindControl<Button>("CopyBtn");
-        if (copyBtn is not null)
-            copyBtn.Click += async (_, _) => await CopyToClipboardAsync();
+        var copyBtn   = this.FindControl<Button>("CopyBtn");
+        var formatBtn = this.FindControl<Button>("FormatBtn");
+        if (copyBtn   is not null) copyBtn.Click   += async (_, _) => await CopyToClipboardAsync();
+        if (formatBtn is not null) formatBtn.Click += (_, _) => (DataContext as LiveSqlBarViewModel)?.FormatSql();
     }
 
     private async Task CopyToClipboardAsync()
