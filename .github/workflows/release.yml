@@ -3,86 +3,89 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
-
-permissions:
-  contents: write
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. v1.2.0)'
+        required: true
 
 jobs:
   build:
+    name: Build (${{ matrix.rid }})
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - rid: win-x64
-            os: windows-latest
-            artifact: VisualSqlArchitect-win-x64.exe
           - rid: linux-x64
-            os: ubuntu-latest
-            artifact: VisualSqlArchitect-linux-x64
+            asset_name: VisualSqlArchitect-linux-x64
+          - rid: linux-arm64
+            asset_name: VisualSqlArchitect-linux-arm64
+          - rid: win-x64
+            asset_name: VisualSqlArchitect-win-x64.exe
           - rid: osx-x64
-            os: macos-latest
-            artifact: VisualSqlArchitect-osx-x64
-
-    runs-on: ${{ matrix.os }}
+            asset_name: VisualSqlArchitect-osx-x64
+          - rid: osx-arm64
+            asset_name: VisualSqlArchitect-osx-arm64
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup .NET
+      - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "9.0.x"
-
-      - name: Restore
-        run: dotnet restore files.sln
-
-      - name: Test
-        run: dotnet test files.sln -c Release --no-restore --verbosity normal
+          dotnet-version: '9.x'
 
       - name: Publish
-        run: >
-          dotnet publish src/VisualSqlArchitect.UI/VisualSqlArchitect.UI.csproj
-          -c Release
-          -r ${{ matrix.rid }}
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:DebugType=None
-          -p:DebugSymbols=false
-          -o publish/${{ matrix.rid }}
+        run: |
+          dotnet publish src/VisualSqlArchitect.UI/VisualSqlArchitect.UI.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --output ./dist/${{ matrix.rid }} \
+            --self-contained \
+            --property:PublishSingleFile=true \
+            --property:IncludeNativeLibrariesForSelfExtract=true \
+            --property:DebugType=none \
+            --property:DebugSymbols=false
 
-      - name: Rename binary (Windows)
-        if: matrix.rid == 'win-x64'
-        run: mv publish/${{ matrix.rid }}/VisualSqlArchitect.UI.exe publish/${{ matrix.rid }}/${{ matrix.artifact }}
-        shell: bash
-
-      - name: Rename binary (Linux/macOS)
-        if: matrix.rid != 'win-x64'
-        run: mv publish/${{ matrix.rid }}/VisualSqlArchitect.UI publish/${{ matrix.rid }}/${{ matrix.artifact }}
+      - name: Rename binary
+        run: |
+          src=$(find ./dist/${{ matrix.rid }} -maxdepth 1 -type f -name 'VisualSqlArchitect.UI*' | head -1)
+          mv "$src" ./dist/${{ matrix.rid }}/${{ matrix.asset_name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: publish/${{ matrix.rid }}/${{ matrix.artifact }}
+          name: ${{ matrix.asset_name }}
+          path: ./dist/${{ matrix.rid }}/${{ matrix.asset_name }}
 
   release:
+    name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-          merge-multiple: true
+          path: ./artifacts
 
-      - name: Create GitHub Release
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          name: Visual SQL Architect ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Visual SQL Architect ${{ steps.version.outputs.tag }}
           generate_release_notes: true
-          files: |
-            artifacts/VisualSqlArchitect-win-x64.exe
-            artifacts/VisualSqlArchitect-linux-x64
-            artifacts/VisualSqlArchitect-osx-x64
+          files: ./artifacts/**/*
