@@ -12,9 +12,8 @@ namespace VisualSqlArchitect.Metadata.Inspectors;
 /// - pg_catalog for tables, columns, indexes (richer metadata, faster queries)
 /// - pg_class.reltuples for row-count estimates (updated by VACUUM/ANALYZE)
 /// </summary>
-public sealed class PostgresInspector : BaseInspector
+public sealed class PostgresInspector(ConnectionConfig config) : BaseInspector(config)
 {
-    public PostgresInspector(ConnectionConfig config) : base(config) { }
     public override DatabaseProvider Provider => DatabaseProvider.Postgres;
 
     protected override async Task<DbConnection> OpenAsync(CancellationToken ct)
@@ -27,17 +26,20 @@ public sealed class PostgresInspector : BaseInspector
     // ── Server version ────────────────────────────────────────────────────────
 
     protected override async Task<string> GetServerVersionAsync(
-        DbConnection conn, CancellationToken ct)
+        DbConnection conn,
+        CancellationToken ct
+    )
     {
-        await using var cmd = conn.CreateCommand();
+        await using DbCommand cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT version()";
         return (await cmd.ExecuteScalarAsync(ct))?.ToString() ?? "unknown";
     }
 
     // ── Tables + Views ────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<(string, string, TableKind, long?)>>
-        FetchAllTablesAsync(DbConnection conn, CancellationToken ct)
+    protected override async Task<
+        IReadOnlyList<(string, string, TableKind, long?)>
+    > FetchAllTablesAsync(DbConnection conn, CancellationToken ct)
     {
         // pg_class.relkind: r = ordinary table, v = view, m = materialized view
         // reltuples is -1 when stats haven't been collected yet
@@ -56,20 +58,20 @@ public sealed class PostgresInspector : BaseInspector
             ORDER BY n.nspname, c.relname
             """;
 
-        await using var cmd = conn.CreateCommand();
+        await using DbCommand cmd = conn.CreateCommand();
         cmd.CommandText = sql;
 
         var result = new List<(string, string, TableKind, long?)>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using DbDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var kind = reader.GetChar(2) switch
+            TableKind kind = reader.GetChar(2) switch
             {
                 'v' => TableKind.View,
                 'm' => TableKind.MaterializedView,
-                _   => TableKind.Table
+                _ => TableKind.Table,
             };
-            var rows = reader.IsDBNull(3) ? (long?)null : reader.GetInt64(3);
+            long? rows = reader.IsDBNull(3) ? (long?)null : reader.GetInt64(3);
             result.Add((reader.GetString(0), reader.GetString(1), kind, rows));
         }
 
@@ -78,8 +80,12 @@ public sealed class PostgresInspector : BaseInspector
 
     // ── Columns ───────────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<ColumnMetadata>>
-        FetchColumnsAsync(DbConnection conn, string schema, string table, CancellationToken ct)
+    protected override async Task<IReadOnlyList<ColumnMetadata>> FetchColumnsAsync(
+        DbConnection conn,
+        string schema,
+        string table,
+        CancellationToken ct
+    )
     {
         const string sql = """
             SELECT
@@ -139,27 +145,29 @@ public sealed class PostgresInspector : BaseInspector
         await using var cmd = (NpgsqlCommand)conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("@schema", schema);
-        cmd.Parameters.AddWithValue("@table",  table);
+        cmd.Parameters.AddWithValue("@table", table);
 
         var columns = new List<ColumnMetadata>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            columns.Add(new ColumnMetadata(
-                OrdinalPosition: reader.GetInt16(0),
-                Name:            reader.GetString(1),
-                DataType:        reader.GetString(2),
-                NativeType:      reader.GetString(3),
-                IsNullable:      reader.GetBoolean(4),
-                MaxLength:       reader.IsDBNull(5)  ? null : (int?)reader.GetInt32(5),
-                Precision:       reader.IsDBNull(6)  ? null : (int?)reader.GetInt32(6),
-                Scale:           reader.IsDBNull(7)  ? null : (int?)reader.GetInt32(7),
-                DefaultValue:    reader.IsDBNull(8)  ? null : reader.GetString(8),
-                IsPrimaryKey:    reader.GetBoolean(9),
-                IsForeignKey:    reader.GetBoolean(10),
-                IsUnique:        reader.GetBoolean(11),
-                IsIndexed:       reader.GetBoolean(12)
-            ));
+            columns.Add(
+                new ColumnMetadata(
+                    OrdinalPosition: reader.GetInt16(0),
+                    Name: reader.GetString(1),
+                    DataType: reader.GetString(2),
+                    NativeType: reader.GetString(3),
+                    IsNullable: reader.GetBoolean(4),
+                    MaxLength: reader.IsDBNull(5) ? null : (int?)reader.GetInt32(5),
+                    Precision: reader.IsDBNull(6) ? null : (int?)reader.GetInt32(6),
+                    Scale: reader.IsDBNull(7) ? null : (int?)reader.GetInt32(7),
+                    DefaultValue: reader.IsDBNull(8) ? null : reader.GetString(8),
+                    IsPrimaryKey: reader.GetBoolean(9),
+                    IsForeignKey: reader.GetBoolean(10),
+                    IsUnique: reader.GetBoolean(11),
+                    IsIndexed: reader.GetBoolean(12)
+                )
+            );
         }
 
         return columns;
@@ -167,8 +175,12 @@ public sealed class PostgresInspector : BaseInspector
 
     // ── Indexes ───────────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<IndexMetadata>>
-        FetchIndexesAsync(DbConnection conn, string schema, string table, CancellationToken ct)
+    protected override async Task<IReadOnlyList<IndexMetadata>> FetchIndexesAsync(
+        DbConnection conn,
+        string schema,
+        string table,
+        CancellationToken ct
+    )
     {
         const string sql = """
             SELECT
@@ -196,19 +208,21 @@ public sealed class PostgresInspector : BaseInspector
         await using var cmd = (NpgsqlCommand)conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("@schema", schema);
-        cmd.Parameters.AddWithValue("@table",  table);
+        cmd.Parameters.AddWithValue("@table", table);
 
         var indexes = new List<IndexMetadata>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            indexes.Add(new IndexMetadata(
-                Name:         reader.GetString(0),
-                IsUnique:     reader.GetBoolean(1),
-                IsClustered:  reader.GetBoolean(2),
-                IsPrimaryKey: reader.GetBoolean(3),
-                Columns:      reader.GetFieldValue<string[]>(4)
-            ));
+            indexes.Add(
+                new IndexMetadata(
+                    Name: reader.GetString(0),
+                    IsUnique: reader.GetBoolean(1),
+                    IsClustered: reader.GetBoolean(2),
+                    IsPrimaryKey: reader.GetBoolean(3),
+                    Columns: reader.GetFieldValue<string[]>(4)
+                )
+            );
         }
 
         return indexes;
@@ -216,8 +230,10 @@ public sealed class PostgresInspector : BaseInspector
 
     // ── Foreign Keys — information_schema (gives ON DELETE / ON UPDATE) ───────
 
-    protected override async Task<IReadOnlyList<ForeignKeyRelation>>
-        FetchForeignKeysAsync(DbConnection conn, CancellationToken ct)
+    protected override async Task<IReadOnlyList<ForeignKeyRelation>> FetchForeignKeysAsync(
+        DbConnection conn,
+        CancellationToken ct
+    )
     {
         // Using information_schema instead of pg_constraint because it directly
         // exposes DELETE_RULE and UPDATE_RULE without extra joins.
@@ -248,25 +264,27 @@ public sealed class PostgresInspector : BaseInspector
             ORDER BY tc.table_schema, tc.table_name, kcu.ordinal_position
             """;
 
-        await using var cmd = conn.CreateCommand();
+        await using DbCommand cmd = conn.CreateCommand();
         cmd.CommandText = sql;
 
         var relations = new List<ForeignKeyRelation>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using DbDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            relations.Add(new ForeignKeyRelation(
-                ConstraintName:  reader.GetString(0),
-                ChildSchema:     reader.GetString(1),
-                ChildTable:      reader.GetString(2),
-                ChildColumn:     reader.GetString(3),
-                ParentSchema:    reader.GetString(4),
-                ParentTable:     reader.GetString(5),
-                ParentColumn:    reader.GetString(6),
-                OnDelete:        ParseReferentialAction(reader.GetString(7)),
-                OnUpdate:        ParseReferentialAction(reader.GetString(8)),
-                OrdinalPosition: reader.GetInt32(9)
-            ));
+            relations.Add(
+                new ForeignKeyRelation(
+                    ConstraintName: reader.GetString(0),
+                    ChildSchema: reader.GetString(1),
+                    ChildTable: reader.GetString(2),
+                    ChildColumn: reader.GetString(3),
+                    ParentSchema: reader.GetString(4),
+                    ParentTable: reader.GetString(5),
+                    ParentColumn: reader.GetString(6),
+                    OnDelete: ParseReferentialAction(reader.GetString(7)),
+                    OnUpdate: ParseReferentialAction(reader.GetString(8)),
+                    OrdinalPosition: reader.GetInt32(9)
+                )
+            );
         }
 
         return relations;

@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -11,9 +10,9 @@
 
   <ItemGroup>
     <!-- ── Database Drivers ── -->
-    <PackageReference Include="Microsoft.Data.SqlClient"  Version="5.2.2" />
-    <PackageReference Include="MySqlConnector"            Version="2.3.7" />
-    <PackageReference Include="Npgsql"                    Version="8.0.3" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="MySqlConnector" Version="2.3.7" />
+    <PackageReference Include="Npgsql" Version="8.0.3" />
 
     <!-- ── Query Builder ── -->
     <!--
@@ -21,8 +20,8 @@
       One Compiler instance per provider; swap at runtime when the user
       changes data-source in the canvas.
     -->
-    <PackageReference Include="SqlKata"                   Version="2.4.0" />
-    <PackageReference Include="SqlKata.Execution"         Version="2.4.0" />
+    <PackageReference Include="SqlKata" Version="2.4.0" />
+    <PackageReference Include="SqlKata.Execution" Version="2.4.0" />
 
     <!-- ── DI / Hosting ── -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
@@ -38,7 +37,6 @@
       <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.0" />
     -->
   </ItemGroup>
-
 </Project>
 
 <!--

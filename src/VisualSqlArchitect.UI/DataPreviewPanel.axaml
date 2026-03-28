@@ -1,8 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:canvas="using:VisualSqlArchitect.UI.ViewModels.Canvas"
+             xmlns:ctrl="using:VisualSqlArchitect.UI.Controls"
              x:Class="VisualSqlArchitect.UI.Controls.DataPreviewPanel"
-             x:DataType="vm:DataPreviewViewModel">
+             x:DataType="canvas:DataPreviewViewModel"
+             x:Name="Root">
 
   <UserControl.Resources>
     <x:String x:Key="LoadingColorConverter">#60A5FA</x:String>
@@ -82,14 +85,14 @@
                        VerticalAlignment="Center"/>
           </StackPanel>
 
-          <!-- Row count / status chip -->
+          <!-- Row count / status chip (color-coded by state) -->
           <Border Background="#1A2335"
                   CornerRadius="6"
                   Padding="7,2"
                   VerticalAlignment="Center">
             <TextBlock Text="{Binding StatusText}"
                        FontSize="10"
-                       Foreground="#60A5FA"/>
+                       Foreground="{Binding StatusColor}"/>
           </Border>
         </StackPanel>
 
@@ -103,7 +106,7 @@
           <TextBlock Text="F3" FontSize="10" Foreground="#4A5568"/>
         </Border>
 
-        <!-- Refresh button -->
+        <!-- Run button (hidden while running) -->
         <Button Grid.Column="3"
                 Content="↺  Run"
                 FontSize="11"
@@ -115,10 +118,37 @@
                 Padding="8,4"
                 Margin="0,0,6,0"
                 VerticalAlignment="Center"
-                Name="RunButton">
+                Name="RunButton"
+                IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}">
           <Button.Styles>
             <Style Selector="Button:pointerover">
               <Setter Property="Background" Value="#162540"/>
+            </Style>
+          </Button.Styles>
+        </Button>
+
+        <!-- Cancel button (visible only while running) -->
+        <Button Grid.Column="3"
+                FontSize="11"
+                Foreground="#FBBF24"
+                Background="#1A1200"
+                BorderBrush="#92400E"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="8,4"
+                Margin="0,0,6,0"
+                VerticalAlignment="Center"
+                Name="CancelButton"
+                IsVisible="{Binding IsLoading}"
+                ToolTip.Tip="Cancel the running query"
+                AutomationProperties.Name="Cancel query">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <TextBlock Text="⏹" FontSize="10" VerticalAlignment="Center"/>
+            <TextBlock Text="Cancel" FontSize="11" VerticalAlignment="Center"/>
+          </StackPanel>
+          <Button.Styles>
+            <Style Selector="Button:pointerover">
+              <Setter Property="Background" Value="#2A1E00"/>
             </Style>
           </Button.Styles>
         </Button>
@@ -142,51 +172,107 @@
         </Button>
       </Grid>
 
-      <!-- ── SQL preview bar ────────────────────────────────────────────────── -->
+      <!-- ── Tab bar ───────────────────────────────────────────────────────── -->
       <Border Grid.Row="1"
               Background="#0B0E15"
               BorderBrush="#1E2335"
               BorderThickness="0,1,0,1"
-              Padding="12,7"
-              IsVisible="{Binding QueryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              Padding="8,0">
 
-        <Grid ColumnDefinitions="Auto,*">
-          <TextBlock Grid.Column="0"
-                     Text="SQL"
-                     FontSize="10"
-                     FontWeight="Bold"
-                     Foreground="#4338CA"
-                     VerticalAlignment="Center"
-                     Margin="0,0,10,0"/>
-          <SelectableTextBlock Grid.Column="1"
-                               Text="{Binding QueryText}"
-                               FontFamily="Consolas,monospace"
-                               FontSize="11"
-                               Foreground="#8B95A8"
-                               TextTrimming="CharacterEllipsis"
-                               VerticalAlignment="Center"/>
-        </Grid>
+        <Border.Styles>
+          <Style Selector="Button.tab">
+            <Setter Property="Background"     Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding"         Value="12,8"/>
+            <Setter Property="FontSize"        Value="11"/>
+            <Setter Property="Foreground"      Value="#4A5568"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+          </Style>
+          <Style Selector="Button.tab:pointerover">
+            <Setter Property="Foreground" Value="#C8D0DC"/>
+          </Style>
+          <Style Selector="Button.tab.active">
+            <Setter Property="Foreground" Value="#60A5FA"/>
+          </Style>
+        </Border.Styles>
+
+        <StackPanel Orientation="Horizontal" Spacing="0">
+
+          <!-- Preview tab -->
+          <Panel>
+            <Button Classes="tab"
+                    Name="TabPreviewButton"
+                    Classes.active="{Binding ShowDataPreview}">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="⊞" FontSize="10" VerticalAlignment="Center"/>
+                <TextBlock Text="Preview" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+            <!-- active underline -->
+            <Border Height="2"
+                    Background="#60A5FA"
+                    VerticalAlignment="Bottom"
+                    Margin="4,0"
+                    IsVisible="{Binding ShowDataPreview}"
+                    CornerRadius="1,1,0,0"/>
+          </Panel>
+
+          <!-- SQL tab -->
+          <Panel>
+            <Button Classes="tab"
+                    Name="TabSqlButton"
+                    Classes.active="{Binding ShowLiveSql}">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="&lt;/&gt;" FontSize="10" VerticalAlignment="Center" Foreground="#4338CA"/>
+                <TextBlock Text="SQL" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+            <!-- active underline -->
+            <Border Height="2"
+                    Background="#4338CA"
+                    VerticalAlignment="Bottom"
+                    Margin="4,0"
+                    IsVisible="{Binding ShowLiveSql}"
+                    CornerRadius="1,1,0,0"/>
+          </Panel>
+
+        </StackPanel>
       </Border>
 
       <!-- ── Content area ───────────────────────────────────────────────────── -->
-      <Grid Grid.Row="2">
+      <Grid Grid.Row="2" IsVisible="{Binding ShowDataPreview}">
 
-        <!-- Loading state -->
+        <!-- Running state -->
         <StackPanel IsVisible="{Binding IsLoading}"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Spacing="12">
-          <!-- Spinner emulated with animated dots -->
           <ProgressBar IsIndeterminate="True"
                        Width="200"
                        Height="3"
                        Background="#1A2335"
                        Foreground="#3B82F6"
                        CornerRadius="2"/>
-          <TextBlock Text="Running preview query…"
-                     FontSize="12"
-                     Foreground="#4A5568"
+          <TextBlock FontSize="12" Foreground="#4A5568" HorizontalAlignment="Center">
+            <Run Text="Running preview query… "/>
+            <Run Text="{Binding ElapsedMs}" Foreground="#60A5FA"/>
+            <Run Text="ms"/>
+          </TextBlock>
+          <TextBlock Text="Click Cancel to stop"
+                     FontSize="10" Foreground="#3B4560" HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Cancelled state -->
+        <StackPanel IsVisible="{Binding IsCancelled}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="10">
+          <TextBlock Text="⏹" FontSize="28" HorizontalAlignment="Center" Foreground="#FBBF24"/>
+          <TextBlock Text="Query cancelled"
+                     FontSize="13" FontWeight="SemiBold" Foreground="#FBBF24"
                      HorizontalAlignment="Center"/>
+          <TextBlock Text="Press Run to execute again"
+                     FontSize="11" Foreground="#4A5568" HorizontalAlignment="Center"/>
         </StackPanel>
 
         <!-- Error state — structured diagnostic card -->
@@ -290,16 +376,24 @@
         </StackPanel>
 
         <!-- DataGrid -->
-        <DataGrid IsVisible="{Binding HasData}"
-                  ItemsSource="{Binding ResultData}"
-                  AutoGenerateColumns="True"
+        <DataGrid Name="ResultGrid"
+                  IsVisible="{Binding HasData}"
+                  AutoGenerateColumns="False"
                   IsReadOnly="True"
                   CanUserResizeColumns="True"
                   CanUserSortColumns="True"
                   HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Auto"
+                  VerticalAlignment="Stretch"
+                  HorizontalAlignment="Stretch"
                   Margin="0"/>
       </Grid>
+
+      <!-- ── Live SQL view ──────────────────────────────────────────────────── -->
+      <Border Grid.Row="2" IsVisible="{Binding ShowLiveSql}">
+        <ctrl:LiveSqlBar DataContext="{Binding #Root.LiveSqlViewModel}"/>
+      </Border>
+
     </Grid>
   </Border>
 </UserControl>

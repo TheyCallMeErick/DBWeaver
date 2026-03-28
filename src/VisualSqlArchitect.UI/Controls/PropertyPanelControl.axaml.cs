@@ -10,7 +10,7 @@ public sealed partial class PropertyPanelControl : UserControl
     {
         InitializeComponent();
 
-        var applyBtn = this.FindControl<Button>("ApplyBtn");
+        Button? applyBtn = this.FindControl<Button>("ApplyBtn");
         if (applyBtn is not null)
             applyBtn.Click += (_, _) => Commit();
     }

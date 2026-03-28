@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
              x:Class="VisualSqlArchitect.UI.Controls.CommandPaletteControl"
              x:DataType="vm:CommandPaletteViewModel">
 
@@ -43,16 +44,12 @@
         <Grid ColumnDefinitions="Auto,*,Auto">
 
           <!-- Command palette icon -->
-          <Border Grid.Column="0"
-                  Width="18" Height="18"
-                  Margin="0,0,8,0"
-                  VerticalAlignment="Center">
-            <TextBlock Text="⌘"
-                       FontSize="15"
-                       Foreground="#60A5FA"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"/>
-          </Border>
+          <mi:MaterialIcon Grid.Column="0"
+                           Kind="Console"
+                           Width="18" Height="18"
+                           Foreground="#60A5FA"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
 
           <!-- Text input -->
           <TextBox Grid.Column="1"
@@ -98,12 +95,12 @@
                 <Grid ColumnDefinitions="32,*,Auto">
 
                   <!-- Icon badge -->
-                  <TextBlock Grid.Column="0"
-                             Text="{Binding Icon}"
-                             FontSize="14"
-                             Foreground="#60A5FA"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center"/>
+                  <mi:MaterialIcon Grid.Column="0"
+                                   Kind="{Binding Icon}"
+                                   Width="16" Height="16"
+                                   Foreground="#60A5FA"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
 
                   <!-- Name + description -->
                   <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">

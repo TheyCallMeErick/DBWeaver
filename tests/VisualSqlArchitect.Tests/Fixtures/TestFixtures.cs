@@ -23,21 +23,25 @@ internal static class TestFixtures
 
     public static class Node
     {
-        public static EmitContext PostgresContext  => CreateEmitContext(DatabaseProvider.Postgres);
-        public static EmitContext MySqlContext     => CreateEmitContext(DatabaseProvider.MySql);
+        public static EmitContext PostgresContext => CreateEmitContext(DatabaseProvider.Postgres);
+        public static EmitContext MySqlContext => CreateEmitContext(DatabaseProvider.MySql);
         public static EmitContext SqlServerContext => CreateEmitContext(DatabaseProvider.SqlServer);
 
         /// <summary>
         /// Creates a ColumnExpr for the given table and column
         /// </summary>
-        public static ColumnExpr Column(string table, string column, PinDataType type = PinDataType.Any) =>
-            new(table, column, type);
+        public static ColumnExpr Column(
+            string table,
+            string column,
+            PinDataType type = PinDataType.Any
+        ) => new(table, column, type);
 
-        public static ColumnExpr OrderTotal          => Column("orders", "total", PinDataType.Number);
-        public static ColumnExpr UserEmail           => Column("users", "email", PinDataType.Text);
-        public static ColumnExpr EventPayload        => Column("events", "payload", PinDataType.Json);
-        public static ColumnExpr ProductDescription  => Column("products", "description", PinDataType.Text);
-        public static ColumnExpr ProductPrice        => Column("products", "price", PinDataType.Number);
+        public static ColumnExpr OrderTotal => Column("orders", "total", PinDataType.Number);
+        public static ColumnExpr UserEmail => Column("users", "email", PinDataType.Text);
+        public static ColumnExpr EventPayload => Column("events", "payload", PinDataType.Json);
+        public static ColumnExpr ProductDescription =>
+            Column("products", "description", PinDataType.Text);
+        public static ColumnExpr ProductPrice => Column("products", "price", PinDataType.Number);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -56,8 +60,8 @@ internal static class TestFixtures
             bool isFk = false,
             bool isNullable = true,
             bool isUnique = false,
-            bool isIndexed = false) =>
-            new(name, type, type, isNullable, isPk, isFk, isUnique, isIndexed, 1);
+            bool isIndexed = false
+        ) => new(name, type, type, isNullable, isPk, isFk, isUnique, isIndexed, 1);
 
         /// <summary>
         /// Creates a ForeignKeyRelation
@@ -70,9 +74,19 @@ internal static class TestFixtures
             string parentTable,
             string parentColumn,
             ReferentialAction onDelete = ReferentialAction.NoAction,
-            string constraintName = "fk_test") =>
-            new(constraintName, childSchema, childTable, childColumn,
-                parentSchema, parentTable, parentColumn, onDelete, ReferentialAction.NoAction);
+            string constraintName = "fk_test"
+        ) =>
+            new(
+                constraintName,
+                childSchema,
+                childTable,
+                childColumn,
+                parentSchema,
+                parentTable,
+                parentColumn,
+                onDelete,
+                ReferentialAction.NoAction
+            );
 
         /// <summary>
         /// Creates a complete TableMetadata
@@ -82,11 +96,18 @@ internal static class TestFixtures
             string name,
             IReadOnlyList<ColumnMetadata> columns,
             IReadOnlyList<ForeignKeyRelation>? outboundFks = null,
-            IReadOnlyList<ForeignKeyRelation>? inboundFks = null) =>
-            new(schema, name, TableKind.Table, 1000, columns,
-                Array.Empty<IndexMetadata>(),
-                outboundFks ?? Array.Empty<ForeignKeyRelation>(),
-                inboundFks ?? Array.Empty<ForeignKeyRelation>());
+            IReadOnlyList<ForeignKeyRelation>? inboundFks = null
+        ) =>
+            new(
+                schema,
+                name,
+                TableKind.Table,
+                1000,
+                columns,
+                [],
+                outboundFks ?? [],
+                inboundFks ?? []
+            );
 
         /// <summary>
         /// Builds a canonical e-commerce schema for testing:
@@ -94,71 +115,103 @@ internal static class TestFixtures
         /// </summary>
         public static DbMetadata CreateEcommerceSchema()
         {
-            var fkOrdersCustomers = ForeignKey(
-                "public", "orders", "customer_id",
-                "public", "customers", "id",
+            ForeignKeyRelation fkOrdersCustomers = ForeignKey(
+                "public",
+                "orders",
+                "customer_id",
+                "public",
+                "customers",
+                "id",
                 ReferentialAction.Restrict,
-                "fk_orders_customer");
+                "fk_orders_customer"
+            );
 
-            var fkOrderItemsOrders = ForeignKey(
-                "public", "order_items", "order_id",
-                "public", "orders", "id",
+            ForeignKeyRelation fkOrderItemsOrders = ForeignKey(
+                "public",
+                "order_items",
+                "order_id",
+                "public",
+                "orders",
+                "id",
                 ReferentialAction.Cascade,
-                "fk_order_items_order");
+                "fk_order_items_order"
+            );
 
-            var fkOrderItemsProducts = ForeignKey(
-                "public", "order_items", "product_id",
-                "public", "products", "id",
+            ForeignKeyRelation fkOrderItemsProducts = ForeignKey(
+                "public",
+                "order_items",
+                "product_id",
+                "public",
+                "products",
+                "id",
                 ReferentialAction.Restrict,
-                "fk_order_items_product");
+                "fk_order_items_product"
+            );
 
-            var customersTable = Table("public", "customers", new[]
-            {
-                Column("id", "integer", isPk: true, isNullable: false),
-                Column("name", "text", isNullable: false),
-                Column("email", "text", isUnique: true, isIndexed: true),
-                Column("created_at", "timestamp", isNullable: false)
-            });
-
-            var ordersTable = Table("public", "orders",
-                new[]
-                {
+            TableMetadata customersTable = Table(
+                "public",
+                "customers",
+                [
                     Column("id", "integer", isPk: true, isNullable: false),
-                    Column("customer_id", "integer", isFk: true, isNullable: false, isIndexed: true),
-                    Column("total", "numeric", isNullable: false),
-                    Column("created_at", "timestamp", isNullable: false)
-                },
-                outboundFks: new[] { fkOrdersCustomers });
+                    Column("name", "text", isNullable: false),
+                    Column("email", "text", isUnique: true, isIndexed: true),
+                    Column("created_at", "timestamp", isNullable: false),
+                ]
+            );
 
-            var productsTable = Table("public", "products",
-                new[]
-                {
+            TableMetadata ordersTable = Table(
+                "public",
+                "orders",
+                [
+                    Column("id", "integer", isPk: true, isNullable: false),
+                    Column(
+                        "customer_id",
+                        "integer",
+                        isFk: true,
+                        isNullable: false,
+                        isIndexed: true
+                    ),
+                    Column("total", "numeric", isNullable: false),
+                    Column("created_at", "timestamp", isNullable: false),
+                ],
+                outboundFks: [fkOrdersCustomers]
+            );
+
+            TableMetadata productsTable = Table(
+                "public",
+                "products",
+                [
                     Column("id", "integer", isPk: true, isNullable: false),
                     Column("name", "text", isNullable: false, isIndexed: true),
                     Column("price", "numeric", isNullable: false),
                     Column("stock", "integer", isNullable: false),
-                    Column("description", "text", isNullable: true)
-                });
+                    Column("description", "text", isNullable: true),
+                ]
+            );
 
-            var orderItemsTable = Table("public", "order_items",
-                new[]
-                {
+            TableMetadata orderItemsTable = Table(
+                "public",
+                "order_items",
+                [
                     Column("id", "integer", isPk: true, isNullable: false),
                     Column("order_id", "integer", isFk: true, isNullable: false, isIndexed: true),
                     Column("product_id", "integer", isFk: true, isNullable: false, isIndexed: true),
                     Column("quantity", "integer", isNullable: false),
-                    Column("unit_price", "numeric", isNullable: false)
-                },
-                outboundFks: new[] { fkOrderItemsOrders, fkOrderItemsProducts });
+                    Column("unit_price", "numeric", isNullable: false),
+                ],
+                outboundFks: [fkOrderItemsOrders, fkOrderItemsProducts]
+            );
 
             var publicSchema = new SchemaMetadata(
                 "public",
-                new[] { customersTable, ordersTable, productsTable, orderItemsTable });
+                [customersTable, ordersTable, productsTable, orderItemsTable]
+            );
 
-            var allFks = new[] { 
-                fkOrdersCustomers, 
-                fkOrderItemsOrders, 
-                fkOrderItemsProducts 
+            ForeignKeyRelation[] allFks = new[]
+            {
+                fkOrdersCustomers,
+                fkOrderItemsOrders,
+                fkOrderItemsProducts,
             };
 
             return new DbMetadata(
@@ -166,8 +219,9 @@ internal static class TestFixtures
                 DatabaseProvider.Postgres,
                 "14.0",
                 DateTimeOffset.UtcNow,
-                new[] { publicSchema },
-                allFks);
+                [publicSchema],
+                allFks
+            );
         }
     }
 }

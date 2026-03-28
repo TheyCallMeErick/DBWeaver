@@ -14,11 +14,7 @@ public record ColumnSchema(
     int? MaxLength = null
 );
 
-public record TableSchema(
-    string Schema,
-    string Name,
-    IReadOnlyList<ColumnSchema> Columns
-)
+public record TableSchema(string Schema, string Name, IReadOnlyList<ColumnSchema> Columns)
 {
     public string FullName => string.IsNullOrEmpty(Schema) ? Name : $"{Schema}.{Name}";
 }
@@ -43,17 +39,18 @@ public record ConnectionConfig(
     IDictionary<string, string>? ExtraParameters = null
 )
 {
-    public string BuildConnectionString() => Provider switch
-    {
-        DatabaseProvider.SqlServer => BuildSqlServerCs(),
-        DatabaseProvider.MySql     => BuildMySqlCs(),
-        DatabaseProvider.Postgres  => BuildPostgresCs(),
-        _ => throw new NotSupportedException($"Provider {Provider} is not supported.")
-    };
+    public string BuildConnectionString() =>
+        Provider switch
+        {
+            DatabaseProvider.SqlServer => BuildSqlServerCs(),
+            DatabaseProvider.MySql => BuildMySqlCs(),
+            DatabaseProvider.Postgres => BuildPostgresCs(),
+            _ => throw new NotSupportedException($"Provider {Provider} is not supported."),
+        };
 
     private string BuildSqlServerCs()
     {
-        var auth = UseIntegratedSecurity
+        string auth = UseIntegratedSecurity
             ? "Integrated Security=True"
             : $"User Id={Username};Password={Password}";
         return $"Server={Host},{Port};Database={Database};{auth};TrustServerCertificate=True;Connection Timeout={TimeoutSeconds};";
@@ -66,7 +63,11 @@ public record ConnectionConfig(
         $"Host={Host};Port={Port};Database={Database};Username={Username};Password={Password};Timeout={TimeoutSeconds};";
 }
 
-public record ConnectionTestResult(bool Success, string? ErrorMessage = null, TimeSpan? Latency = null);
+public record ConnectionTestResult(
+    bool Success,
+    string? ErrorMessage = null,
+    TimeSpan? Latency = null
+);
 
 public record PreviewResult(
     bool Success,
@@ -82,7 +83,7 @@ public enum DatabaseProvider
 {
     SqlServer,
     MySql,
-    Postgres
+    Postgres,
 }
 
 // ─── Core Orchestrator Interface ──────────────────────────────────────────────
@@ -113,5 +114,6 @@ public interface IDbOrchestrator : IAsyncDisposable
     Task<PreviewResult> ExecutePreviewAsync(
         string sql,
         int maxRows = 200,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 }

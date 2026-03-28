@@ -11,9 +11,8 @@ namespace VisualSqlArchitect.Metadata.Inspectors;
 /// Foreign-key mapping uses sys.foreign_keys + sys.foreign_key_columns, which
 /// gives composite-key ordinal positions and referential actions in one pass.
 /// </summary>
-public sealed class SqlServerInspector : BaseInspector
+public sealed class SqlServerInspector(ConnectionConfig config) : BaseInspector(config)
 {
-    public SqlServerInspector(ConnectionConfig config) : base(config) { }
     public override DatabaseProvider Provider => DatabaseProvider.SqlServer;
 
     protected override async Task<DbConnection> OpenAsync(CancellationToken ct)
@@ -26,19 +25,22 @@ public sealed class SqlServerInspector : BaseInspector
     // ── Server version ────────────────────────────────────────────────────────
 
     protected override async Task<string> GetServerVersionAsync(
-        DbConnection conn, CancellationToken ct)
+        DbConnection conn,
+        CancellationToken ct
+    )
     {
-        await using var cmd = conn.CreateCommand();
+        await using DbCommand cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT @@VERSION";
-        var raw = (await cmd.ExecuteScalarAsync(ct))?.ToString() ?? string.Empty;
+        string raw = (await cmd.ExecuteScalarAsync(ct))?.ToString() ?? string.Empty;
         // @@VERSION is a multi-line string; return just the first line
         return raw.Split('\n', 2)[0].Trim();
     }
 
     // ── Tables + Views ────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<(string, string, TableKind, long?)>>
-        FetchAllTablesAsync(DbConnection conn, CancellationToken ct)
+    protected override async Task<
+        IReadOnlyList<(string, string, TableKind, long?)>
+    > FetchAllTablesAsync(DbConnection conn, CancellationToken ct)
     {
         // sys.dm_db_partition_stats gives fast row-count estimates without locking
         const string sql = """
@@ -58,15 +60,15 @@ public sealed class SqlServerInspector : BaseInspector
             ORDER BY s.name, o.name
             """;
 
-        await using var cmd = conn.CreateCommand();
+        await using DbCommand cmd = conn.CreateCommand();
         cmd.CommandText = sql;
 
         var result = new List<(string, string, TableKind, long?)>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using DbDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var kind = reader.GetString(2) == "VIEW" ? TableKind.View : TableKind.Table;
-            var rows = reader.IsDBNull(3) ? (long?)null : reader.GetInt64(3);
+            TableKind kind = reader.GetString(2) == "VIEW" ? TableKind.View : TableKind.Table;
+            long? rows = reader.IsDBNull(3) ? (long?)null : reader.GetInt64(3);
             result.Add((reader.GetString(0), reader.GetString(1), kind, rows));
         }
 
@@ -75,8 +77,12 @@ public sealed class SqlServerInspector : BaseInspector
 
     // ── Columns ───────────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<ColumnMetadata>>
-        FetchColumnsAsync(DbConnection conn, string schema, string table, CancellationToken ct)
+    protected override async Task<IReadOnlyList<ColumnMetadata>> FetchColumnsAsync(
+        DbConnection conn,
+        string schema,
+        string table,
+        CancellationToken ct
+    )
     {
         const string sql = """
             SELECT
@@ -137,32 +143,34 @@ public sealed class SqlServerInspector : BaseInspector
         await using var cmd = (SqlCommand)conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("@schema", schema);
-        cmd.Parameters.AddWithValue("@table",  table);
+        cmd.Parameters.AddWithValue("@table", table);
 
         var columns = new List<ColumnMetadata>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using SqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var nativeType = reader.GetString(2);
+            string nativeType = reader.GetString(2);
             // SQL Server stores max_length in bytes; for nvarchar divide by 2
-            var rawMaxLen = reader.GetInt16(4);
-            int? maxLen = rawMaxLen == -1 ? null : (int?)rawMaxLen;   // -1 = MAX
+            short rawMaxLen = reader.GetInt16(4);
+            int? maxLen = rawMaxLen == -1 ? null : (int?)rawMaxLen; // -1 = MAX
 
-            columns.Add(new ColumnMetadata(
-                Name:            reader.GetString(1),
-                DataType:        NormalizeType(nativeType),
-                NativeType:      nativeType,
-                IsNullable:      reader.GetBoolean(3),
-                MaxLength:       maxLen,
-                Precision:       (int)reader.GetByte(5),
-                Scale:           (int)reader.GetByte(6),
-                DefaultValue:    reader.IsDBNull(7) ? null : reader.GetString(7),
-                IsPrimaryKey:    reader.GetInt32(8) == 1,
-                IsForeignKey:    reader.GetInt32(9) == 1,
-                IsUnique:        reader.GetInt32(10) == 1,
-                IsIndexed:       reader.GetInt32(11) == 1,
-                OrdinalPosition: reader.GetInt32(0)
-            ));
+            columns.Add(
+                new ColumnMetadata(
+                    Name: reader.GetString(1),
+                    DataType: NormalizeType(nativeType),
+                    NativeType: nativeType,
+                    IsNullable: reader.GetBoolean(3),
+                    MaxLength: maxLen,
+                    Precision: (int)reader.GetByte(5),
+                    Scale: (int)reader.GetByte(6),
+                    DefaultValue: reader.IsDBNull(7) ? null : reader.GetString(7),
+                    IsPrimaryKey: reader.GetInt32(8) == 1,
+                    IsForeignKey: reader.GetInt32(9) == 1,
+                    IsUnique: reader.GetInt32(10) == 1,
+                    IsIndexed: reader.GetInt32(11) == 1,
+                    OrdinalPosition: reader.GetInt32(0)
+                )
+            );
         }
 
         return columns;
@@ -170,8 +178,12 @@ public sealed class SqlServerInspector : BaseInspector
 
     // ── Indexes ───────────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<IndexMetadata>>
-        FetchIndexesAsync(DbConnection conn, string schema, string table, CancellationToken ct)
+    protected override async Task<IReadOnlyList<IndexMetadata>> FetchIndexesAsync(
+        DbConnection conn,
+        string schema,
+        string table,
+        CancellationToken ct
+    )
     {
         const string sql = """
             SELECT
@@ -198,19 +210,21 @@ public sealed class SqlServerInspector : BaseInspector
         await using var cmd = (SqlCommand)conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("@schema", schema);
-        cmd.Parameters.AddWithValue("@table",  table);
+        cmd.Parameters.AddWithValue("@table", table);
 
         var indexes = new List<IndexMetadata>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using SqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            indexes.Add(new IndexMetadata(
-                Name:         reader.GetString(0),
-                IsUnique:     reader.GetBoolean(1),
-                IsClustered:  reader.GetString(2) == "CLUSTERED",
-                IsPrimaryKey: reader.GetBoolean(3),
-                Columns:      reader.GetString(4).Split(',')
-            ));
+            indexes.Add(
+                new IndexMetadata(
+                    Name: reader.GetString(0),
+                    IsUnique: reader.GetBoolean(1),
+                    IsClustered: reader.GetString(2) == "CLUSTERED",
+                    IsPrimaryKey: reader.GetBoolean(3),
+                    Columns: reader.GetString(4).Split(',')
+                )
+            );
         }
 
         return indexes;
@@ -218,8 +232,10 @@ public sealed class SqlServerInspector : BaseInspector
 
     // ── Foreign Keys — sys.foreign_keys ──────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<ForeignKeyRelation>>
-        FetchForeignKeysAsync(DbConnection conn, CancellationToken ct)
+    protected override async Task<IReadOnlyList<ForeignKeyRelation>> FetchForeignKeysAsync(
+        DbConnection conn,
+        CancellationToken ct
+    )
     {
         // This is the canonical SQL Server approach: sys.foreign_keys gives
         // constraint metadata, sys.foreign_key_columns gives column pairs,
@@ -251,25 +267,27 @@ public sealed class SqlServerInspector : BaseInspector
             ORDER BY sp.name, tp.name, fk.name, fkc.constraint_column_id
             """;
 
-        await using var cmd = conn.CreateCommand();
+        await using DbCommand cmd = conn.CreateCommand();
         cmd.CommandText = sql;
 
         var relations = new List<ForeignKeyRelation>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using DbDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            relations.Add(new ForeignKeyRelation(
-                ConstraintName:  reader.GetString(0),
-                ChildSchema:     reader.GetString(1),
-                ChildTable:      reader.GetString(2),
-                ChildColumn:     reader.GetString(3),
-                ParentSchema:    reader.GetString(4),
-                ParentTable:     reader.GetString(5),
-                ParentColumn:    reader.GetString(6),
-                OnDelete:        ParseReferentialAction(reader.GetString(7)),
-                OnUpdate:        ParseReferentialAction(reader.GetString(8)),
-                OrdinalPosition: reader.GetInt32(9)
-            ));
+            relations.Add(
+                new ForeignKeyRelation(
+                    ConstraintName: reader.GetString(0),
+                    ChildSchema: reader.GetString(1),
+                    ChildTable: reader.GetString(2),
+                    ChildColumn: reader.GetString(3),
+                    ParentSchema: reader.GetString(4),
+                    ParentTable: reader.GetString(5),
+                    ParentColumn: reader.GetString(6),
+                    OnDelete: ParseReferentialAction(reader.GetString(7)),
+                    OnUpdate: ParseReferentialAction(reader.GetString(8)),
+                    OrdinalPosition: reader.GetInt32(9)
+                )
+            );
         }
 
         return relations;
@@ -277,26 +295,27 @@ public sealed class SqlServerInspector : BaseInspector
 
     // ── Type normalisation ────────────────────────────────────────────────────
 
-    private static string NormalizeType(string native) => native.ToLowerInvariant() switch
-    {
-        "int"              => "integer",
-        "bigint"           => "bigint",
-        "smallint"         => "smallint",
-        "tinyint"          => "tinyint",
-        "bit"              => "boolean",
-        "decimal" or "numeric" => "decimal",
-        "float" or "real"  => "float",
-        "money" or "smallmoney" => "money",
-        "char" or "nchar"  => "char",
-        "varchar" or "nvarchar" => "varchar",
-        "text" or "ntext"  => "text",
-        "uniqueidentifier" => "uuid",
-        "datetime" or "datetime2" or "smalldatetime" => "datetime",
-        "date"             => "date",
-        "time"             => "time",
-        "datetimeoffset"   => "timestamptz",
-        "varbinary" or "binary" or "image" => "binary",
-        "xml"              => "xml",
-        _                  => native.ToLowerInvariant()
-    };
+    private static string NormalizeType(string native) =>
+        native.ToLowerInvariant() switch
+        {
+            "int" => "integer",
+            "bigint" => "bigint",
+            "smallint" => "smallint",
+            "tinyint" => "tinyint",
+            "bit" => "boolean",
+            "decimal" or "numeric" => "decimal",
+            "float" or "real" => "float",
+            "money" or "smallmoney" => "money",
+            "char" or "nchar" => "char",
+            "varchar" or "nvarchar" => "varchar",
+            "text" or "ntext" => "text",
+            "uniqueidentifier" => "uuid",
+            "datetime" or "datetime2" or "smalldatetime" => "datetime",
+            "date" => "date",
+            "time" => "time",
+            "datetimeoffset" => "timestamptz",
+            "varbinary" or "binary" or "image" => "binary",
+            "xml" => "xml",
+            _ => native.ToLowerInvariant(),
+        };
 }

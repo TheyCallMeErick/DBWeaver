@@ -1,8 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:canvas="using:VisualSqlArchitect.UI.ViewModels.Canvas"
+             xmlns:mi="using:Material.Icons.Avalonia"
              x:Class="VisualSqlArchitect.UI.Controls.SearchMenuControl"
-             x:DataType="vm:SearchMenuViewModel">
+             x:DataType="canvas:SearchMenuViewModel">
 
   <UserControl.Styles>
     <!-- Result item default -->
@@ -44,16 +46,12 @@
         <Grid ColumnDefinitions="Auto,*,Auto">
 
           <!-- Search icon -->
-          <Border Grid.Column="0"
-                  Width="18" Height="18"
-                  Margin="0,0,8,0"
-                  VerticalAlignment="Center">
-            <Path Data="M 11 2 A 9 9 0 1 0 11 20 A 9 9 0 1 0 11 2 Z M 20 20 L 15.5 15.5"
-                  Stroke="#60A5FA"
-                  StrokeThickness="1.8"
-                  StrokeLineCap="Round"
-                  Stretch="Uniform"/>
-          </Border>
+          <mi:MaterialIcon Grid.Column="0"
+                           Kind="Magnify"
+                           Width="18" Height="18"
+                           Foreground="#60A5FA"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
 
           <!-- Text input -->
           <TextBox Grid.Column="1"
@@ -88,11 +86,73 @@
       <!-- Divider -->
       <Border Height="1" Background="#1E2335"/>
 
+      <!-- ── Snippets section (shown when snippets exist) ─────────────────── -->
+      <Border Padding="8,8,8,2"
+              IsVisible="{Binding HasSnippets}">
+        <StackPanel Spacing="4">
+          <!-- Header -->
+          <TextBlock Text="★  SNIPPETS"
+                     FontSize="9"
+                     FontWeight="Bold"
+                     Foreground="#FBBF24"
+                     LetterSpacing="1.5"
+                     Margin="6,0,0,2"/>
+          <ItemsControl ItemsSource="{Binding Snippets}" Name="SnippetsList">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="canvas:SnippetViewModel">
+                <Border Classes="result-item">
+                  <Grid ColumnDefinitions="34,*,Auto">
+                    <!-- Star icon badge -->
+                    <Border Grid.Column="0"
+                            Width="28" Height="28"
+                            CornerRadius="7"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0"
+                            Background="#1A150A">
+                      <mi:MaterialIcon Kind="Bookmark"
+                                       Width="14" Height="14"
+                                       Foreground="#FBBF24"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                    </Border>
+                    <!-- Name + summary -->
+                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}"
+                                 FontSize="12"
+                                 FontWeight="Medium"
+                                 Foreground="#E8EAED"/>
+                      <TextBlock Text="{Binding Summary}"
+                                 FontSize="10"
+                                 Foreground="#4A5568"/>
+                    </StackPanel>
+                    <!-- Tags badge (optional) -->
+                    <Border Grid.Column="2"
+                            Background="#1A150A"
+                            CornerRadius="4"
+                            Padding="5,2"
+                            Margin="4,0"
+                            IsVisible="{Binding HasTags}">
+                      <TextBlock Text="{Binding Tags}"
+                                 FontSize="9"
+                                 Foreground="#FBBF24"/>
+                    </Border>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Divider between snippets and node results -->
+      <Border Height="1" Background="#1E2335"
+              IsVisible="{Binding HasSnippets}"/>
+
       <!-- ── Results list ───────────────────────────────────────────────────── -->
       <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
         <ItemsControl ItemsSource="{Binding Results}" Margin="0,4,0,4" Name="ResultsList">
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:NodeSearchResultViewModel">
+            <DataTemplate x:DataType="canvas:NodeSearchResultViewModel">
 
               <Border Classes="result-item">
 
@@ -107,12 +167,11 @@
                     <Border.Background>
                       <SolidColorBrush Color="{Binding AccentColor}" Opacity="0.18"/>
                     </Border.Background>
-                    <TextBlock Text="{Binding Icon}"
-                               FontSize="13"
-                               FontWeight="Bold"
-                               Foreground="{Binding AccentBrush}"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
+                    <mi:MaterialIcon Kind="{Binding IconKind}"
+                                     Width="15" Height="15"
+                                     Foreground="{Binding AccentBrush}"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
                   </Border>
 
                   <!-- Name + category -->

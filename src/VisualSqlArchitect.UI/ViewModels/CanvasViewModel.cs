@@ -1,782 +1,677 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Data;
-using System.Windows.Input;
 using Avalonia;
-using Avalonia.Media;
+using VisualSqlArchitect.Core;
+using VisualSqlArchitect.Metadata;
 using VisualSqlArchitect.Nodes;
+using VisualSqlArchitect.UI.Serialization;
+using VisualSqlArchitect.UI.ViewModels.Canvas;
+using VisualSqlArchitect.UI.ViewModels.UndoRedo.Commands;
 
 namespace VisualSqlArchitect.UI.ViewModels;
 
-public abstract class ViewModelBase : INotifyPropertyChanged
-{
-    public event PropertyChangedEventHandler? PropertyChanged;
-    public void RaisePropertyChanged([CallerMemberName] string? name = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-    protected bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-        field = value; RaisePropertyChanged(name); return true;
-    }
-}
-
-public sealed class RelayCommand(Action execute, Func<bool>? canExecute = null) : ICommand
-{
-    public event EventHandler? CanExecuteChanged;
-    public bool CanExecute(object? _) => canExecute?.Invoke() ?? true;
-    public void Execute(object? _) => execute();
-    public void NotifyCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-}
-
-// ── OUTPUT COLUMN ENTRY (for ResultOutput node ordering) ─────────────────────
-
-public sealed class OutputColumnEntry : ViewModelBase
-{
-    public string Key         { get; }
-    public string DisplayName { get; }
-    public ICommand MoveUpCommand   { get; }
-    public ICommand MoveDownCommand { get; }
-
-    public OutputColumnEntry(string key, string displayName, Action moveUp, Action moveDown)
-    {
-        Key             = key;
-        DisplayName     = displayName;
-        MoveUpCommand   = new RelayCommand(moveUp);
-        MoveDownCommand = new RelayCommand(moveDown);
-    }
-}
-
-// ── PIN VM ──────────────────────────────────────────────────────────────────
-
-public sealed class PinViewModel : ViewModelBase
-{
-    private Point _absolutePosition;
-    private bool  _isHovered, _isConnected, _isDropTarget;
-
-    public string Name { get; }
-    public PinDirection Direction { get; }
-    public PinDataType DataType { get; }
-    public bool IsRequired { get; }
-    public bool AllowMultiple { get; }
-    public NodeViewModel Owner { get; }
-
-    public Color PinColor => DataType switch
-    {
-        PinDataType.Text       => Color.Parse("#60A5FA"),
-        PinDataType.Number     => Color.Parse("#4ADE80"),
-        PinDataType.Boolean    => Color.Parse("#FACC15"),
-        PinDataType.DateTime   => Color.Parse("#22D3EE"),
-        PinDataType.Json       => Color.Parse("#A78BFA"),
-        PinDataType.Expression => Color.Parse("#F97316"),
-        _                      => Color.Parse("#94A3B8")
-    };
-
-    public SolidColorBrush PinBrush     => new(PinColor);
-    public SolidColorBrush PinGlowBrush => new(Color.FromArgb(60, PinColor.R, PinColor.G, PinColor.B));
-    public string DataTypeLabel         => DataType.ToString().ToUpperInvariant();
-
-    public Point AbsolutePosition
-    { get => _absolutePosition; set => Set(ref _absolutePosition, value); }
-
-    public bool IsHovered
-    { get => _isHovered; set { Set(ref _isHovered, value); RaisePropertyChanged(nameof(VisualScale)); } }
-
-    public bool IsConnected
-    { get => _isConnected; set => Set(ref _isConnected, value); }
-
-    public bool IsDropTarget
-    {
-        get => _isDropTarget;
-        set { Set(ref _isDropTarget, value); RaisePropertyChanged(nameof(DropTargetBrush)); RaisePropertyChanged(nameof(VisualScale)); }
-    }
-
-    public double VisualScale      => IsHovered || IsDropTarget ? 1.4 : 1.0;
-    public SolidColorBrush DropTargetBrush => IsDropTarget ? new SolidColorBrush(Color.Parse("#FACC15")) : PinBrush;
-
-    public bool CanAccept(PinViewModel other)
-    {
-        if (other.Owner == Owner)        return false;
-        if (other.Direction == Direction) return false;
-        if (DataType != PinDataType.Any && other.DataType != PinDataType.Any && DataType != other.DataType)
-            return false;
-        return true;
-    }
-
-    public PinViewModel(PinDescriptor d, NodeViewModel owner)
-    {
-        Name = d.Name; Direction = d.Direction; DataType = d.DataType;
-        IsRequired = d.IsRequired; AllowMultiple = d.AllowMultiple; Owner = owner;
-    }
-}
-
-// ── NODE VM ─────────────────────────────────────────────────────────────────
-
-public sealed class NodeViewModel : ViewModelBase
-{
-    private Point _position;
-    private bool _isSelected, _isHovered;
-    private string? _alias;
-    private double _width = 220;
-    private List<ValidationIssue> _validationIssues = [];
-
-    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
-    public NodeType Type { get; }
-    public NodeCategory Category { get; }
-    public string Title { get; }
-    public string Subtitle { get; }
-
-    public Dictionary<string, string> Parameters  { get; } = new();
-    public Dictionary<string, string> PinLiterals { get; } = new();
-
-    public ObservableCollection<PinViewModel>     InputPins         { get; } = [];
-    public ObservableCollection<PinViewModel>     OutputPins        { get; } = [];
-    public ObservableCollection<OutputColumnEntry> OutputColumnOrder { get; } = [];
-    public IEnumerable<PinViewModel> AllPins => InputPins.Concat(OutputPins);
-
-    public bool IsResultOutput => Type == NodeType.ResultOutput;
-
-    public Point Position
-    { get => _position; set => Set(ref _position, value); }
-
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set { Set(ref _isSelected, value); RaisePropertyChanged(nameof(NodeBorderBrush)); RaisePropertyChanged(nameof(NodeShadow)); }
-    }
-
-    public bool IsHovered
-    { get => _isHovered; set => Set(ref _isHovered, value); }
-
-    public string? Alias
-    { get => _alias; set => Set(ref _alias, value); }
-
-    public double Width
-    { get => _width; set => Set(ref _width, value); }
-
-    public Color HeaderColor => Category switch
-    {
-        NodeCategory.DataSource      => Color.Parse("#0F766E"),
-        NodeCategory.StringTransform => Color.Parse("#4338CA"),
-        NodeCategory.MathTransform   => Color.Parse("#B45309"),
-        NodeCategory.TypeCast        => Color.Parse("#7E22CE"),
-        NodeCategory.Comparison      => Color.Parse("#BE123C"),
-        NodeCategory.LogicGate       => Color.Parse("#C2410C"),
-        NodeCategory.Json            => Color.Parse("#6D28D9"),
-        NodeCategory.Aggregate       => Color.Parse("#15803D"),
-        NodeCategory.Conditional     => Color.Parse("#0E7490"),
-        _                            => Color.Parse("#374151")
-    };
-
-    public Color HeaderColorLight => Category switch
-    {
-        NodeCategory.DataSource      => Color.Parse("#14B8A6"),
-        NodeCategory.StringTransform => Color.Parse("#818CF8"),
-        NodeCategory.MathTransform   => Color.Parse("#FBBF24"),
-        NodeCategory.TypeCast        => Color.Parse("#C084FC"),
-        NodeCategory.Comparison      => Color.Parse("#FB7185"),
-        NodeCategory.LogicGate       => Color.Parse("#FB923C"),
-        NodeCategory.Json            => Color.Parse("#A78BFA"),
-        NodeCategory.Aggregate       => Color.Parse("#4ADE80"),
-        NodeCategory.Conditional     => Color.Parse("#22D3EE"),
-        _                            => Color.Parse("#9CA3AF")
-    };
-
-    public LinearGradientBrush HeaderGradient => new()
-    {
-        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-        EndPoint   = new RelativePoint(1, 1, RelativeUnit.Relative),
-        GradientStops = [ new GradientStop(HeaderColor, 0.0), new GradientStop(HeaderColorLight, 1.0) ]
-    };
-
-    // ── Validation state ──────────────────────────────────────────────────────
-    public IReadOnlyList<ValidationIssue> ValidationIssues => _validationIssues;
-    public bool HasError   => _validationIssues.Any(i => i.Severity == IssueSeverity.Error);
-    public bool HasWarning => !HasError && _validationIssues.Any(i => i.Severity == IssueSeverity.Warning);
-    public string? ValidationTooltip => _validationIssues.Count > 0
-        ? string.Join("\n", _validationIssues.Select(i =>
-            $"{(i.Severity == IssueSeverity.Error ? "✕" : "⚠")} {i.Message}" +
-            (i.Suggestion is not null ? $"\n   → {i.Suggestion}" : "")))
-        : null;
-
-    internal void SetValidation(IEnumerable<ValidationIssue> issues)
-    {
-        _validationIssues = issues.ToList();
-        RaisePropertyChanged(nameof(ValidationIssues));
-        RaisePropertyChanged(nameof(HasError));
-        RaisePropertyChanged(nameof(HasWarning));
-        RaisePropertyChanged(nameof(ValidationTooltip));
-        RaisePropertyChanged(nameof(NodeBorderBrush));
-        RaisePropertyChanged(nameof(NodeShadow));
-    }
-
-    // ── ResultOutput column ordering ──────────────────────────────────────────
-
-    /// <summary>
-    /// Rebuilds <see cref="OutputColumnOrder"/> from current canvas connections.
-    /// Keeps existing entries in their user-defined order; appends new ones and
-    /// removes entries whose connections were deleted.
-    /// </summary>
-    internal void SyncOutputColumns(IEnumerable<ConnectionViewModel> allConnections)
-    {
-        if (!IsResultOutput) return;
-
-        var incoming = allConnections
-            .Where(c => c.ToPin?.Owner == this)
-            .ToList();
-
-        var existingKeys = OutputColumnOrder.Select(e => e.Key).ToHashSet();
-        var newKeys      = incoming.Select(c => MakeKey(c.FromPin)).ToHashSet();
-
-        // Remove orphaned entries
-        foreach (var entry in OutputColumnOrder.ToList())
-            if (!newKeys.Contains(entry.Key))
-                OutputColumnOrder.Remove(entry);
-
-        // Append newly connected columns
-        foreach (var conn in incoming)
-        {
-            var key = MakeKey(conn.FromPin);
-            if (!existingKeys.Contains(key))
-            {
-                var display = conn.FromPin.Owner.Type == NodeType.TableSource
-                    ? $"{conn.FromPin.Owner.Subtitle?.Split('.').Last() ?? conn.FromPin.Owner.Title}.{conn.FromPin.Name}"
-                    : $"{conn.FromPin.Owner.Title} → {conn.FromPin.Name}";
-                OutputColumnOrder.Add(new OutputColumnEntry(
-                    key, display,
-                    () => MoveColumnUp(key),
-                    () => MoveColumnDown(key)));
-            }
-        }
-    }
-
-    private static string MakeKey(PinViewModel pin) => $"{pin.Owner.Id}::{pin.Name}";
-
-    private void MoveColumnUp(string key)
-    {
-        var idx = IndexOf(key);
-        if (idx > 0) OutputColumnOrder.Move(idx, idx - 1);
-    }
-
-    private void MoveColumnDown(string key)
-    {
-        var idx = IndexOf(key);
-        if (idx >= 0 && idx < OutputColumnOrder.Count - 1) OutputColumnOrder.Move(idx, idx + 1);
-    }
-
-    private int IndexOf(string key)
-    {
-        for (int i = 0; i < OutputColumnOrder.Count; i++)
-            if (OutputColumnOrder[i].Key == key) return i;
-        return -1;
-    }
-
-    /// <summary>
-    /// Returns the ordered (nodeId, pinName) pairs for SQL compilation.
-    /// </summary>
-    public IReadOnlyList<(string NodeId, string PinName)> GetOrderedColumns() =>
-        OutputColumnOrder
-            .Select(e => e.Key.Split("::", 2))
-            .Where(p => p.Length == 2)
-            .Select(p => (p[0], p[1]))
-            .ToList();
-
-    public SolidColorBrush NodeBorderBrush =>
-        IsSelected   ? new SolidColorBrush(Color.Parse("#3B82F6"))
-        : HasError   ? new SolidColorBrush(Color.Parse("#EF4444"))
-        : HasWarning ? new SolidColorBrush(Color.Parse("#FBBF24"))
-        : new SolidColorBrush(Color.Parse("#252C3F"));
-
-    public BoxShadows NodeShadow =>
-        IsSelected   ? BoxShadows.Parse("0 0 0 2 #3B82F6, 0 8 32 0 #603B82F6")
-        : HasError   ? BoxShadows.Parse("0 0 0 2 #EF4444, 0 4 16 0 #40EF4444")
-        : HasWarning ? BoxShadows.Parse("0 0 0 1 #FBBF24, 0 4 12 0 #30FBBF24")
-        : BoxShadows.Parse("0 4 24 0 #40000000, 0 1 4 0 #50000000");
-
-    public string CategoryIcon => NodeIconCatalog.GetForCategory(Category);
-
-    public NodeViewModel(NodeDefinition def, Point pos)
-    {
-        Type = def.Type; Category = def.Category;
-        Title = def.DisplayName;
-        Subtitle = def.Description.Length > 40 ? def.Description[..37] + "…" : def.Description;
-        Position = pos;
-        foreach (var p in def.Parameters) if (p.DefaultValue is not null) Parameters[p.Name] = p.DefaultValue;
-        foreach (var pin in def.Pins)
-        {
-            var vm = new PinViewModel(pin, this);
-            if (pin.Direction == PinDirection.Input) InputPins.Add(vm);
-            else OutputPins.Add(vm);
-        }
-    }
-
-    public NodeViewModel(string tableName, IEnumerable<(string n, PinDataType t)> cols, Point pos)
-    {
-        Type = NodeType.TableSource; Category = NodeCategory.DataSource;
-        Title = tableName.Split('.').Last(); Subtitle = tableName; Position = pos;
-        foreach (var (n, t) in cols)
-            OutputPins.Add(new PinViewModel(new PinDescriptor(n, PinDirection.Output, t), this));
-    }
-
-    public PinViewModel? FindPin(string name, PinDirection? dir = null)
-        => AllPins.FirstOrDefault(p => p.Name == name && (dir is null || p.Direction == dir));
-
-    public void RaiseParameterChanged(string p) => RaisePropertyChanged($"Param_{p}");
-}
-
-// ── CONNECTION VM ────────────────────────────────────────────────────────────
-
-public sealed class ConnectionViewModel : ViewModelBase
-{
-    private Point _fromPoint, _toPoint;
-    private bool _isHighlighted;
-
-    public string Id { get; } = Guid.NewGuid().ToString("N")[..8];
-    public PinViewModel FromPin { get; }
-    public PinViewModel? ToPin { get; set; }
-
-    public Point FromPoint
-    { get => _fromPoint; set { Set(ref _fromPoint, value); RaisePropertyChanged(nameof(BezierPath)); } }
-
-    public Point ToPoint
-    { get => _toPoint; set { Set(ref _toPoint, value); RaisePropertyChanged(nameof(BezierPath)); } }
-
-    public bool IsHighlighted
-    { get => _isHighlighted; set => Set(ref _isHighlighted, value); }
-
-    public Color WireColor     => FromPin.PinColor;
-    public double WireOpacity  => IsHighlighted ? 1.0 : 0.75;
-    public double WireThickness => IsHighlighted ? 2.5 : 1.8;
-
-    public string BezierPath
-    {
-        get
-        {
-            var dx = Math.Abs(ToPoint.X - FromPoint.X);
-            var off = Math.Max(60, dx * 0.5);
-            return $"M {FromPoint.X:F1},{FromPoint.Y:F1} " +
-                   $"C {FromPoint.X + off:F1},{FromPoint.Y:F1} {ToPoint.X - off:F1},{ToPoint.Y:F1} " +
-                   $"{ToPoint.X:F1},{ToPoint.Y:F1}";
-        }
-    }
-
-    public ConnectionViewModel(PinViewModel fromPin, Point fromPoint, Point toPoint)
-    { FromPin = fromPin; _fromPoint = fromPoint; _toPoint = toPoint; }
-}
-
-// ── PIN DRAG STATE ───────────────────────────────────────────────────────────
-
-public sealed class PinDragState
-{
-    public PinViewModel SourcePin { get; }
-    public ConnectionViewModel LiveWire { get; }
-    public List<PinViewModel> ValidTargets { get; }
-
-    public PinDragState(PinViewModel source, ConnectionViewModel wire, IEnumerable<PinViewModel> allPins)
-    {
-        SourcePin = source; LiveWire = wire;
-        ValidTargets = allPins.Where(p => p.CanAccept(source)).ToList();
-        foreach (var p in ValidTargets) p.IsDropTarget = true;
-    }
-
-    public void UpdateWireEnd(Point pt) => LiveWire.ToPoint = pt;
-
-    public PinViewModel? HitTest(Point pt, double tol = 12)
-        => ValidTargets.OrderBy(p => Dist(p.AbsolutePosition, pt))
-                       .FirstOrDefault(p => Dist(p.AbsolutePosition, pt) <= tol);
-
-    public void Cancel() { foreach (var p in ValidTargets) p.IsDropTarget = false; }
-
-    static double Dist(Point a, Point b) => Math.Sqrt(Math.Pow(a.X-b.X,2)+Math.Pow(a.Y-b.Y,2));
-}
-
-// ── SEARCH MENU VM ───────────────────────────────────────────────────────────
-
-public sealed class SearchMenuViewModel : ViewModelBase
-{
-    private string _query = ""; private bool _isVisible; private Point _spawnPos;
-    private NodeSearchResultViewModel? _selected;
-
-    public string Query { get => _query; set { Set(ref _query, value); FilterResults(); } }
-    public bool IsVisible { get => _isVisible; set => Set(ref _isVisible, value); }
-    public Point SpawnPosition { get => _spawnPos; set => Set(ref _spawnPos, value); }
-    public NodeSearchResultViewModel? SelectedResult { get => _selected; set => Set(ref _selected, value); }
-    public ObservableCollection<NodeSearchResultViewModel> Results { get; } = [];
-
-    private static readonly IReadOnlyList<NodeDefinition> AllDefs =
-        NodeDefinitionRegistry.All.OrderBy(d => d.Category).ThenBy(d => d.DisplayName).ToList();
-
-    private readonly List<NodeSearchResultViewModel> _tables = [];
-
-    public void LoadTables(IEnumerable<(string FullName, IReadOnlyList<(string Name, PinDataType Type)> Cols)> tables)
-    {
-        _tables.Clear();
-        _tables.AddRange(tables.Select(t => NodeSearchResultViewModel.ForTable(t.FullName, t.Cols)));
-        FilterResults();
-    }
-
-    public void Open(Point pos) { SpawnPosition = pos; Query = ""; FilterResults(); IsVisible = true; }
-    public void Close() { IsVisible = false; Query = ""; }
-
-    private void FilterResults()
-    {
-        Results.Clear();
-        var q = Query.Trim();
-
-        // Tables first (up to 5)
-        var filteredTables = string.IsNullOrEmpty(q) ? _tables
-            : _tables.Where(t => t.TableFullName.Contains(q, StringComparison.OrdinalIgnoreCase)
-                               || t.Title.Contains(q, StringComparison.OrdinalIgnoreCase));
-        foreach (var t in filteredTables.Take(5)) Results.Add(t);
-
-        // Then node definitions (fill remaining slots up to 12 total)
-        var filteredNodes = string.IsNullOrEmpty(q) ? AllDefs
-            : AllDefs.Where(d => d.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase)
-                              || d.Category.ToString().Contains(q, StringComparison.OrdinalIgnoreCase));
-        foreach (var d in filteredNodes.Take(12 - Results.Count))
-            Results.Add(new NodeSearchResultViewModel(d));
-
-        SelectedResult = Results.FirstOrDefault();
-    }
-
-    public void SelectNext() { if (Results.Count == 0) return; SelectedResult = Results[(Results.IndexOf(SelectedResult!) + 1) % Results.Count]; }
-    public void SelectPrev() { if (Results.Count == 0) return; SelectedResult = Results[(Results.IndexOf(SelectedResult!) - 1 + Results.Count) % Results.Count]; }
-}
-
-public sealed class NodeSearchResultViewModel : ViewModelBase
-{
-    private readonly NodeDefinition? _def;
-
-    public NodeSearchResultViewModel(NodeDefinition def) => _def = def;
-    private NodeSearchResultViewModel() { }
-
-    // ── Table-specific fields ─────────────────────────────────────────────────
-    public bool IsTable { get; init; }
-    public string TableFullName { get; init; } = "";
-    public IReadOnlyList<(string Name, PinDataType Type)> TableColumns { get; init; } = [];
-
-    public static NodeSearchResultViewModel ForTable(
-        string fullName,
-        IReadOnlyList<(string Name, PinDataType Type)> cols) =>
-        new() { IsTable = true, TableFullName = fullName, TableColumns = cols };
-
-    // ── Shared view properties ────────────────────────────────────────────────
-    public NodeDefinition Definition =>
-        _def ?? NodeDefinitionRegistry.Get(NodeType.TableSource);
-
-    public string Title =>
-        IsTable ? TableFullName.Split('.').Last() : _def!.DisplayName;
-
-    public string Category =>
-        IsTable ? "Table" : _def!.Category.ToString();
-
-    public string Icon => NodeIconCatalog.GetForCategory(_def?.Category ?? NodeCategory.DataSource);
-
-    public Color AccentColor => IsTable ? Color.Parse("#14B8A6") : _def!.Category switch
-    {
-        NodeCategory.DataSource => Color.Parse("#14B8A6"), NodeCategory.StringTransform => Color.Parse("#818CF8"),
-        NodeCategory.MathTransform => Color.Parse("#FBBF24"), NodeCategory.TypeCast => Color.Parse("#C084FC"),
-        NodeCategory.Comparison => Color.Parse("#FB7185"), NodeCategory.LogicGate => Color.Parse("#FB923C"),
-        NodeCategory.Json => Color.Parse("#A78BFA"), NodeCategory.Aggregate => Color.Parse("#4ADE80"), _ => Color.Parse("#9CA3AF")
-    };
-
-    public SolidColorBrush AccentBrush => new(AccentColor);
-}
-
-// ── DATA PREVIEW VM ──────────────────────────────────────────────────────────
-
-public sealed class DataPreviewViewModel : ViewModelBase
-{
-    private bool _isVisible, _isLoading; private string? _errorMsg;
-    private string _queryText = ""; private DataTable? _data;
-    private double _panelHeight = 280; private int _rows; private long _ms;
-    private DiagnosticResult? _diagnostic;
-
-    public bool IsVisible { get => _isVisible; set => Set(ref _isVisible, value); }
-    public bool IsLoading { get => _isLoading; set { Set(ref _isLoading, value); RaisePropertyChanged(nameof(StatusText)); } }
-    public string? ErrorMessage { get => _errorMsg; set { Set(ref _errorMsg, value); RaisePropertyChanged(nameof(StatusText)); } }
-    public string QueryText { get => _queryText; set => Set(ref _queryText, value); }
-    public DataTable? ResultData { get => _data; set { Set(ref _data, value); RaisePropertyChanged(nameof(HasData)); RaisePropertyChanged(nameof(StatusText)); } }
-    public double PanelHeight { get => _panelHeight; set => Set(ref _panelHeight, value); }
-    public int RowCount { get => _rows; set => Set(ref _rows, value); }
-    public long ExecutionMs { get => _ms; set => Set(ref _ms, value); }
-    public bool HasData => _data is { Rows.Count: > 0 };
-    public string StatusText => IsLoading ? "Running…" : ErrorMessage is not null ? "Error" : HasData ? $"{_rows} rows · {_ms}ms" : "No results";
-
-    // ── Structured diagnostic ─────────────────────────────────────────────────
-    public DiagnosticResult? Diagnostic
-    {
-        get => _diagnostic;
-        private set
-        {
-            Set(ref _diagnostic, value);
-            RaisePropertyChanged(nameof(HasDiagnostic));
-            RaisePropertyChanged(nameof(DiagnosticIcon));
-            RaisePropertyChanged(nameof(DiagnosticLabel));
-            RaisePropertyChanged(nameof(DiagnosticSuggestion));
-            RaisePropertyChanged(nameof(DiagnosticTechnical));
-            RaisePropertyChanged(nameof(HasTechnicalDetail));
-        }
-    }
-    public bool    HasDiagnostic      => _diagnostic is not null;
-    public string  DiagnosticIcon     => _diagnostic?.CategoryIcon     ?? "⚠";
-    public string  DiagnosticLabel    => _diagnostic?.CategoryLabel    ?? "Error";
-    public string  DiagnosticSuggestion => _diagnostic?.Suggestion     ?? string.Empty;
-    public string? DiagnosticTechnical  => _diagnostic?.TechnicalDetail;
-    public bool    HasTechnicalDetail   => !string.IsNullOrWhiteSpace(_diagnostic?.TechnicalDetail);
-
-    public void Toggle() => IsVisible = !IsVisible;
-    public void ShowLoading(string sql) { QueryText = sql; IsLoading = true; ErrorMessage = null; ResultData = null; Diagnostic = null; IsVisible = true; }
-    public void ShowResults(DataTable dt, long ms) { ResultData = dt; RowCount = dt.Rows.Count; ExecutionMs = ms; IsLoading = false; ErrorMessage = null; Diagnostic = null; }
-    public void ShowError(string msg, Exception? ex = null)
-    {
-        Diagnostic   = ErrorDiagnostics.Classify(msg, ex);
-        ErrorMessage = Diagnostic.FriendlyMessage;
-        IsLoading    = false;
-    }
-}
-
-// ── CANVAS VM ────────────────────────────────────────────────────────────────
-
+/// <summary>
+/// Facade for all canvas operations.
+/// Coordinates UI interactions by delegating to specialised managers:
+///   - <see cref="NodeManager"/>       — node lifecycle (spawn, delete, demo)
+///   - <see cref="PinManager"/>         — connections and type narrowing
+///   - <see cref="SelectionManager"/>   — node selection and alignment
+///   - <see cref="NodeLayoutManager"/>  — zoom, pan, snap, auto-layout
+///   - <see cref="ValidationManager"/>  — graph validation and orphan detection
+/// </summary>
 public sealed class CanvasViewModel : ViewModelBase
 {
-    private double _zoom = 1.0; private Point _panOffset; private string _queryText = "";
-    private bool _isDirty; private string? _filePath;
-    private CancellationTokenSource? _validationCts;
+    // ── Core collections ─────────────────────────────────────────────────────
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
     public ObservableCollection<ConnectionViewModel> Connections { get; } = [];
 
-    public SearchMenuViewModel      SearchMenu      { get; }
-    public CommandPaletteViewModel  CommandPalette  { get; } = new();
-    public DataPreviewViewModel     DataPreview     { get; } = new();
-    public UndoRedoStack            UndoRedo        { get; }
-    public PropertyPanelViewModel   PropertyPanel   { get; }
-    public LiveSqlBarViewModel      LiveSql         { get; set; }
-    public AutoJoinOverlayViewModel AutoJoin        { get; set; }
+    // ── Child view models ─────────────────────────────────────────────────────
 
-    public double Zoom
-    { get => _zoom; set { Set(ref _zoom, Math.Clamp(value,0.15,4.0)); RaisePropertyChanged(nameof(ZoomPercent)); } }
+    public SearchMenuViewModel SearchMenu { get; }
+    public CommandPaletteViewModel CommandPalette { get; } = new();
+    public DataPreviewViewModel DataPreview { get; } = new();
+    public AppDiagnosticsViewModel Diagnostics { get; }
+    public PropertyPanelViewModel PropertyPanel { get; }
+    public LiveSqlBarViewModel LiveSql { get; set; }
+    public AutoJoinOverlayViewModel AutoJoin { get; set; }
+    public UndoRedoStack UndoRedo { get; }
+    public ConnectionManagerViewModel ConnectionManager { get; } = new();
+    public BenchmarkViewModel Benchmark { get; private set; } = null!;
+    public ExplainPlanViewModel ExplainPlan { get; private set; } = null!;
+    public SqlImporterViewModel SqlImporter { get; private set; } = null!;
+    public SidebarViewModel Sidebar { get; private set; } = null!;
 
-    public Point PanOffset { get => _panOffset; set => Set(ref _panOffset, value); }
-    public string ZoomPercent => $"{Zoom*100:F0}%";
-    public string QueryText { get => _queryText; set => Set(ref _queryText, value); }
-    public bool IsDirty { get => _isDirty; set => Set(ref _isDirty, value); }
-    public string? CurrentFilePath { get => _filePath; set { Set(ref _filePath, value); RaisePropertyChanged(nameof(WindowTitle)); } }
-    public string WindowTitle => (CurrentFilePath is not null ? Path.GetFileNameWithoutExtension(CurrentFilePath) : "Untitled") + (IsDirty ? " •" : "") + " — Visual SQL Architect";
+    // ── Managers ──────────────────────────────────────────────────────────────
+
+    // Tracks per-node PropertyChanged handlers so they can be removed when a node is deleted.
+    private readonly Dictionary<NodeViewModel, PropertyChangedEventHandler> _nodeValidationHandlers = new();
+
+    private readonly NodeManager _nodeManager;
+    private readonly PinManager _pinManager;
+    private readonly SelectionManager _selectionManager;
+    private readonly NodeLayoutManager _layoutManager;
+    private readonly ValidationManager _validationManager;
+
+    // ── Canvas state ──────────────────────────────────────────────────────────
+
+    private string _queryText = "";
+    private bool _isDirty;
+    private string? _filePath;
+    private DbMetadata? _databaseMetadata;
+    private ConnectionConfig? _activeConnectionConfig;
+
+    public string QueryText
+    {
+        get => _queryText;
+        set => Set(ref _queryText, value);
+    }
+
+    public bool IsDirty
+    {
+        get => _isDirty;
+        set => Set(ref _isDirty, value);
+    }
+
+    public string? CurrentFilePath
+    {
+        get => _filePath;
+        set
+        {
+            Set(ref _filePath, value);
+            RaisePropertyChanged(nameof(WindowTitle));
+        }
+    }
+
+    /// <summary>
+    /// The currently connected database metadata (schemas, tables, columns).
+    /// Updated when a new database connection is established.
+    /// </summary>
+    public DbMetadata? DatabaseMetadata
+    {
+        get => _databaseMetadata;
+        set => Set(ref _databaseMetadata, value);
+    }
+
+    /// <summary>
+    /// The active database connection configuration.
+    /// Used to execute queries for preview results.
+    /// </summary>
+    public ConnectionConfig? ActiveConnectionConfig
+    {
+        get => _activeConnectionConfig;
+        set => Set(ref _activeConnectionConfig, value);
+    }
+
+    public string WindowTitle =>
+        (
+            CurrentFilePath is not null
+                ? Path.GetFileNameWithoutExtension(CurrentFilePath)
+                : "Untitled"
+        )
+        + (IsDirty ? " •" : "")
+        + " — Visual SQL Architect";
+
     public bool IsCanvasEmpty => Nodes.Count == 0;
 
-    // ── Validation summary ────────────────────────────────────────────────────
-    public bool HasErrors    => Nodes.Any(n => n.HasError);
-    public int  ErrorCount   => Nodes.Sum(n => n.ValidationIssues.Count(i => i.Severity == IssueSeverity.Error));
-    public int  WarningCount => Nodes.Sum(n => n.ValidationIssues.Count(i => i.Severity == IssueSeverity.Warning));
+    /// <summary>
+    /// True when canvas should be disabled (e.g., during database connection).
+    /// </summary>
+    public bool IsCanvasDisabled => ConnectionManager.IsConnecting;
+
+    // ── Layout properties (delegated to NodeLayoutManager) ────────────────────
+
+    public double Zoom
+    {
+        get => _layoutManager.Zoom;
+        set => _layoutManager.Zoom = value;
+    }
+
+    public Point PanOffset
+    {
+        get => _layoutManager.PanOffset;
+        set => _layoutManager.PanOffset = value;
+    }
+
+    public bool SnapToGrid
+    {
+        get => _layoutManager.SnapToGrid;
+        set => _layoutManager.SnapToGrid = value;
+    }
+
+    public const int GridSize = NodeLayoutManager.GridSize;
+    public string ZoomPercent => _layoutManager.ZoomPercent;
+    public string SnapToGridLabel => _layoutManager.SnapToGridLabel;
+
+    // ── Validation properties (delegated to ValidationManager) ────────────────
+
+    public bool HasErrors => _validationManager.HasErrors;
+    public int ErrorCount => _validationManager.ErrorCount;
+    public int WarningCount => _validationManager.WarningCount;
+    public bool HasOrphanNodes => _validationManager.HasOrphanNodes;
+    public int OrphanCount => _validationManager.OrphanCount;
+    public bool HasNamingViolations => _validationManager.HasNamingViolations;
+    public int NamingConformance => _validationManager.NamingConformance;
+
+    // ── Commands ──────────────────────────────────────────────────────────────
 
     public RelayCommand UndoCommand { get; }
     public RelayCommand RedoCommand { get; }
     public RelayCommand DeleteSelectedCommand { get; }
-    public RelayCommand SelectAllCommand { get; }
-    public RelayCommand DeselectAllCommand { get; }
-    public RelayCommand ZoomInCommand { get; }
-    public RelayCommand ZoomOutCommand { get; }
-    public RelayCommand ResetZoomCommand { get; }
-    public RelayCommand FitToScreenCommand { get; }
+    public RelayCommand CleanupOrphansCommand { get; }
+    public RelayCommand AutoFixNamingCommand { get; }
+    public RelayCommand AutoLayoutCommand { get; }
+    public RelayCommand OpenDiagnosticsCommand { get; }
     public RelayCommand TogglePreviewCommand { get; }
+
+    // ─ Delegated from SelectionManager
+    public RelayCommand SelectAllCommand => _selectionManager.SelectAllCommand;
+    public RelayCommand DeselectAllCommand => _selectionManager.DeselectAllCommand;
+    public RelayCommand AlignLeftCommand => _selectionManager.AlignLeftCommand;
+    public RelayCommand AlignRightCommand => _selectionManager.AlignRightCommand;
+    public RelayCommand AlignTopCommand => _selectionManager.AlignTopCommand;
+    public RelayCommand AlignBottomCommand => _selectionManager.AlignBottomCommand;
+    public RelayCommand AlignCenterHCommand => _selectionManager.AlignCenterHCommand;
+    public RelayCommand AlignCenterVCommand => _selectionManager.AlignCenterVCommand;
+    public RelayCommand DistributeHCommand => _selectionManager.DistributeHCommand;
+    public RelayCommand DistributeVCommand => _selectionManager.DistributeVCommand;
+
+    // ─ Delegated from NodeLayoutManager
+    public RelayCommand ZoomInCommand => _layoutManager.ZoomInCommand;
+    public RelayCommand ZoomOutCommand => _layoutManager.ZoomOutCommand;
+    public RelayCommand ResetZoomCommand => _layoutManager.ResetZoomCommand;
+    public RelayCommand FitToScreenCommand => _layoutManager.FitToScreenCommand;
+    public RelayCommand ToggleSnapCommand => _layoutManager.ToggleSnapCommand;
+
+    // ── Constructor ───────────────────────────────────────────────────────────
 
     public CanvasViewModel()
     {
-        UndoRedo      = new UndoRedoStack(this);
-        SearchMenu    = new SearchMenuViewModel();
+        UndoRedo = new UndoRedoStack(this);
+        SearchMenu = new SearchMenuViewModel();
         PropertyPanel = new PropertyPanelViewModel(UndoRedo);
+        Diagnostics = new AppDiagnosticsViewModel(this);
 
-        UndoCommand           = new RelayCommand(UndoRedo.Undo, () => UndoRedo.CanUndo);
-        RedoCommand           = new RelayCommand(UndoRedo.Redo, () => UndoRedo.CanRedo);
+        // Initialise managers
+        _nodeManager = new NodeManager(Nodes, Connections, UndoRedo, PropertyPanel, SearchMenu);
+        _selectionManager = new SelectionManager(Nodes, PropertyPanel, UndoRedo);
+        _layoutManager = new NodeLayoutManager(this, UndoRedo);
+        _pinManager = new PinManager(Nodes, Connections, UndoRedo);
+        _validationManager = new ValidationManager(this);
+
+        // Build commands
+        UndoCommand = new RelayCommand(UndoRedo.Undo, () => UndoRedo.CanUndo);
+        RedoCommand = new RelayCommand(UndoRedo.Redo, () => UndoRedo.CanRedo);
         DeleteSelectedCommand = new RelayCommand(DeleteSelected);
-        SelectAllCommand      = new RelayCommand(SelectAll);
-        DeselectAllCommand    = new RelayCommand(DeselectAll);
-        ZoomInCommand         = new RelayCommand(() => Zoom *= 1.15);
-        ZoomOutCommand        = new RelayCommand(() => Zoom /= 1.15);
-        ResetZoomCommand      = new RelayCommand(() => { Zoom = 1.0; PanOffset = new(0,0); });
-        FitToScreenCommand    = new RelayCommand(FitToScreen);
-        TogglePreviewCommand  = new RelayCommand(DataPreview.Toggle);
+        CleanupOrphansCommand = new RelayCommand(CleanupOrphans, () => HasOrphanNodes);
+        AutoFixNamingCommand = new RelayCommand(AutoFixNaming, () => HasNamingViolations);
+        AutoLayoutCommand = new RelayCommand(
+            () => _layoutManager.RunAutoLayout(),
+            () => Nodes.Count > 0
+        );
+        OpenDiagnosticsCommand = new RelayCommand(() => Diagnostics.Open());
+        TogglePreviewCommand = new RelayCommand(DataPreview.Toggle);
 
-        LiveSql  = new LiveSqlBarViewModel(this);
+        // Link commands into validation manager for CanExecute refresh
+        _validationManager.CleanupOrphansCommand = CleanupOrphansCommand;
+        _validationManager.AutoFixNamingCommand = AutoFixNamingCommand;
+
+        LiveSql = new LiveSqlBarViewModel(this);
         AutoJoin = new AutoJoinOverlayViewModel();
+        Benchmark    = new BenchmarkViewModel(this);
+        ExplainPlan  = new ExplainPlanViewModel(this);
+        SqlImporter  = new SqlImporterViewModel(this);
 
-        // Populate the search menu table catalog with demo/northwind tables
-        SearchMenu.LoadTables(DemoCatalog);
+        // Initialize Sidebar with its three tabs
+        var nodesList = new NodesListViewModel(
+            spawnNode: (definition, position) =>
+            {
+                _nodeManager.SpawnNode(definition, position);
+            }
+        );
+        var schemaVM = new SchemaViewModel(
+            onAddTableNode: (tableName, columns, position) =>
+            {
+                _nodeManager.SpawnTableNode(tableName, columns, position);
+            }
+        );
+        Sidebar = new SidebarViewModel(nodesList, ConnectionManager, schemaVM);
 
-        // When a join is accepted, wire the pins on the canvas
-        AutoJoin.JoinAccepted += (_, suggestion) =>
+        LiveSql.PropertyChanged += (_, e) =>
         {
-            // Materialise the JOIN as a connection between table output pins
-            var fromTable = Nodes.FirstOrDefault(n => n.Subtitle == suggestion.ExistingTable || n.Title == suggestion.ExistingTable.Split('.').Last());
-            var toTable   = Nodes.FirstOrDefault(n => n.Subtitle == suggestion.NewTable      || n.Title == suggestion.NewTable.Split('.').Last());
-            if (fromTable is null || toTable is null) return;
-
-            // Extract column names from the OnClause: "table.col = table.col"
-            var parts = suggestion.OnClause.Split('=');
-            if (parts.Length != 2) return;
-            var leftCol  = parts[0].Trim().Split('.').Last();
-            var rightCol = parts[1].Trim().Split('.').Last();
-
-            var fromPin = fromTable.OutputPins.FirstOrDefault(p => p.Name.Equals(leftCol, System.StringComparison.OrdinalIgnoreCase))
-                       ?? toTable.OutputPins.FirstOrDefault(p => p.Name.Equals(leftCol, System.StringComparison.OrdinalIgnoreCase));
-            var toPin   = toTable.InputPins.FirstOrDefault(p => p.Name.Equals(rightCol, System.StringComparison.OrdinalIgnoreCase))
-                       ?? fromTable.InputPins.FirstOrDefault(p => p.Name.Equals(rightCol, System.StringComparison.OrdinalIgnoreCase));
-
-            if (fromPin is not null && toPin is not null)
-                ConnectPins(fromPin, toPin);
+            if (e.PropertyName == nameof(LiveSqlBarViewModel.RawSql))
+                PropertyPanel.UpdateSqlTrace(LiveSql.RawSql);
         };
+
+        SearchMenu.LoadTables(NodeManager.DemoCatalog);
+
+        // Enable automatic table loading when database is connected
+        ConnectionManager.SearchMenu = SearchMenu;
+        ConnectionManager.Canvas = this;
+
+        // Update schema tab when database metadata changes
+        this.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(DatabaseMetadata))
+                schemaVM.Metadata = DatabaseMetadata;
+        };
+
+        AutoJoin.JoinAccepted += OnJoinAccepted;
 
         Nodes.CollectionChanged += (_, e) =>
         {
             IsDirty = true;
             RaisePropertyChanged(nameof(IsCanvasEmpty));
-            // Subscribe to per-node property changes so validation re-runs on alias/param edits
+
             if (e.NewItems is not null)
                 foreach (NodeViewModel n in e.NewItems)
-                    n.PropertyChanged += (_, _) => ScheduleValidation();
-            ScheduleValidation();
+                {
+                    PropertyChangedEventHandler h = (_, _) => _validationManager.ScheduleValidation();
+                    n.PropertyChanged += h;
+                    _nodeValidationHandlers[n] = h;
+                }
+
+            if (e.OldItems is not null)
+                foreach (NodeViewModel n in e.OldItems)
+                    if (_nodeValidationHandlers.TryGetValue(n, out PropertyChangedEventHandler? h))
+                    {
+                        n.PropertyChanged -= h;
+                        _nodeValidationHandlers.Remove(n);
+                    }
+
+            _validationManager.ScheduleValidation();
         };
+
         Connections.CollectionChanged += (_, _) =>
         {
             IsDirty = true;
-            ScheduleValidation();
-            // Keep ResultOutput column order in sync with canvas connections
-            foreach (var n in Nodes.Where(n => n.IsResultOutput))
-                n.SyncOutputColumns(Connections);
+            _validationManager.ScheduleValidation();
+            // Single pass — check each node type once instead of three Where iterations
+            foreach (NodeViewModel n in Nodes)
+            {
+                if (n.IsResultOutput) n.SyncOutputColumns(Connections);
+                else if (n.IsColumnList) n.SyncColumnListPins(Connections);
+                else if (n.IsLogicGate) n.SyncLogicGatePins(Connections);
+            }
         };
 
-        SpawnDemoNodes();
+        _nodeManager.SpawnDemoNodes(UndoRedo);
+        IsDirty = false;
     }
 
-    public NodeViewModel SpawnNode(NodeDefinition def, Point pos)
+    // ── Node operations (delegated to NodeManager) ────────────────────────────
+
+    public NodeViewModel SpawnNode(NodeDefinition def, Point pos) =>
+        _nodeManager.SpawnNode(def, pos);
+
+    public NodeViewModel SpawnTableNode(
+        string table,
+        IEnumerable<(string n, PinDataType t)> cols,
+        Point pos
+    ) => _nodeManager.SpawnTableNode(table, cols, pos);
+
+    public void DeleteSelected() => _nodeManager.DeleteSelected();
+
+    public void CleanupOrphans() => _nodeManager.CleanupOrphans();
+
+    // ── Snippets ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Saves the currently selected nodes (and their internal connections) as a
+    /// named snippet in the persistent snippet store.
+    /// </summary>
+    public void SaveSelectionAsSnippet(string name)
     {
-        var vm = new NodeViewModel(def, pos);
-        UndoRedo.Execute(new AddNodeCommand(vm));
-        SearchMenu.Close();
-        return vm;
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+        List<NodeViewModel> selected = _selectionManager.SelectedNodes();
+        if (selected.Count == 0)
+            return;
+
+        (List<SavedNode> nodes, List<SavedConnection> conns) =
+            CanvasSerializer.SerialiseSubgraph(selected, Connections);
+
+        var snippet = new SavedSnippet(
+            Id: Guid.NewGuid().ToString(),
+            Name: name.Trim(),
+            Tags: null,
+            Description: null,
+            CreatedAt: DateTime.UtcNow.ToString("o"),
+            Nodes: nodes,
+            Connections: conns
+        );
+
+        SnippetStore.Add(snippet);
+        SearchMenu.LoadSnippets();
     }
 
-    // ── Demo table catalog (northwind schema) ────────────────────────────────
-    internal static readonly IReadOnlyList<(string FullName, IReadOnlyList<(string Name, PinDataType Type)> Cols)>
-        DemoCatalog = new (string, IReadOnlyList<(string, PinDataType)>)[]
-    {
-        ("public.orders",      new[] { ("id",PinDataType.Number),   ("customer_id",PinDataType.Number), ("status",PinDataType.Text),   ("total",PinDataType.Number), ("created_at",PinDataType.DateTime), ("metadata",PinDataType.Json) }),
-        ("public.customers",   new[] { ("id",PinDataType.Number),   ("name",PinDataType.Text),          ("email",PinDataType.Text),    ("city",PinDataType.Text),    ("country",PinDataType.Text),        ("created_at",PinDataType.DateTime) }),
-        ("public.products",    new[] { ("id",PinDataType.Number),   ("name",PinDataType.Text),          ("category",PinDataType.Text), ("price",PinDataType.Number), ("stock",PinDataType.Number) }),
-        ("public.order_items", new[] { ("id",PinDataType.Number),   ("order_id",PinDataType.Number),    ("product_id",PinDataType.Number), ("qty",PinDataType.Number), ("unit_price",PinDataType.Number) }),
-        ("public.employees",   new[] { ("id",PinDataType.Number),   ("name",PinDataType.Text),          ("department",PinDataType.Text), ("salary",PinDataType.Number), ("hire_date",PinDataType.DateTime) }),
-    };
+    /// <summary>
+    /// Inserts a saved snippet into the canvas, centered at <paramref name="canvasPos"/>,
+    /// with fresh node IDs to avoid conflicts with the existing graph.
+    /// </summary>
+    public void InsertSnippet(SavedSnippet snippet, Point canvasPos) =>
+        CanvasSerializer.InsertSubgraph(snippet.Nodes, snippet.Connections, this, canvasPos);
 
-    public NodeViewModel SpawnTableNode(string table, IEnumerable<(string n, PinDataType t)> cols, Point pos)
+    /// <summary>
+    /// Loads a query template by clearing the canvas and invoking the template's Build action.
+    /// Resets undo history and dirty flag so the user starts with a clean slate.
+    /// </summary>
+    public void LoadTemplate(QueryTemplate template)
     {
-        var vm = new NodeViewModel(table, cols, pos);
-        UndoRedo.Execute(new AddNodeCommand(vm));
-        SearchMenu.Close();
-        return vm;
+        Connections.Clear();
+        Nodes.Clear();
+        CurrentFilePath = null;
+        QueryText = "";
+        Zoom = 1.0;
+        PanOffset = new Point(0, 0);
+        template.Build(this);
+        IsDirty = false;
+        UndoRedo.Clear();
     }
 
-    public void DeleteSelected()
+    /// <summary>
+    /// Resets the canvas to a clean state and sets the database metadata.
+    /// Called when a user connects to a new database.
+    /// </summary>
+    public void SetDatabaseAndResetCanvas(DbMetadata? metadata)
     {
-        var nodes = Nodes.Where(n => n.IsSelected).ToList();
-        if (nodes.Count == 0) return;
-        var wires = Connections.Where(c => nodes.Contains(c.FromPin.Owner) || (c.ToPin is not null && nodes.Contains(c.ToPin.Owner))).ToList();
-        UndoRedo.Execute(new DeleteSelectionCommand(nodes, wires));
-        PropertyPanel.Clear();
+        SetDatabaseAndResetCanvas(metadata, null);
     }
+
+    /// <summary>
+    /// Resets the canvas to a clean state and sets the database metadata and connection config.
+    /// Called when a user connects to a new database.
+    /// </summary>
+    public void SetDatabaseAndResetCanvas(DbMetadata? metadata, ConnectionConfig? config)
+    {
+        // Clear the current canvas
+        Connections.Clear();
+        Nodes.Clear();
+        CurrentFilePath = null;
+        QueryText = "";
+        Zoom = 1.0;
+        PanOffset = new Point(0, 0);
+        IsDirty = false;
+        UndoRedo.Clear();
+
+        // Set the new database metadata and connection config
+        DatabaseMetadata = metadata;
+        ActiveConnectionConfig = config;
+
+        // Reload demo nodes if no metadata provided
+        if (metadata is null)
+            _nodeManager.SpawnDemoNodes(UndoRedo);
+    }
+
+    // ── Naming & layout ───────────────────────────────────────────────────────
+
+    /// <summary>Converts all alias violations to snake_case (undoable).</summary>
+    public void AutoFixNaming()
+    {
+        var cmd = new AutoFixNamingCommand(Nodes);
+        if (!cmd.HasChanges)
+            return;
+        UndoRedo.Execute(cmd);
+    }
+
+    /// <summary>Arranges nodes into logical columns (undoable). Pass a scope to layout only selected nodes.</summary>
+    public void RunAutoLayout(IReadOnlyList<NodeViewModel>? scope = null)
+    {
+        if (Nodes.Count == 0)
+            return;
+        UndoRedo.Execute(new AutoLayoutCommand(this, scope));
+    }
+
+    // ── Pin & connection operations (delegated to PinManager) ─────────────────
 
     public void ConnectPins(PinViewModel from, PinViewModel to)
     {
-        var src  = from.Direction == PinDirection.Output ? from : to;
-        var dest = from.Direction == PinDirection.Input  ? from : to;
-        var displaced = dest.AllowMultiple ? null : Connections.FirstOrDefault(c => c.ToPin == dest);
-        var conn = new ConnectionViewModel(src, src.AbsolutePosition, dest.AbsolutePosition) { ToPin = dest };
-        UndoRedo.Execute(new AddConnectionCommand(conn, displaced));
+        _pinManager.ConnectPins(from, to);
         IsDirty = true;
     }
 
-    public void DeleteConnection(ConnectionViewModel conn) => UndoRedo.Execute(new DeleteConnectionCommand(conn));
+    public void DeleteConnection(ConnectionViewModel conn) =>
+        _pinManager.DeleteConnection(conn);
 
-    public void SelectAll()   { foreach (var n in Nodes) n.IsSelected = true; }
-    public void DeselectAll() { foreach (var n in Nodes) n.IsSelected = false; PropertyPanel.Clear(); }
+    internal void ClearNarrowingIfNeeded(IEnumerable<NodeViewModel> nodes) =>
+        _pinManager.ClearNarrowingIfNeeded(nodes);
 
-    public void SelectNode(NodeViewModel node, bool add = false)
-    {
-        if (!add) DeselectAll();
-        node.IsSelected = true;
-        var sel = Nodes.Where(n => n.IsSelected).ToList();
-        if (sel.Count == 1) PropertyPanel.ShowNode(sel[0]);
-        else if (sel.Count > 1) PropertyPanel.ShowMultiSelection(sel);
-    }
+    // ── Selection (delegated to SelectionManager) ─────────────────────────────
+
+    public void SelectAll() => _selectionManager.SelectAll();
+
+    public void DeselectAll() => _selectionManager.DeselectAll();
+
+    public void SelectNode(NodeViewModel node, bool add = false) =>
+        _selectionManager.SelectNode(node, add);
+
+    // ── Coordinate transforms ─────────────────────────────────────────────────
 
     public void ZoomToward(Point screen, double factor)
     {
-        var old = Zoom; Zoom = Math.Clamp(old * factor, 0.15, 4.0);
-        PanOffset = new Point(screen.X - (screen.X - PanOffset.X) * (Zoom / old), screen.Y - (screen.Y - PanOffset.Y) * (Zoom / old));
+        double old = Zoom;
+        Zoom = Math.Clamp(old * factor, 0.15, 4.0);
+        PanOffset = new Point(
+            screen.X - (screen.X - PanOffset.X) * (Zoom / old),
+            screen.Y - (screen.Y - PanOffset.Y) * (Zoom / old)
+        );
     }
 
-    public Point ScreenToCanvas(Point s) => new((s.X - PanOffset.X) / Zoom, (s.Y - PanOffset.Y) / Zoom);
-    public Point CanvasToScreen(Point c) => new(c.X * Zoom + PanOffset.X, c.Y * Zoom + PanOffset.Y);
+    public Point ScreenToCanvas(Point s) =>
+        new((s.X - PanOffset.X) / Zoom, (s.Y - PanOffset.Y) / Zoom);
 
-    private void FitToScreen() { if (Nodes.Count == 0) return; Zoom = 0.85; PanOffset = new(80, 80); }
+    public Point CanvasToScreen(Point c) =>
+        new(c.X * Zoom + PanOffset.X, c.Y * Zoom + PanOffset.Y);
 
-    public void UpdateQueryText(string sql) { QueryText = sql; DataPreview.QueryText = sql; }
+    // ── Query & export ────────────────────────────────────────────────────────
 
-    // ── Graph validation ──────────────────────────────────────────────────────
-
-    public void ScheduleValidation()
+    public void UpdateQueryText(string sql)
     {
-        _validationCts?.Cancel();
-        _validationCts = new CancellationTokenSource();
-        var token = _validationCts.Token;
-        Task.Delay(200, token).ContinueWith(_ =>
+        QueryText = sql;
+        DataPreview.QueryText = sql;
+    }
+
+    /// <summary>
+    /// Finds the first export node of <paramref name="exportType"/> and triggers export.
+    /// Returns the generated file path, or null if none found or export failed.
+    /// </summary>
+    public async Task<string?> TriggerExportAsync(NodeType exportType, string? overridePath = null)
+    {
+        NodeViewModel? node = Nodes.FirstOrDefault(n => n.Type == exportType);
+        if (node is null)
+            return null;
+        return await ExportNodeHandler.RunExportAsync(this, node, overridePath);
+    }
+
+    public void ScheduleValidation() => _validationManager.ScheduleValidation();
+
+    public static double Snap(double v) => NodeLayoutManager.Snap(v);
+
+    /// <summary>Forwards to <see cref="NodeManager.DemoCatalog"/> — kept for backwards compatibility.</summary>
+    public static IReadOnlyList<(
+        string FullName,
+        IReadOnlyList<(string Name, PinDataType Type)> Cols
+    )> DemoCatalog => NodeManager.DemoCatalog;
+
+    // ── Auto-join: canvas-driven analysis ────────────────────────────────────
+
+    /// <summary>
+    /// Analyses join opportunities involving <paramref name="newTableFullName"/>
+    /// against all other table-source nodes currently on the canvas.
+    /// Uses naming heuristics (no DB connection required) to suggest JOINs.
+    /// </summary>
+    public void TriggerAutoJoinAnalysis(string newTableFullName)
+    {
+        // Need at least one other table to compare against
+        List<NodeViewModel> tables = Nodes
+            .Where(n => n.IsTableSource && n.Subtitle != newTableFullName)
+            .ToList();
+        if (tables.Count == 0)
+            return;
+
+        DbMetadata meta = BuildMetadataFromCanvas();
+        var detector = new AutoJoinDetector(meta);
+        IReadOnlyList<JoinSuggestion> suggestions = detector.Suggest(
+            newTableFullName,
+            tables.Select(n => n.Subtitle)
+        );
+
+        if (suggestions.Count > 0)
+            AutoJoin.Show(newTableFullName, suggestions);
+    }
+
+    /// <summary>
+    /// Analyses ALL table-source pairs currently on the canvas and shows
+    /// the join suggestion overlay if any high-confidence suggestions are found.
+    /// </summary>
+    public void AnalyzeAllCanvasJoins()
+    {
+        List<NodeViewModel> tables = Nodes.Where(n => n.IsTableSource).ToList();
+        if (tables.Count < 2)
+            return;
+
+        DbMetadata meta = BuildMetadataFromCanvas();
+        var detector = new AutoJoinDetector(meta);
+        var allSuggestions = new List<JoinSuggestion>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (NodeViewModel t in tables)
         {
-            if (!token.IsCancellationRequested)
-                Avalonia.Threading.Dispatcher.UIThread.Post(RunValidation);
-        }, TaskScheduler.Default);
+            IEnumerable<string> others = tables
+                .Where(x => x != t)
+                .Select(x => x.Subtitle);
+            foreach (JoinSuggestion s in detector.Suggest(t.Subtitle, others))
+            {
+                // De-duplicate symmetric pairs
+                string[] pair = new[] { s.ExistingTable, s.NewTable };
+                Array.Sort(pair, StringComparer.OrdinalIgnoreCase);
+                string key = $"{pair[0]}|{pair[1]}|{s.LeftColumn}|{s.RightColumn}";
+                if (seen.Add(key))
+                    allSuggestions.Add(s);
+            }
+        }
+
+        if (allSuggestions.Count > 0)
+            AutoJoin.Show("canvas", allSuggestions.OrderByDescending(s => s.Score).ToList());
     }
 
-    private void RunValidation()
+    /// <summary>
+    /// Builds a synthetic <see cref="DbMetadata"/> from the table-source nodes
+    /// currently on the canvas.  Column data-types are inferred from pin types.
+    /// FK relations are not populated here — the detector falls back to naming
+    /// heuristics which do not require FK metadata.
+    /// </summary>
+    private DbMetadata BuildMetadataFromCanvas()
     {
-        var allIssues = GraphValidator.Validate(this);
-        var byNode    = allIssues
-            .Where(i => !string.IsNullOrEmpty(i.NodeId))
-            .GroupBy(i => i.NodeId)
-            .ToDictionary(g => g.Key, g => (IEnumerable<ValidationIssue>)g);
+        List<TableMetadata> tables = Nodes
+            .Where(n => n.IsTableSource)
+            .Select(BuildTableMetadata)
+            .ToList();
 
-        foreach (var node in Nodes)
-            node.SetValidation(byNode.TryGetValue(node.Id, out var issues) ? issues : []);
+        string schema = tables.Count > 0
+            ? (tables[0].Schema ?? "public")
+            : "public";
 
-        RaisePropertyChanged(nameof(HasErrors));
-        RaisePropertyChanged(nameof(ErrorCount));
-        RaisePropertyChanged(nameof(WarningCount));
+        return new DbMetadata(
+            DatabaseName: "canvas",
+            Provider: DatabaseProvider.Postgres,
+            ServerVersion: "0",
+            CapturedAt: DateTimeOffset.UtcNow,
+            Schemas: [new SchemaMetadata(schema, tables)],
+            AllForeignKeys: []
+        );
     }
 
-    private void SpawnDemoNodes()
+    private static TableMetadata BuildTableMetadata(NodeViewModel node)
     {
-        var orders = new NodeViewModel("public.orders",
-            new[] { ("id",PinDataType.Number), ("customer_id",PinDataType.Number), ("status",PinDataType.Text),
-                    ("total",PinDataType.Number), ("created_at",PinDataType.DateTime), ("metadata",PinDataType.Json) },
-            new Point(60, 80));
-        Nodes.Add(orders);
+        // node.Subtitle = full table name (e.g. "public.orders")
+        string full = node.Subtitle ?? node.Title;
+        string[] parts = full.Split('.', 2);
+        string schema = parts.Length == 2 ? parts[0] : "public";
+        string name = parts.Length == 2 ? parts[1] : full;
 
-        var upper = new NodeViewModel(NodeDefinitionRegistry.Get(NodeType.Upper), new Point(380, 120)) { Alias = "StatusUpper" };
-        Nodes.Add(upper);
-        var between = new NodeViewModel(NodeDefinitionRegistry.Get(NodeType.Between), new Point(380, 280));
-        between.PinLiterals["low"] = "100"; between.PinLiterals["high"] = "9999";
-        Nodes.Add(between);
-        var json = new NodeViewModel(NodeDefinitionRegistry.Get(NodeType.JsonExtract), new Point(380, 430)) { Alias = "City" };
-        json.Parameters["path"] = "$.address.city";
-        Nodes.Add(json);
-        var and = new NodeViewModel(NodeDefinitionRegistry.Get(NodeType.And), new Point(660, 310));
-        Nodes.Add(and);
+        List<ColumnMetadata> cols = node
+            .OutputPins.Select((p, i) =>
+            {
+                string nativeType = p.DataType switch
+                {
+                    PinDataType.Number => "int",
+                    PinDataType.Text => "varchar",
+                    PinDataType.Boolean => "bool",
+                    PinDataType.DateTime => "timestamp",
+                    PinDataType.Json => "jsonb",
+                    _ => "text",
+                };
+                bool isPk =
+                    p.Name.Equals("id", StringComparison.OrdinalIgnoreCase) && i == 0;
+                bool isFk =
+                    p.Name.EndsWith("_id", StringComparison.OrdinalIgnoreCase)
+                    && !isPk;
+                return new ColumnMetadata(
+                    Name: p.Name,
+                    DataType: nativeType,
+                    NativeType: nativeType,
+                    IsNullable: !isPk,
+                    IsPrimaryKey: isPk,
+                    IsForeignKey: isFk,
+                    IsUnique: isPk,
+                    IsIndexed: isPk || isFk,
+                    OrdinalPosition: i + 1
+                );
+            })
+            .ToList();
 
-        Connections.Add(new ConnectionViewModel(orders.OutputPins.First(p=>p.Name=="status"),  default, default) { ToPin = upper.InputPins.First(p=>p.Name=="text") });
-        Connections.Add(new ConnectionViewModel(orders.OutputPins.First(p=>p.Name=="total"),   default, default) { ToPin = between.InputPins.First(p=>p.Name=="value") });
-        Connections.Add(new ConnectionViewModel(orders.OutputPins.First(p=>p.Name=="metadata"),default, default) { ToPin = json.InputPins.First(p=>p.Name=="json") });
-        Connections.Add(new ConnectionViewModel(between.OutputPins.First(p=>p.Name=="result"), default, default) { ToPin = and.InputPins.First(p=>p.Name=="conditions") });
+        return new TableMetadata(
+            Schema: schema,
+            Name: name,
+            Kind: TableKind.Table,
+            EstimatedRowCount: null,
+            Columns: cols,
+            Indexes: [],
+            OutboundForeignKeys: [],
+            InboundForeignKeys: []
+        );
+    }
 
-        IsDirty = false; UndoRedo.Clear();
+    // ── Auto-join handler ─────────────────────────────────────────────────────
+
+    private void OnJoinAccepted(object? _, JoinSuggestion suggestion)
+    {
+        NodeViewModel? fromTable = Nodes.FirstOrDefault(n =>
+            n.Subtitle == suggestion.ExistingTable
+            || n.Title == suggestion.ExistingTable.Split('.').Last()
+        );
+        NodeViewModel? toTable = Nodes.FirstOrDefault(n =>
+            n.Subtitle == suggestion.NewTable
+            || n.Title == suggestion.NewTable.Split('.').Last()
+        );
+        if (fromTable is null || toTable is null)
+            return;
+
+        string[] parts = suggestion.OnClause.Split('=');
+        if (parts.Length != 2)
+            return;
+
+        string leftCol = parts[0].Trim().Split('.').Last();
+        string rightCol = parts[1].Trim().Split('.').Last();
+
+        PinViewModel? fromPin =
+            fromTable.OutputPins.FirstOrDefault(p =>
+                p.Name.Equals(leftCol, StringComparison.OrdinalIgnoreCase)
+            )
+            ?? toTable.OutputPins.FirstOrDefault(p =>
+                p.Name.Equals(leftCol, StringComparison.OrdinalIgnoreCase)
+            );
+
+        PinViewModel? toPin =
+            toTable.InputPins.FirstOrDefault(p =>
+                p.Name.Equals(rightCol, StringComparison.OrdinalIgnoreCase)
+            )
+            ?? fromTable.InputPins.FirstOrDefault(p =>
+                p.Name.Equals(rightCol, StringComparison.OrdinalIgnoreCase)
+            );
+
+        if (fromPin is not null && toPin is not null)
+            ConnectPins(fromPin, toPin);
     }
 }

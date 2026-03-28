@@ -1,5 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
+using Material.Icons;
 using VisualSqlArchitect.Nodes;
+using VisualSqlArchitect.UI.ViewModels.UndoRedo.Commands;
 
 namespace VisualSqlArchitect.UI.ViewModels;
 
@@ -9,22 +12,23 @@ namespace VisualSqlArchitect.UI.ViewModels;
 /// A single editable parameter row in the property panel.
 /// Bound to one <see cref="NodeParameter"/> on the selected node.
 /// </summary>
-public sealed class ParameterRowViewModel : ViewModelBase
+public sealed class ParameterRowViewModel(NodeParameter param, string? currentValue) : ViewModelBase
 {
-    private string? _value;
-    private bool    _isDirty;
+    private string? _value = currentValue ?? param.DefaultValue;
+    private bool _isDirty;
 
-    public string        Name        { get; }
-    public ParameterKind Kind        { get; }
-    public string?       Description { get; }
-    public IReadOnlyList<string>? EnumValues { get; }
+    public string Name { get; } = param.Name;
+    public ParameterKind Kind { get; } = param.Kind;
+    public string? Description { get; } = param.Description;
+    public IReadOnlyList<string>? EnumValues { get; } = param.EnumValues;
 
     // ── Visibility helpers (one True per kind) ────────────────────────────────
-    public bool IsText      => Kind is ParameterKind.Text or ParameterKind.JsonPath;
-    public bool IsNumber    => Kind == ParameterKind.Number;
-    public bool IsBoolean   => Kind == ParameterKind.Boolean;
-    public bool IsEnum      => Kind is ParameterKind.Enum or ParameterKind.CastType;
-
+    public bool IsText => Kind is ParameterKind.Text or ParameterKind.JsonPath;
+    public bool IsNumber => Kind == ParameterKind.Number;
+    public bool IsBoolean => Kind == ParameterKind.Boolean;
+    public bool IsEnum => Kind is ParameterKind.Enum or ParameterKind.CastType;
+    public bool IsDateTime => Kind == ParameterKind.DateTime;
+    public bool IsDate => Kind == ParameterKind.Date;
     public string? Value
     {
         get => _value;
@@ -41,15 +45,6 @@ public sealed class ParameterRowViewModel : ViewModelBase
         private set => Set(ref _isDirty, value);
     }
 
-    public ParameterRowViewModel(NodeParameter param, string? currentValue)
-    {
-        Name        = param.Name;
-        Kind        = param.Kind;
-        Description = param.Description;
-        EnumValues  = param.EnumValues;
-        _value      = currentValue ?? param.DefaultValue;
-    }
-
     public void MarkClean() => IsDirty = false;
 }
 
@@ -57,10 +52,10 @@ public sealed class ParameterRowViewModel : ViewModelBase
 
 public sealed class PinInfoRowViewModel(PinViewModel pin)
 {
-    public string Name      => pin.Name;
+    public string Name => pin.Name;
     public string TypeLabel => pin.DataType.ToString();
     public string Direction => pin.Direction.ToString();
-    public bool   Connected => pin.IsConnected;
+    public bool Connected => pin.IsConnected;
     public Avalonia.Media.Color Color => pin.PinColor;
     public Avalonia.Media.SolidColorBrush ColorBrush => pin.PinBrush;
 }
@@ -71,18 +66,21 @@ public sealed class PinInfoRowViewModel(PinViewModel pin)
 /// Bound to the right-side panel. Shows details and editable parameters for
 /// the currently selected node, or a multi-selection summary.
 /// </summary>
-public sealed class PropertyPanelViewModel : ViewModelBase
+public sealed class PropertyPanelViewModel(UndoRedoStack undo) : ViewModelBase
 {
-    private NodeViewModel?  _selectedNode;
-    private bool            _isVisible;
-    private string          _panelTitle  = "Properties";
+    private NodeViewModel? _selectedNode;
+    private bool _isVisible;
+    private string _panelTitle = "Properties";
+    private string _lastRawSql = string.Empty;
+    private string? _sqlTraceFragment;
+    private string? _sqlTraceContext;
 
-    private readonly UndoRedoStack _undo;
+    private readonly UndoRedoStack _undo = undo;
 
     // ── Sub-collections ───────────────────────────────────────────────────────
     public ObservableCollection<ParameterRowViewModel> Parameters { get; } = [];
-    public ObservableCollection<PinInfoRowViewModel>   InputPins  { get; } = [];
-    public ObservableCollection<PinInfoRowViewModel>   OutputPins { get; } = [];
+    public ObservableCollection<PinInfoRowViewModel> InputPins { get; } = [];
+    public ObservableCollection<PinInfoRowViewModel> OutputPins { get; } = [];
 
     // ── State ─────────────────────────────────────────────────────────────────
 
@@ -104,14 +102,53 @@ public sealed class PropertyPanelViewModel : ViewModelBase
         private set => Set(ref _panelTitle, value);
     }
 
+    // ── SQL Trace ─────────────────────────────────────────────────────────────
+
+    public string? SqlTraceFragment
+    {
+        get => _sqlTraceFragment;
+        private set => Set(ref _sqlTraceFragment, value);
+    }
+
+    public string? SqlTraceContext
+    {
+        get => _sqlTraceContext;
+        private set => Set(ref _sqlTraceContext, value);
+    }
+
+    public bool HasSqlTrace => SqlTraceFragment is not null;
+
+    /// <summary>
+    /// Called by CanvasViewModel whenever the live SQL output changes.
+    /// Stores the latest SQL and recomputes the trace for the selected node.
+    /// </summary>
+    public void UpdateSqlTrace(string rawSql)
+    {
+        _lastRawSql = rawSql ?? string.Empty;
+        RecomputeTrace();
+    }
+
+    private void RecomputeTrace()
+    {
+        if (SelectedNode is null || string.IsNullOrWhiteSpace(_lastRawSql))
+        {
+            SqlTraceFragment = null;
+            SqlTraceContext = null;
+            RaisePropertyChanged(nameof(HasSqlTrace));
+            return;
+        }
+        (SqlTraceContext, SqlTraceFragment) = ExtractTrace(SelectedNode, _lastRawSql);
+        RaisePropertyChanged(nameof(HasSqlTrace));
+    }
+
     // ── Computed from SelectedNode ────────────────────────────────────────────
 
-    public bool HasNode    => SelectedNode is not null;
-    public bool HasParams  => Parameters.Count > 0;
-    public bool HasInputs  => InputPins.Count > 0;
+    public bool HasNode => SelectedNode is not null;
+    public bool HasParams => Parameters.Count > 0;
+    public bool HasInputs => InputPins.Count > 0;
     public bool HasOutputs => OutputPins.Count > 0;
 
-    public string NodeTitle    => SelectedNode?.Title    ?? string.Empty;
+    public string NodeTitle => SelectedNode?.Title ?? string.Empty;
     public string NodeCategory => SelectedNode?.Category.ToString() ?? string.Empty;
     public string NodeAlias
     {
@@ -123,17 +160,11 @@ public sealed class PropertyPanelViewModel : ViewModelBase
         }
     }
 
-    public Avalonia.Media.LinearGradientBrush? HeaderGradient =>
-        SelectedNode?.HeaderGradient;
+    public Avalonia.Media.LinearGradientBrush? HeaderGradient => SelectedNode?.HeaderGradient;
 
     public string CategoryIcon => SelectedNode?.CategoryIcon ?? string.Empty;
-
-    // ── Constructor ───────────────────────────────────────────────────────────
-
-    public PropertyPanelViewModel(UndoRedoStack undo)
-    {
-        _undo = undo;
-    }
+    public MaterialIconKind CategoryIconKind =>
+        SelectedNode?.CategoryIconKind ?? MaterialIconKind.Help;
 
     // ── Selection management ──────────────────────────────────────────────────
 
@@ -143,26 +174,31 @@ public sealed class PropertyPanelViewModel : ViewModelBase
         CommitDirty();
 
         SelectedNode = node;
-        PanelTitle   = node.Title;
-        IsVisible    = true;
+        PanelTitle = node.Title;
+        IsVisible = true;
 
         RebuildRows(node);
+        RecomputeTrace();
         RaisePropertyChanged(nameof(HasNode));
         RaisePropertyChanged(nameof(NodeTitle));
         RaisePropertyChanged(nameof(NodeCategory));
         RaisePropertyChanged(nameof(NodeAlias));
         RaisePropertyChanged(nameof(HeaderGradient));
         RaisePropertyChanged(nameof(CategoryIcon));
+        RaisePropertyChanged(nameof(CategoryIconKind));
     }
 
     public void ShowMultiSelection(IReadOnlyList<NodeViewModel> nodes)
     {
         CommitDirty();
         SelectedNode = null;
-        PanelTitle   = $"{nodes.Count} nodes selected";
+        PanelTitle = $"{nodes.Count} nodes selected";
         Parameters.Clear();
         InputPins.Clear();
         OutputPins.Clear();
+        SqlTraceFragment = null;
+        SqlTraceContext = null;
+        RaisePropertyChanged(nameof(HasSqlTrace));
         IsVisible = true;
         RaisePropertyChanged(nameof(HasNode));
     }
@@ -171,10 +207,13 @@ public sealed class PropertyPanelViewModel : ViewModelBase
     {
         CommitDirty();
         SelectedNode = null;
-        PanelTitle   = "Properties";
+        PanelTitle = "Properties";
         Parameters.Clear();
         InputPins.Clear();
         OutputPins.Clear();
+        SqlTraceFragment = null;
+        SqlTraceContext = null;
+        RaisePropertyChanged(nameof(HasSqlTrace));
         IsVisible = false;
         RaisePropertyChanged(nameof(HasNode));
     }
@@ -189,22 +228,27 @@ public sealed class PropertyPanelViewModel : ViewModelBase
 
         // Get the static definition for this node type
         NodeDefinition? def = null;
-        try { def = NodeDefinitionRegistry.Get(node.Type); }
-        catch { /* TableSource and custom nodes have no registry entry */ }
+        try
+        {
+            def = NodeDefinitionRegistry.Get(node.Type);
+        }
+        catch
+        { /* TableSource and custom nodes have no registry entry */
+        }
 
         if (def is not null)
         {
-            foreach (var param in def.Parameters)
+            foreach (NodeParameter param in def.Parameters)
             {
-                node.Parameters.TryGetValue(param.Name, out var currentVal);
+                node.Parameters.TryGetValue(param.Name, out string? currentVal);
                 Parameters.Add(new ParameterRowViewModel(param, currentVal));
             }
         }
 
-        foreach (var pin in node.InputPins)
+        foreach (PinViewModel pin in node.InputPins)
             InputPins.Add(new PinInfoRowViewModel(pin));
 
-        foreach (var pin in node.OutputPins)
+        foreach (PinViewModel pin in node.OutputPins)
             OutputPins.Add(new PinInfoRowViewModel(pin));
     }
 
@@ -216,13 +260,180 @@ public sealed class PropertyPanelViewModel : ViewModelBase
     /// </summary>
     public void CommitDirty()
     {
-        if (SelectedNode is null) return;
+        if (SelectedNode is null)
+            return;
 
-        foreach (var row in Parameters.Where(r => r.IsDirty))
+        foreach (ParameterRowViewModel? row in Parameters.Where(r => r.IsDirty))
         {
-            SelectedNode.Parameters.TryGetValue(row.Name, out var old);
+            SelectedNode.Parameters.TryGetValue(row.Name, out string? old);
             _undo.Execute(new EditParameterCommand(SelectedNode, row.Name, old, row.Value));
             row.MarkClean();
         }
+    }
+
+    // ── SQL Trace extraction ──────────────────────────────────────────────────
+
+    private static (string? context, string? fragment) ExtractTrace(NodeViewModel node, string sql)
+    {
+        switch (node.Type)
+        {
+            case NodeType.TableSource:
+            {
+                string name = node.Title.Trim();
+                Match m = Regex.Match(sql,
+                    $@"(?:FROM|JOIN)\s+({Regex.Escape(name)}(?:\s+\w+)?)",
+                    RegexOptions.IgnoreCase);
+                if (m.Success)
+                    return ("Source table in FROM / JOIN clause", m.Value.Trim());
+                return ("Source table", $"Table: {name}");
+            }
+            case NodeType.WhereOutput or NodeType.CompileWhere:
+            {
+                Match m = Regex.Match(sql,
+                    @"WHERE\s+(.+?)(?=\s+(?:GROUP\s+BY|ORDER\s+BY|LIMIT|HAVING|$))",
+                    RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                if (m.Success)
+                {
+                    string cond = m.Groups[1].Value.Trim();
+                    if (cond.Length > 80) cond = cond[..77] + "...";
+                    return ("Filters applied in WHERE clause", $"WHERE {cond}");
+                }
+                break;
+            }
+            case NodeType.Top:
+            {
+                Match m = Regex.Match(sql, @"LIMIT\s+\d+|TOP\s+\d+", RegexOptions.IgnoreCase);
+                if (m.Success)
+                    return ("Row count limit", m.Value.Trim());
+                break;
+            }
+            case NodeType.ResultOutput or NodeType.SelectOutput:
+            {
+                Match m = Regex.Match(sql,
+                    @"SELECT\s+(.+?)\s+FROM",
+                    RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                if (m.Success)
+                {
+                    string cols = m.Groups[1].Value.Trim();
+                    if (cols.Length > 80) cols = cols[..77] + "...";
+                    return ("Final SELECT output columns", $"SELECT {cols}");
+                }
+                break;
+            }
+            case NodeType.ColumnList:
+            {
+                Match m = Regex.Match(sql,
+                    @"SELECT\s+(.+?)\s+FROM",
+                    RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                if (m.Success)
+                {
+                    string cols = m.Groups[1].Value.Trim();
+                    if (cols.Length > 80) cols = cols[..77] + "...";
+                    return ("Column selection list", $"SELECT {cols}");
+                }
+                break;
+            }
+            case NodeType.CountStar:
+                return ("Aggregate function", "COUNT(*)");
+            case NodeType.CountDistinct:
+                return ("Aggregate function", "COUNT(DISTINCT ...)");
+            case NodeType.Sum:
+                return ("Aggregate function", "SUM(...)");
+            case NodeType.Avg:
+                return ("Aggregate function", "AVG(...)");
+            case NodeType.Min:
+                return ("Aggregate function", "MIN(...)");
+            case NodeType.Max:
+                return ("Aggregate function", "MAX(...)");
+            case NodeType.And:
+                return ("Logic gate", "... AND ...");
+            case NodeType.Or:
+                return ("Logic gate", "... OR ...");
+            case NodeType.Not:
+                return ("Logic gate", "NOT (...)");
+            case NodeType.Equals:
+                return ("Comparison predicate", "col = value");
+            case NodeType.NotEquals:
+                return ("Comparison predicate", "col <> value");
+            case NodeType.GreaterThan:
+                return ("Comparison predicate", "col > value");
+            case NodeType.GreaterOrEqual:
+                return ("Comparison predicate", "col >= value");
+            case NodeType.LessThan:
+                return ("Comparison predicate", "col < value");
+            case NodeType.LessOrEqual:
+                return ("Comparison predicate", "col <= value");
+            case NodeType.Between:
+                return ("Comparison predicate", "col BETWEEN a AND b");
+            case NodeType.NotBetween:
+                return ("Comparison predicate", "col NOT BETWEEN a AND b");
+            case NodeType.IsNull:
+                return ("Comparison predicate", "col IS NULL");
+            case NodeType.IsNotNull:
+                return ("Comparison predicate", "col IS NOT NULL");
+            case NodeType.Like:
+                return ("Comparison predicate", "col LIKE pattern");
+            case NodeType.NotLike:
+                return ("Comparison predicate", "col NOT LIKE pattern");
+            case NodeType.Upper:
+                return ("String transform", "UPPER(col)");
+            case NodeType.Lower:
+                return ("String transform", "LOWER(col)");
+            case NodeType.Trim:
+                return ("String transform", "TRIM(col)");
+            case NodeType.Concat:
+                return ("String transform", "CONCAT(...)");
+            case NodeType.Substring:
+                return ("String transform", "SUBSTRING(col, start, length)");
+            case NodeType.StringLength:
+                return ("String transform", "LENGTH(col)");
+            case NodeType.Replace:
+                return ("String transform", "REPLACE(col, search, replace)");
+            case NodeType.RegexMatch:
+                return ("String transform", "col REGEXP pattern");
+            case NodeType.RegexExtract or NodeType.RegexReplace:
+                return ("String transform", "REGEXP_REPLACE(col, ...)");
+            case NodeType.Round:
+                return ("Math transform", "ROUND(col, decimals)");
+            case NodeType.Abs:
+                return ("Math transform", "ABS(col)");
+            case NodeType.Ceil:
+                return ("Math transform", "CEIL(col)");
+            case NodeType.Floor:
+                return ("Math transform", "FLOOR(col)");
+            case NodeType.Add:
+                return ("Math transform", "col + value");
+            case NodeType.Subtract:
+                return ("Math transform", "col - value");
+            case NodeType.Multiply:
+                return ("Math transform", "col * value");
+            case NodeType.Divide:
+                return ("Math transform", "col / value");
+            case NodeType.Modulo:
+                return ("Math transform", "col % value");
+            case NodeType.Cast:
+                return ("Type cast", "CAST(col AS type)");
+            case NodeType.Alias:
+            {
+                string alias = string.IsNullOrWhiteSpace(node.Alias) ? node.Title : node.Alias;
+                return ("Column alias", $"col AS {alias}");
+            }
+            case NodeType.JsonExtract or NodeType.JsonValue:
+                return ("JSON extract", "JSON_EXTRACT(col, path)");
+            case NodeType.JsonArrayLength:
+                return ("JSON function", "JSON_ARRAY_LENGTH(col)");
+            case NodeType.Case:
+                return ("Conditional", "CASE WHEN ... THEN ... END");
+            case NodeType.NullFill:
+                return ("Conditional", "COALESCE(col, fallback)");
+            case NodeType.EmptyFill:
+                return ("Conditional", "COALESCE(NULLIF(TRIM(col), ''), fallback)");
+            case NodeType.ValueMap:
+                return ("Conditional", "CASE WHEN col = src THEN dst ELSE col END");
+            case NodeType.ValueNumber or NodeType.ValueString
+                or NodeType.ValueDateTime or NodeType.ValueBoolean:
+                return ("Literal value", $"Value: {node.Title}");
+        }
+        return (null, null);
     }
 }

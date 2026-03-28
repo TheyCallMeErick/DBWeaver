@@ -1,6 +1,7 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
              x:Class="VisualSqlArchitect.UI.Controls.NodeControl"
              x:DataType="vm:NodeViewModel">
 
@@ -13,25 +14,71 @@
       <Setter Property="BorderThickness" Value="1.5"/>
       <Setter Property="Background"   Value="Transparent"/>
       <Setter Property="Cursor"       Value="Hand"/>
+      <Setter Property="BoxShadow"    Value="0 0 0 0 #00FFFFFF"/>
       <Setter Property="Transitions">
         <Transitions>
-          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12"/>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.10"/>
+          <BoxShadowsTransition          Property="BoxShadow"       Duration="0:0:0.10"/>
         </Transitions>
       </Setter>
     </Style>
     <Style Selector="Border.pin-dot:pointerover">
-      <Setter Property="RenderTransform" Value="scale(1.4)"/>
+      <Setter Property="RenderTransform" Value="scale(1.7)"/>
+      <Setter Property="BoxShadow"       Value="0 0 7 2 #AAFFFFFF"/>
+    </Style>
+
+    <!-- Inline preview DataGrid compact styles -->
+    <Style Selector="DataGrid.node-preview">
+      <Setter Property="Background"          Value="#090C12"/>
+      <Setter Property="GridLinesVisibility" Value="All"/>
+      <Setter Property="BorderThickness"     Value="0"/>
+      <Setter Property="RowBackground"       Value="Transparent"/>
+      <Setter Property="Foreground"          Value="#A0AAB8"/>
+      <Setter Property="FontSize"            Value="10"/>
+      <Setter Property="HorizontalGridLinesBrush" Value="#1A2030"/>
+      <Setter Property="VerticalGridLinesBrush"   Value="#1A2030"/>
+    </Style>
+    <Style Selector="DataGrid.node-preview DataGridColumnHeader">
+      <Setter Property="Background"      Value="#0D0F16"/>
+      <Setter Property="Foreground"      Value="#14B8A6"/>
+      <Setter Property="FontSize"        Value="9"/>
+      <Setter Property="FontWeight"      Value="SemiBold"/>
+      <Setter Property="Padding"         Value="6,4"/>
+      <Setter Property="BorderBrush"     Value="#1A2030"/>
+      <Setter Property="BorderThickness" Value="0,0,1,1"/>
+    </Style>
+    <Style Selector="DataGrid.node-preview DataGridCell">
+      <Setter Property="Padding" Value="6,3"/>
+    </Style>
+    <!-- Preview toggle button styles -->
+    <Style Selector="Button.preview-toggle">
+      <Setter Property="Background"      Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding"         Value="3"/>
+      <Setter Property="CornerRadius"    Value="4"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.preview-toggle:pointerover">
+      <Setter Property="Background" Value="#20FFFFFF"/>
     </Style>
   </UserControl.Styles>
 
-  <!-- ══ Node shell ══════════════════════════════════════════════════════════ -->
+  <!-- â•â• Node shell â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
   <Border CornerRadius="12"
           Background="#171B26"
           BorderBrush="{Binding NodeBorderBrush}"
           BorderThickness="1"
           BoxShadow="{Binding NodeShadow}"
+          Opacity="{Binding NodeOpacity}"
           MinWidth="200"
           Cursor="SizeAll">
+
+    <Border.Transitions>
+      <Transitions>
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.15"/>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+      </Transitions>
+    </Border.Transitions>
     <ToolTip.Tip>
       <TextBlock Text="{Binding ValidationTooltip}"
                  FontFamily="Consolas,monospace"
@@ -39,15 +86,9 @@
                  IsVisible="{Binding ValidationTooltip, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
     </ToolTip.Tip>
 
-    <Border.Transitions>
-      <Transitions>
-        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.15"/>
-      </Transitions>
-    </Border.Transitions>
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
 
-    <Grid RowDefinitions="Auto,Auto,*">
-
-      <!-- ══ HEADER ═════════════════════════════════════════════════════════ -->
+      <!-- â•â• HEADER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <Border Grid.Row="0"
               CornerRadius="12,12,0,0"
               Background="{Binding HeaderGradient}"
@@ -62,12 +103,11 @@
                   Background="#30FFFFFF"
                   Margin="0,0,8,0"
                   VerticalAlignment="Center">
-            <TextBlock Text="{Binding CategoryIcon}"
-                       FontSize="12"
-                       FontWeight="Bold"
-                       Foreground="White"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"/>
+            <mi:MaterialIcon Kind="{Binding CategoryIconKind}"
+                             Width="14" Height="14"
+                             Foreground="White"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
           </Border>
 
           <!-- Title + subtitle -->
@@ -87,6 +127,15 @@
           <!-- Alias chip + validation badge -->
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
                       VerticalAlignment="Center" Margin="4,0,0,0">
+
+            <!-- Inline preview toggle (TableSource only) -->
+            <Button Classes="preview-toggle"
+                    Name="PreviewToggleBtn"
+                    IsVisible="{Binding IsTableSource}"
+                    ToolTip.Tip="Toggle data sample preview"
+                    AutomationProperties.Name="Toggle inline data preview">
+              <mi:MaterialIcon Kind="TableEye" Width="12" Height="12" Foreground="#14B8A6"/>
+            </Button>
 
             <!-- Alias chip (when set) -->
             <Border CornerRadius="4"
@@ -124,24 +173,153 @@
                            FontFamily="Consolas,monospace" FontSize="11"
                            MaxWidth="300"/>
               </ToolTip.Tip>
-              <TextBlock Text="⚠" FontSize="9" FontWeight="Bold"
-                         Foreground="#1A1A1A"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <mi:MaterialIcon Kind="Alert" Width="10" Height="10"
+                               Foreground="#1A1A1A"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
 
           </StackPanel>
         </Grid>
       </Border>
 
-      <!-- ══ SEPARATOR ══════════════════════════════════════════════════════ -->
+      <!-- â•â• SEPARATOR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <Border Grid.Row="1" Height="1" Background="#252C3F"/>
 
-      <!-- ══ PIN BODY ═══════════════════════════════════════════════════════ -->
+      <!-- â•â• PIN BODY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <Grid Grid.Row="2" ColumnDefinitions="*,*" Margin="0,4,0,6">
 
-        <!-- INPUT PINS (left side) -->
+        <!-- VALUE NODE (literal value display/edit) - replaces pin body for value nodes -->
+        <StackPanel Grid.Column="0" Grid.ColumnSpan="2"
+                    IsVisible="{Binding IsValueNode}"
+                    Margin="10,6"
+                    Spacing="6">
+
+          <!-- Value label + input for Number -->
+          <StackPanel IsVisible="{Binding IsValueNumber}" Spacing="3">
+            <TextBlock Text="Numeric Value"
+                       FontSize="10"
+                       Foreground="#60A5FA"
+                       FontWeight="SemiBold"/>
+            <TextBox Text="{Binding ValueNodeText, Mode=TwoWay}"
+                     Background="#0A0D12"
+                     BorderBrush="#1E2A3F"
+                     BorderThickness="1"
+                     Foreground="#E8EAED"
+                     FontFamily="Consolas,monospace"
+                     FontSize="12"
+                     CornerRadius="5"
+                     Padding="8,6"
+                     Watermark="0"/>
+          </StackPanel>
+
+          <!-- Value label + input for String -->
+          <StackPanel IsVisible="{Binding IsValueString}" Spacing="3">
+            <TextBlock Text="String Value"
+                       FontSize="10"
+                       Foreground="#60A5FA"
+                       FontWeight="SemiBold"/>
+            <TextBox Text="{Binding ValueNodeText, Mode=TwoWay}"
+                     Background="#0A0D12"
+                     BorderBrush="#1E2A3F"
+                     BorderThickness="1"
+                     Foreground="#E8EAED"
+                     FontFamily="Consolas,monospace"
+                     FontSize="12"
+                     CornerRadius="5"
+                     Padding="8,6"
+                     Watermark="Enter text"/>
+          </StackPanel>
+
+          <!-- Value label + input for DateTime -->
+          <StackPanel IsVisible="{Binding IsValueDateTime}" Spacing="3">
+            <TextBlock Text="DateTime Value"
+                       FontSize="10"
+                       Foreground="#60A5FA"
+                       FontWeight="SemiBold"/>
+            <TextBox Text="{Binding ValueNodeText, Mode=TwoWay}"
+                     Background="#0A0D12"
+                     BorderBrush="#1E2A3F"
+                     BorderThickness="1"
+                     Foreground="#E8EAED"
+                     FontFamily="Consolas,monospace"
+                     FontSize="12"
+                     CornerRadius="5"
+                     Padding="8,6"
+                     Watermark="YYYY-MM-DDTHH:mm:ss"/>
+          </StackPanel>
+
+          <!-- Value label + input for Boolean -->
+          <StackPanel IsVisible="{Binding IsValueBoolean}" Spacing="4"
+                      Orientation="Horizontal">
+            <TextBlock Text="Value:"
+                       FontSize="10"
+                       Foreground="#60A5FA"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+            <ComboBox SelectedItem="{Binding ValueNodeText, Mode=TwoWay}"
+                      Background="#0A0D12"
+                      BorderBrush="#1E2A3F"
+                      Foreground="#E8EAED"
+                      FontSize="11"
+                      CornerRadius="5"
+                      Padding="8,5"
+                      Width="110">
+              <ComboBoxItem>true</ComboBoxItem>
+              <ComboBoxItem>false</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+
+          <!-- Separator before output pins -->
+          <Border Height="1" Background="#252C3F" Margin="0,3,0,3"/>
+
+        </StackPanel>
+
+        <!-- OUTPUT PINS FOR VALUE NODES (right side only) -->
+        <ItemsControl Grid.Column="1"
+                      ItemsSource="{Binding OutputPins}"
+                      IsVisible="{Binding IsValueNode}"
+                      Margin="0,6,0,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PinViewModel">
+              <Grid ColumnDefinitions="*,12" Height="28" Margin="0,2">
+
+                <!-- Pin label -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Name}"
+                           FontSize="11"
+                           Foreground="#A0AEC0"
+                           FontWeight="Medium"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="4,0,8,0"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <!-- Pin dot (right edge) -->
+                <Border Grid.Column="1"
+                        Classes="pin-dot"
+                        BorderBrush="{Binding PinBrush}"
+                        Background="{Binding PinGlowBrush}"
+                        Width="11" Height="11"
+                        Margin="0,0,-5,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Name="OutputPinDotValueNode">
+                  <ToolTip.Tip>
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding Name}"    FontWeight="Bold" Foreground="White"/>
+                      <TextBlock Text="{Binding DataTypeLabel}" FontSize="10" Foreground="#60A5FA"/>
+                    </StackPanel>
+                  </ToolTip.Tip>
+                </Border>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- INPUT PINS (left side) - shown for non-value nodes -->
         <ItemsControl Grid.Column="0"
-                      ItemsSource="{Binding InputPins}">
+                      ItemsSource="{Binding InputPins}"
+                      IsVisible="{Binding IsValueNode, Converter={x:Static BoolConverters.Not}}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:PinViewModel">
               <Grid ColumnDefinitions="12,*" Height="26" Margin="0,1">
@@ -179,7 +357,8 @@
 
         <!-- OUTPUT PINS (right side) -->
         <ItemsControl Grid.Column="1"
-                      ItemsSource="{Binding OutputPins}">
+                      ItemsSource="{Binding OutputPins}"
+                      IsVisible="{Binding IsValueNode, Converter={x:Static BoolConverters.Not}}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:PinViewModel">
               <Grid ColumnDefinitions="*,12" Height="26" Margin="0,1">
@@ -217,99 +396,203 @@
         </ItemsControl>
       </Grid>
 
-      <!-- No-pin placeholder (CountStar, etc.) — hidden for ResultOutput -->
-      <TextBlock Grid.Row="2"
-                 Text="No inputs"
-                 FontSize="10"
-                 Foreground="#4A5568"
-                 Margin="12,8"
-                 IsVisible="{Binding InputPins.Count, Converter={x:Static BoolConverters.Not}}"/>
+      <!-- No-pin placeholder - shown only for source nodes without inputs -->
+      <TextBlock Grid.Row="2" Text="No inputs" FontSize="10" Foreground="#4A5568" Margin="12,8" IsVisible="{Binding ShouldShowNoInputsPlaceholder}"/>
 
-      <!-- ══ RESULT OUTPUT column ordering panel ════════════════════════════ -->
+      <!-- ──── RESULT OUTPUT - Simplified (where/columns inputs) ──────────────────────── -->
       <Border Grid.Row="2"
               IsVisible="{Binding IsResultOutput}"
               Background="#0D1020"
               CornerRadius="0,0,10,10"
               Padding="10,6">
         <StackPanel Spacing="4">
-
-          <!-- Header label -->
-          <TextBlock Text="SELECT columns — connect &amp; reorder:"
-                     FontSize="9"
-                     Foreground="#4A5568"
-                     Margin="0,0,0,2"/>
-
-          <!-- Column list -->
-          <ItemsControl ItemsSource="{Binding OutputColumnOrder}">
+          <!-- INPUT PINS for ResultOutput (where, columns inputs shown here) -->
+          <ItemsControl ItemsSource="{Binding InputPins}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:OutputColumnEntry">
-                <Border Background="#111827"
-                        CornerRadius="5"
-                        Padding="8,4"
-                        Margin="0,1">
-                  <Grid ColumnDefinitions="*,Auto,Auto">
+              <DataTemplate x:DataType="vm:PinViewModel">
+                <Grid ColumnDefinitions="12,*" Height="26" Margin="0,1">
 
-                    <!-- Column name -->
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding DisplayName}"
-                               FontSize="10"
-                               FontFamily="Consolas,monospace"
-                               Foreground="#94A3B8"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"/>
+                  <!-- Pin dot (left edge) -->
+                  <Border Grid.Column="0"
+                          Classes="pin-dot"
+                          BorderBrush="{Binding PinBrush}"
+                          Background="{Binding PinGlowBrush}"
+                          Width="10" Height="10"
+                          Margin="-5,0,0,0"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center"
+                          Name="InputPinDotResultOutput">
+                    <ToolTip.Tip>
+                      <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Name}"    FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="{Binding DataTypeLabel}" FontSize="10" Foreground="#60A5FA"/>
+                      </StackPanel>
+                    </ToolTip.Tip>
+                  </Border>
 
-                    <!-- Move up -->
-                    <Button Grid.Column="1"
-                            Content="↑"
-                            Command="{Binding MoveUpCommand}"
-                            FontSize="9"
-                            Foreground="#4A5568"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="4,2"
-                            Cursor="Hand"
-                            ToolTip.Tip="Move column up in SELECT order">
-                      <Button.Styles>
-                        <Style Selector="Button:pointerover">
-                          <Setter Property="Foreground" Value="#60A5FA"/>
-                        </Style>
-                      </Button.Styles>
-                    </Button>
-
-                    <!-- Move down -->
-                    <Button Grid.Column="2"
-                            Content="↓"
-                            Command="{Binding MoveDownCommand}"
-                            FontSize="9"
-                            Foreground="#4A5568"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="4,2"
-                            Cursor="Hand"
-                            ToolTip.Tip="Move column down in SELECT order">
-                      <Button.Styles>
-                        <Style Selector="Button:pointerover">
-                          <Setter Property="Foreground" Value="#60A5FA"/>
-                        </Style>
-                      </Button.Styles>
-                    </Button>
-
-                  </Grid>
-                </Border>
+                  <!-- Pin label -->
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding Name}"
+                             FontSize="11"
+                             Foreground="#8B95A8"
+                             VerticalAlignment="Center"
+                             Margin="6,0,4,0"
+                             TextTrimming="CharacterEllipsis"/>
+                </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
 
-          <!-- Empty state hint -->
-          <TextBlock Text="Connect column pins to this node's input ↑"
-                     FontSize="9"
-                     Foreground="#3B4560"
-                     HorizontalAlignment="Center"
-                     Margin="0,4"
-                     IsVisible="{Binding OutputColumnOrder.Count, Converter={x:Static BoolConverters.Not}}"/>
-
         </StackPanel>
       </Border>
+
+      <!-- ──── COLUMN LIST - dynamic col_N inputs (left) + result output (right) ────── -->
+      <Border Grid.Row="2"
+              IsVisible="{Binding IsColumnList}"
+              Background="#0D1020"
+              CornerRadius="0,0,10,10">
+        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,6">
+
+          <!-- LEFT: dynamic col_N input pins -->
+          <ItemsControl Grid.Column="0" ItemsSource="{Binding InputPins}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PinViewModel">
+                <Grid ColumnDefinitions="12,*" Height="26" Margin="0,1">
+                  <Border Grid.Column="0"
+                          Classes="pin-dot"
+                          BorderBrush="{Binding PinBrush}"
+                          Background="{Binding PinGlowBrush}"
+                          Width="10" Height="10"
+                          Margin="-5,0,0,0"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center"
+                          Name="InputPinDotColumnList">
+                    <ToolTip.Tip>
+                      <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="{Binding DataTypeLabel}" FontSize="10" Foreground="#60A5FA"/>
+                      </StackPanel>
+                    </ToolTip.Tip>
+                  </Border>
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding Name}"
+                             FontSize="11"
+                             Foreground="#8B95A8"
+                             VerticalAlignment="Center"
+                             Margin="6,0,4,0"
+                             TextTrimming="CharacterEllipsis"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <!-- RIGHT: output "result" pin -->
+          <ItemsControl Grid.Column="1" ItemsSource="{Binding OutputPins}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PinViewModel">
+                <Grid ColumnDefinitions="*,12" Height="26" Margin="0,1">
+                  <TextBlock Grid.Column="0"
+                             Text="{Binding Name}"
+                             FontSize="11"
+                             Foreground="#8B95A8"
+                             VerticalAlignment="Center"
+                             HorizontalAlignment="Right"
+                             Margin="4,0,6,0"
+                             TextTrimming="CharacterEllipsis"/>
+                  <Border Grid.Column="1"
+                          Classes="pin-dot"
+                          BorderBrush="{Binding PinBrush}"
+                          Background="{Binding PinGlowBrush}"
+                          Width="10" Height="10"
+                          Margin="0,0,-5,0"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Name="OutputPinDotColumnList">
+                    <ToolTip.Tip>
+                      <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="{Binding DataTypeLabel}" FontSize="10" Foreground="#60A5FA"/>
+                      </StackPanel>
+                    </ToolTip.Tip>
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+        </Grid>
+      </Border>
+
+      <!-- ── INLINE DATA PREVIEW (Row 3+4, TableSource only) ──────────────── -->
+
+      <!-- Separator -->
+      <Border Grid.Row="3"
+              Height="1"
+              Background="#252C3F"
+              IsVisible="{Binding ShowInlinePreview}"/>
+
+      <!-- Preview panel -->
+      <Grid Grid.Row="4"
+            IsVisible="{Binding ShowInlinePreview}"
+            Background="#090C12"
+            MinHeight="60">
+
+        <!-- Loading -->
+        <StackPanel IsVisible="{Binding IsPreviewLoading}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="6"
+                    Margin="12,10">
+          <ProgressBar IsIndeterminate="True"
+                       Width="120" Height="2"
+                       Background="#1A2335"
+                       Foreground="#14B8A6"
+                       CornerRadius="1"/>
+          <TextBlock Text="Loading sample…"
+                     FontSize="10"
+                     Foreground="#4A5568"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Error -->
+        <StackPanel IsVisible="{Binding HasInlinePreviewError}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="4"
+                    Margin="10,8">
+          <TextBlock Text="⚠  Preview failed"
+                     FontSize="10"
+                     FontWeight="SemiBold"
+                     Foreground="#FB7185"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding InlinePreviewError}"
+                     FontSize="9"
+                     Foreground="#6B7280"
+                     TextWrapping="Wrap"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Data grid -->
+        <StackPanel IsVisible="{Binding HasInlinePreviewData}" Spacing="0">
+          <DataGrid Classes="node-preview"
+                    ItemsSource="{Binding InlinePreviewData}"
+                    AutoGenerateColumns="True"
+                    IsReadOnly="True"
+                    CanUserResizeColumns="False"
+                    CanUserSortColumns="False"
+                    MaxHeight="140"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto"/>
+          <!-- Footer hint -->
+          <Border Background="#0B0E14" Padding="8,4">
+            <TextBlock Text="5 sample rows · demo data"
+                       FontSize="9"
+                       Foreground="#3B4560"
+                       HorizontalAlignment="Right"/>
+          </Border>
+        </StackPanel>
+
+      </Grid>
 
     </Grid>
   </Border>

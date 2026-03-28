@@ -1,0 +1,48 @@
+using VisualSqlArchitect.Registry;
+
+namespace VisualSqlArchitect.Expressions;
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PIN DATA TYPES  (for canvas-side type-checking)
+// ═════════════════════════════════════════════════════════════════════════════
+
+public enum PinDataType
+{
+    Any,
+    Text,
+    Number,
+    Boolean,
+    DateTime,
+    Json,
+    Expression, // untyped SQL fragment — accepted by any slot
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// EXPRESSION INTERFACE
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// A composable SQL fragment. Every Atomic Node emits one.
+/// Expressions form a tree that mirrors the canvas node graph:
+///
+///   UPPER(orders.email)
+///   └─ FunctionCallExpr("UPPER")
+///      └─ ColumnExpr("orders", "email")
+///
+///   orders.total BETWEEN 100 AND 500
+///   └─ BetweenExpr(negate:false)
+///      ├─ ColumnExpr("orders", "total")
+///      ├─ LiteralExpr("100")
+///      └─ LiteralExpr("500")
+/// </summary>
+public interface ISqlExpression
+{
+    /// <summary>Compiles this expression node into a SQL fragment string.</summary>
+    string Emit(EmitContext ctx);
+
+    /// <summary>
+    /// Semantic data type of this expression's output.
+    /// Used to validate pin connections at design time.
+    /// </summary>
+    PinDataType OutputType { get; }
+}

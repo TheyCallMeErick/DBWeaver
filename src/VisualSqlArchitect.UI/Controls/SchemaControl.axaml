@@ -1,0 +1,130 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:conv="using:VisualSqlArchitect.UI.Converters"
+             x:Class="VisualSqlArchitect.UI.Controls.SchemaControl"
+             x:DataType="vm:SchemaViewModel"
+             Background="#0F1419">
+
+  <UserControl.Resources>
+    <conv:StringToMaterialIconConverter x:Key="StringToIconConverter"/>
+  </UserControl.Resources>
+
+  <Grid RowDefinitions="Auto,Auto,*" Margin="0">
+
+    <!-- Header -->
+    <Border Grid.Row="0" Background="#1A1F2B" BorderBrush="#252E3F" BorderThickness="0,0,0,1" Padding="14,11">
+      <DockPanel LastChildFill="True">
+        <Button DockPanel.Dock="Right" Background="Transparent" Foreground="#60A5FA" Padding="8" CornerRadius="5" BorderThickness="1" BorderBrush="#3B4556" Cursor="Hand">
+          <mi:MaterialIcon Kind="Refresh" Width="17" Height="17"/>
+        </Button>
+        <StackPanel Spacing="3">
+          <TextBlock Text="DATABASE" Foreground="#9CA3AF" FontSize="7.5" FontWeight="Bold" Opacity="0.65" LetterSpacing="0.5"/>
+          <TextBlock Text="{Binding DatabaseName}" Foreground="#F3F4F6" FontSize="12" FontWeight="Bold"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Search -->
+    <Border Grid.Row="1" Background="#1A1F2B" BorderBrush="#252E3F" BorderThickness="0,0,0,1" Padding="11,9">
+      <Border Background="#11161F" BorderBrush="#2D3749" BorderThickness="1" CornerRadius="7" Padding="9,7">
+        <DockPanel>
+          <mi:MaterialIcon DockPanel.Dock="Left" Kind="Magnify" Foreground="#6B7280" Width="17" Height="17" VerticalAlignment="Center" Margin="0,0,7,0"/>
+          <TextBox DockPanel.Dock="Left" Text="{Binding FilterQuery}" Watermark="Search tables, columns..." Background="Transparent" BorderThickness="0" Foreground="#D1D5DB" Padding="0" FontSize="11" FontFamily="monospace"/>
+        </DockPanel>
+      </Border>
+    </Border>
+
+    <!-- Content -->
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasConnection}">
+      <StackPanel Spacing="2" Margin="0,8,0,0">
+        <ItemsControl ItemsSource="{Binding Categories}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:SchemaCategoryViewModel">
+              <StackPanel Spacing="1" Margin="7,8,7,0">
+                <Border Background="#1A1F2B" BorderBrush="#252E3F" BorderThickness="1" CornerRadius="7,7,0,0" Padding="13,11">
+                  <DockPanel LastChildFill="True">
+                    <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding IsExpanded}" Background="Transparent" Foreground="#9CA3AF" Padding="4,2" FontSize="10" CornerRadius="3" BorderThickness="0">
+                      <ToggleButton.Content>
+                        <mi:MaterialIcon Kind="ChevronDown" Width="16" Height="16"/>
+                      </ToggleButton.Content>
+                    </ToggleButton>
+                    <StackPanel Spacing="9" Orientation="Horizontal" VerticalAlignment="Center">
+                      <mi:MaterialIcon Kind="{Binding Icon, Converter={StaticResource StringToIconConverter}}" Width="18" Height="18" Foreground="{Binding Color}"/>
+                      <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding Name}" Foreground="#E5E7EB" FontWeight="SemiBold" FontSize="11.5"/>
+                        <TextBlock Text="{Binding Count, StringFormat='{}︸ {0} item(s)'}" Foreground="#6B7280" FontSize="8.5" Opacity="0.6"/>
+                      </StackPanel>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding Items}" IsVisible="{Binding IsExpanded}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:SchemaObjectViewModel">
+                      <StackPanel Spacing="0">
+                        <Border Padding="13,10" Background="#18212D" BorderBrush="#252E3F" BorderThickness="1,0,1,0" Cursor="Hand">
+                          <DockPanel LastChildFill="True">
+                            <Button DockPanel.Dock="Right" Command="{Binding AddNodeCommand}" IsVisible="{Binding AddNodeCommand, Converter={x:Static ObjectConverters.IsNotNull}}" Background="Transparent" Foreground="#60A5FA" Padding="6,2" FontSize="10" CornerRadius="3" BorderThickness="1" BorderBrush="#3B4556" Margin="8,0,0,0" Opacity="0.6">
+                              <mi:MaterialIcon Kind="Plus" Width="14" Height="14"/>
+                            </Button>
+                            <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding IsExpanded}" IsVisible="{Binding IsExpandable}" Background="Transparent" Foreground="#9CA3AF" Padding="4,2" FontSize="10" CornerRadius="3" BorderThickness="0">
+                              <ToggleButton.Content>
+                                <mi:MaterialIcon Kind="ChevronDown" Width="16" Height="16"/>
+                              </ToggleButton.Content>
+                            </ToggleButton>
+                            <StackPanel Spacing="10" Orientation="Horizontal" VerticalAlignment="Center">
+                              <mi:MaterialIcon Kind="{Binding Icon, Converter={StaticResource StringToIconConverter}}" Width="17" Height="17" Foreground="#60A5FA"/>
+                              <StackPanel VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="{Binding Name}" Foreground="#F3F4F6" FontSize="11" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding SubText}" Foreground="#6B7280" FontSize="8" Opacity="0.65"/>
+                              </StackPanel>
+                            </StackPanel>
+                          </DockPanel>
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding Children}" IsVisible="{Binding IsExpanded}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:SchemaObjectViewModel">
+                              <Border Padding="13,8" Background="#111620" BorderBrush="#252E3F" BorderThickness="1,0,1,0" Cursor="Hand" Margin="0">
+                                <DockPanel Margin="18,0,0,0">
+                                  <Border DockPanel.Dock="Right" Background="{Binding BadgeColor}" CornerRadius="4" Padding="6,3" Opacity="0.25" Margin="9,0,0,0">
+                                    <TextBlock Text="{Binding DataType}" Foreground="{Binding BadgeColor}" FontSize="8.5" FontWeight="SemiBold" FontFamily="monospace"/>
+                                  </Border>
+                                  <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <mi:MaterialIcon Kind="{Binding Icon, Converter={StaticResource StringToIconConverter}}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{Binding BadgeColor}"/>
+                                    <TextBlock Text="{Binding Name}" Foreground="#E5E7EB" FontSize="10.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                  </StackPanel>
+                                </DockPanel>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border Height="1" Background="#252E3F" IsVisible="{Binding IsExpanded}"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Border Background="#1A1F2B" BorderBrush="#252E3F" BorderThickness="1" CornerRadius="0,0,7,7" Height="1" IsVisible="{Binding IsExpanded}"/>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- No Connection -->
+    <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" IsVisible="{Binding HasConnection, Converter={x:Static BoolConverters.Not}}">
+      <mi:MaterialIcon Kind="CloudOffOutline" Foreground="#4B5563" Width="52" Height="52"/>
+      <StackPanel Spacing="4">
+        <TextBlock Text="No Connection" Foreground="#D1D5DB" TextAlignment="Center" FontSize="12.5" FontWeight="SemiBold"/>
+        <TextBlock Text="Connect to a database to see tables, columns, and relationships" Foreground="#9CA3AF" TextAlignment="Center" FontSize="10.5" MaxWidth="220"/>
+      </StackPanel>
+    </StackPanel>
+
+  </Grid>
+
+</UserControl>

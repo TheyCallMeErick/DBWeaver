@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
@@ -14,23 +13,25 @@
 
   <!-- ── Avalonia packages ── -->
   <ItemGroup>
-    <PackageReference Include="Avalonia"                         Version="11.1.4"/>
-    <PackageReference Include="Avalonia.Desktop"                 Version="11.1.4"/>
-    <PackageReference Include="Avalonia.Themes.Fluent"           Version="11.1.4"/>
-    <PackageReference Include="Avalonia.Fonts.Inter"             Version="11.1.4"/>
-    <PackageReference Include="Avalonia.ReactiveUI"              Version="11.1.4"/>
+    <PackageReference Include="Avalonia" Version="11.1.4" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.4" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.4" />
     <!-- Diagnostics / hot-reload (dev only — exclude from release) -->
-    <PackageReference Include="Avalonia.Diagnostics"             Version="11.1.4"
-                      Condition="'$(Configuration)' == 'Debug'"/>
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.1.4" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="Material.Icons.Avalonia" Version="2.1.9" />
+    <!-- Excel export -->
+    <PackageReference Include="ClosedXML" Version="0.102.3" />
   </ItemGroup>
 
   <!-- ── Core engine reference ── -->
   <ItemGroup>
-    <ProjectReference Include="..\VisualSqlArchitect\VisualSqlArchitect.csproj"/>
+    <ProjectReference Include="..\VisualSqlArchitect\VisualSqlArchitect.csproj" />
   </ItemGroup>
 
   <!-- ── AXAML files handled by Avalonia SDK auto-discovery ── -->
-
 </Project>
 
 <!--

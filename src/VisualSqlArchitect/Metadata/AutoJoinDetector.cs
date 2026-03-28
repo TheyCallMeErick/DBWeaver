@@ -11,7 +11,7 @@ namespace VisualSqlArchitect.Metadata;
 public enum JoinConfidence
 {
     /// <summary>A foreign-key constraint exists in the catalog (certain).</summary>
-    CatalogDefinedFk    = 4,
+    CatalogDefinedFk = 4,
 
     /// <summary>
     /// The FK is defined in the other direction (the canvas table has a FK
@@ -20,10 +20,10 @@ public enum JoinConfidence
     CatalogDefinedReverse = 3,
 
     /// <summary>Column name strongly implies a join (e.g. orders.customer_id → customers.id).</summary>
-    HeuristicStrong     = 2,
+    HeuristicStrong = 2,
 
     /// <summary>Column names match but no FK or naming convention confirms it.</summary>
-    HeuristicWeak       = 1
+    HeuristicWeak = 1,
 }
 
 /// <summary>
@@ -33,30 +33,21 @@ public enum JoinConfidence
 public record JoinSuggestion(
     /// <summary>Table already on the canvas.</summary>
     string ExistingTable,
-
     /// <summary>Table the user just dragged in.</summary>
     string NewTable,
-
     /// <summary>Recommended JOIN type.</summary>
     string JoinType,
-
     /// <summary>Left side of the ON clause (child.column).</summary>
     string LeftColumn,
-
     /// <summary>Right side of the ON clause (parent.column).</summary>
     string RightColumn,
-
     /// <summary>Ready-to-use ON expression: "orders.customer_id = customers.id"</summary>
     string OnClause,
-
     /// <summary>0.0 – 1.0 confidence score.</summary>
     double Score,
-
     JoinConfidence Confidence,
-
     /// <summary>Human-readable explanation shown in the canvas suggestion tooltip.</summary>
     string Rationale,
-
     /// <summary>
     /// When not null, the FK constraint that backs this suggestion.
     /// Null for heuristic suggestions.
@@ -68,8 +59,7 @@ public record JoinSuggestion(
     /// Converts this suggestion to a <see cref="JoinDefinition"/> ready for
     /// <see cref="QueryBuilderService.Compile"/>.
     /// </summary>
-    public JoinDefinition ToJoinDefinition() =>
-        new(NewTable, LeftColumn, RightColumn, JoinType);
+    public JoinDefinition ToJoinDefinition() => new(NewTable, LeftColumn, RightColumn, JoinType);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -89,15 +79,13 @@ public record JoinSuggestion(
 /// </list>
 /// Results are de-duplicated and ranked by score descending.
 /// </summary>
-public sealed class AutoJoinDetector
+public sealed partial class AutoJoinDetector(DbMetadata metadata)
 {
     // Minimum heuristic score to emit a suggestion (avoids noise)
     private const double HeuristicThreshold = 0.40;
 
-    private readonly DbMetadata _metadata;
-
-    public AutoJoinDetector(DbMetadata metadata)
-        => _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+    private readonly DbMetadata _metadata =
+        metadata ?? throw new ArgumentNullException(nameof(metadata));
 
     // ── Public entry point ────────────────────────────────────────────────────
 
@@ -105,70 +93,79 @@ public sealed class AutoJoinDetector
     /// Called when the user drops <paramref name="newTable"/> onto the canvas.
     /// Returns suggestions sorted from most to least confident.
     /// </summary>
-    public IReadOnlyList<JoinSuggestion> Suggest(
-        string newTable,
-        IEnumerable<string> canvasTables)
+    public IReadOnlyList<JoinSuggestion> Suggest(string newTable, IEnumerable<string> canvasTables)
     {
-        var canvasSet = new HashSet<string>(
-            canvasTables, StringComparer.OrdinalIgnoreCase);
+        var canvasSet = new HashSet<string>(canvasTables, StringComparer.OrdinalIgnoreCase);
 
         if (canvasSet.Count == 0)
-            return Array.Empty<JoinSuggestion>();
+            return [];
 
-        var newMeta = _metadata.FindTable(newTable);
+        TableMetadata? newMeta = _metadata.FindTable(newTable);
         if (newMeta is null)
-            return Array.Empty<JoinSuggestion>();
+            return [];
 
         var suggestions = new List<JoinSuggestion>();
 
-        foreach (var existingTable in canvasSet)
+        foreach (string existingTable in canvasSet)
         {
-            var existingMeta = _metadata.FindTable(existingTable);
-            if (existingMeta is null) continue;
+            TableMetadata? existingMeta = _metadata.FindTable(existingTable);
+            if (existingMeta is null)
+                continue;
 
             // ── Pass 1: Catalog FK — new table is the child ───────────────────
-            foreach (var fk in newMeta.OutboundForeignKeys
-                .Where(r => r.ParentFullTable.Equals(existingTable,
-                    StringComparison.OrdinalIgnoreCase)))
+            foreach (
+                ForeignKeyRelation? fk in newMeta.OutboundForeignKeys.Where(r =>
+                    r.ParentFullTable.Equals(existingTable, StringComparison.OrdinalIgnoreCase)
+                )
+            )
             {
-                suggestions.Add(BuildFkSuggestion(
-                    existing: existingTable,
-                    newTable: newTable,
-                    leftCol:  $"{newTable}.{fk.ChildColumn}",
-                    rightCol: $"{existingTable}.{fk.ParentColumn}",
-                    joinType: DeriveJoinType(fk),
-                    confidence: JoinConfidence.CatalogDefinedFk,
-                    score: 1.0,
-                    rationale: $"FK constraint '{fk.ConstraintName}' defined on {newTable}.{fk.ChildColumn}",
-                    fk: fk
-                ));
+                suggestions.Add(
+                    BuildFkSuggestion(
+                        existing: existingTable,
+                        newTable: newTable,
+                        leftCol: $"{newTable}.{fk.ChildColumn}",
+                        rightCol: $"{existingTable}.{fk.ParentColumn}",
+                        joinType: DeriveJoinType(fk),
+                        confidence: JoinConfidence.CatalogDefinedFk,
+                        score: 1.0,
+                        rationale: $"FK constraint '{fk.ConstraintName}' defined on {newTable}.{fk.ChildColumn}",
+                        fk: fk
+                    )
+                );
             }
 
             // ── Pass 2: Catalog FK — new table is the parent ──────────────────
-            foreach (var fk in newMeta.InboundForeignKeys
-                .Where(r => r.ChildFullTable.Equals(existingTable,
-                    StringComparison.OrdinalIgnoreCase)))
+            foreach (
+                ForeignKeyRelation? fk in newMeta.InboundForeignKeys.Where(r =>
+                    r.ChildFullTable.Equals(existingTable, StringComparison.OrdinalIgnoreCase)
+                )
+            )
             {
-                suggestions.Add(BuildFkSuggestion(
-                    existing: existingTable,
-                    newTable: newTable,
-                    leftCol:  $"{existingTable}.{fk.ChildColumn}",
-                    rightCol: $"{newTable}.{fk.ParentColumn}",
-                    joinType: DeriveJoinType(fk),
-                    confidence: JoinConfidence.CatalogDefinedReverse,
-                    score: 0.95,
-                    rationale: $"FK constraint '{fk.ConstraintName}' on {existingTable}.{fk.ChildColumn} references {newTable}",
-                    fk: fk
-                ));
+                suggestions.Add(
+                    BuildFkSuggestion(
+                        existing: existingTable,
+                        newTable: newTable,
+                        leftCol: $"{existingTable}.{fk.ChildColumn}",
+                        rightCol: $"{newTable}.{fk.ParentColumn}",
+                        joinType: DeriveJoinType(fk),
+                        confidence: JoinConfidence.CatalogDefinedReverse,
+                        score: 0.95,
+                        rationale: $"FK constraint '{fk.ConstraintName}' on {existingTable}.{fk.ChildColumn} references {newTable}",
+                        fk: fk
+                    )
+                );
             }
 
             // Skip heuristics if catalog already gave us suggestions for this pair
-            if (suggestions.Any(s =>
-                    s.ExistingTable.Equals(existingTable, StringComparison.OrdinalIgnoreCase)))
+            if (
+                suggestions.Any(s =>
+                    s.ExistingTable.Equals(existingTable, StringComparison.OrdinalIgnoreCase)
+                )
+            )
                 continue;
 
             // ── Pass 3: Naming heuristics ─────────────────────────────────────
-            var heuristic = RunNamingHeuristics(newMeta, existingMeta);
+            List<JoinSuggestion> heuristic = RunNamingHeuristics(newMeta, existingMeta);
             suggestions.AddRange(heuristic.Where(s => s.Score >= HeuristicThreshold));
         }
 
@@ -184,84 +181,98 @@ public sealed class AutoJoinDetector
     // ── Heuristic engine ──────────────────────────────────────────────────────
 
     private static List<JoinSuggestion> RunNamingHeuristics(
-        TableMetadata newMeta, TableMetadata existingMeta)
+        TableMetadata newMeta,
+        TableMetadata existingMeta
+    )
     {
         var results = new List<JoinSuggestion>();
 
         // Heuristic A: newTable has a column named {singular(existing)}_id
         //              and existingTable has a PK column named 'id' or '{existing}_id'
-        var existingSingular = Singularize(existingMeta.Name);
-        var impliedFkName    = $"{existingSingular}_id";
+        string existingSingular = Singularize(existingMeta.Name);
+        string impliedFkName = $"{existingSingular}_id";
 
-        var candidateFkCol = newMeta.Columns.FirstOrDefault(c =>
-            c.Name.Equals(impliedFkName, StringComparison.OrdinalIgnoreCase));
+        ColumnMetadata? candidateFkCol = newMeta.Columns.FirstOrDefault(c =>
+            c.Name.Equals(impliedFkName, StringComparison.OrdinalIgnoreCase)
+        );
 
         if (candidateFkCol is not null)
         {
-            var pkCol = existingMeta.PrimaryKeyColumns.FirstOrDefault();
+            ColumnMetadata? pkCol = existingMeta.PrimaryKeyColumns.FirstOrDefault();
             if (pkCol is not null && AreTypesCompatible(candidateFkCol, pkCol))
             {
-                results.Add(BuildHeuristicSuggestion(
-                    existing: existingMeta.FullName,
-                    newTable: newMeta.FullName,
-                    leftCol:  $"{newMeta.FullName}.{candidateFkCol.Name}",
-                    rightCol: $"{existingMeta.FullName}.{pkCol.Name}",
-                    joinType: "LEFT",
-                    score: 0.80,
-                    confidence: JoinConfidence.HeuristicStrong,
-                    rationale: $"Column '{candidateFkCol.Name}' matches naming convention '{existingSingular}_id'"
-                ));
+                results.Add(
+                    BuildHeuristicSuggestion(
+                        existing: existingMeta.FullName,
+                        newTable: newMeta.FullName,
+                        leftCol: $"{newMeta.FullName}.{candidateFkCol.Name}",
+                        rightCol: $"{existingMeta.FullName}.{pkCol.Name}",
+                        joinType: "LEFT",
+                        score: 0.80,
+                        confidence: JoinConfidence.HeuristicStrong,
+                        rationale: $"Column '{candidateFkCol.Name}' matches naming convention '{existingSingular}_id'"
+                    )
+                );
             }
         }
 
         // Heuristic B: existingTable has a column named {singular(new)}_id
-        var newSingular       = Singularize(newMeta.Name);
-        var impliedFkNameRev  = $"{newSingular}_id";
+        string newSingular = Singularize(newMeta.Name);
+        string impliedFkNameRev = $"{newSingular}_id";
 
-        var candidateFkColRev = existingMeta.Columns.FirstOrDefault(c =>
-            c.Name.Equals(impliedFkNameRev, StringComparison.OrdinalIgnoreCase));
+        ColumnMetadata? candidateFkColRev = existingMeta.Columns.FirstOrDefault(c =>
+            c.Name.Equals(impliedFkNameRev, StringComparison.OrdinalIgnoreCase)
+        );
 
         if (candidateFkColRev is not null)
         {
-            var pkCol = newMeta.PrimaryKeyColumns.FirstOrDefault();
+            ColumnMetadata? pkCol = newMeta.PrimaryKeyColumns.FirstOrDefault();
             if (pkCol is not null && AreTypesCompatible(candidateFkColRev, pkCol))
             {
-                results.Add(BuildHeuristicSuggestion(
-                    existing: existingMeta.FullName,
-                    newTable: newMeta.FullName,
-                    leftCol:  $"{existingMeta.FullName}.{candidateFkColRev.Name}",
-                    rightCol: $"{newMeta.FullName}.{pkCol.Name}",
-                    joinType: "LEFT",
-                    score: 0.80,
-                    confidence: JoinConfidence.HeuristicStrong,
-                    rationale: $"Column '{candidateFkColRev.Name}' in '{existingMeta.Name}' matches naming convention '{newSingular}_id'"
-                ));
+                results.Add(
+                    BuildHeuristicSuggestion(
+                        existing: existingMeta.FullName,
+                        newTable: newMeta.FullName,
+                        leftCol: $"{existingMeta.FullName}.{candidateFkColRev.Name}",
+                        rightCol: $"{newMeta.FullName}.{pkCol.Name}",
+                        joinType: "LEFT",
+                        score: 0.80,
+                        confidence: JoinConfidence.HeuristicStrong,
+                        rationale: $"Column '{candidateFkColRev.Name}' in '{existingMeta.Name}' matches naming convention '{newSingular}_id'"
+                    )
+                );
             }
         }
 
         // Heuristic C: shared column names with compatible types (weak)
         var newColMap = newMeta.Columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
-        foreach (var existCol in existingMeta.Columns)
+        foreach (ColumnMetadata existCol in existingMeta.Columns)
         {
-            if (!newColMap.TryGetValue(existCol.Name, out var newCol)) continue;
-            if (existCol.Name.Equals("id", StringComparison.OrdinalIgnoreCase)) continue; // too generic
-            if (!AreTypesCompatible(existCol, newCol)) continue;
+            if (!newColMap.TryGetValue(existCol.Name, out ColumnMetadata? newCol))
+                continue;
+            if (existCol.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
+                continue; // too generic
+            if (!AreTypesCompatible(existCol, newCol))
+                continue;
 
-            var score = existCol.IsPrimaryKey && newCol.IsForeignKey ? 0.70
-                      : newCol.IsPrimaryKey   && existCol.IsForeignKey ? 0.70
-                      : existCol.IsIndexed    || newCol.IsIndexed ? 0.55
-                      : 0.40;
+            double score =
+                existCol.IsPrimaryKey && newCol.IsForeignKey ? 0.70
+                : newCol.IsPrimaryKey && existCol.IsForeignKey ? 0.70
+                : existCol.IsIndexed || newCol.IsIndexed ? 0.55
+                : 0.40;
 
-            results.Add(BuildHeuristicSuggestion(
-                existing: existingMeta.FullName,
-                newTable: newMeta.FullName,
-                leftCol:  $"{newMeta.FullName}.{newCol.Name}",
-                rightCol: $"{existingMeta.FullName}.{existCol.Name}",
-                joinType: "INNER",
-                score: score,
-                confidence: JoinConfidence.HeuristicWeak,
-                rationale: $"Shared column name '{existCol.Name}' with compatible type '{existCol.DataType}'"
-            ));
+            results.Add(
+                BuildHeuristicSuggestion(
+                    existing: existingMeta.FullName,
+                    newTable: newMeta.FullName,
+                    leftCol: $"{newMeta.FullName}.{newCol.Name}",
+                    rightCol: $"{existingMeta.FullName}.{existCol.Name}",
+                    joinType: "INNER",
+                    score: score,
+                    confidence: JoinConfidence.HeuristicWeak,
+                    rationale: $"Shared column name '{existCol.Name}' with compatible type '{existCol.DataType}'"
+                )
+            );
         }
 
         return results;
@@ -270,40 +281,50 @@ public sealed class AutoJoinDetector
     // ── Suggestion builders ───────────────────────────────────────────────────
 
     private static JoinSuggestion BuildFkSuggestion(
-        string existing, string newTable,
-        string leftCol, string rightCol,
-        string joinType, JoinConfidence confidence,
-        double score, string rationale,
-        ForeignKeyRelation fk) =>
+        string existing,
+        string newTable,
+        string leftCol,
+        string rightCol,
+        string joinType,
+        JoinConfidence confidence,
+        double score,
+        string rationale,
+        ForeignKeyRelation fk
+    ) =>
         new(
             ExistingTable: existing,
-            NewTable:      newTable,
-            JoinType:      joinType,
-            LeftColumn:    leftCol,
-            RightColumn:   rightCol,
-            OnClause:      $"{leftCol} = {rightCol}",
-            Score:         score,
-            Confidence:    confidence,
-            Rationale:     rationale,
-            SourceFk:      fk
+            NewTable: newTable,
+            JoinType: joinType,
+            LeftColumn: leftCol,
+            RightColumn: rightCol,
+            OnClause: $"{leftCol} = {rightCol}",
+            Score: score,
+            Confidence: confidence,
+            Rationale: rationale,
+            SourceFk: fk
         );
 
     private static JoinSuggestion BuildHeuristicSuggestion(
-        string existing, string newTable,
-        string leftCol, string rightCol,
-        string joinType, double score,
-        JoinConfidence confidence, string rationale) =>
+        string existing,
+        string newTable,
+        string leftCol,
+        string rightCol,
+        string joinType,
+        double score,
+        JoinConfidence confidence,
+        string rationale
+    ) =>
         new(
             ExistingTable: existing,
-            NewTable:      newTable,
-            JoinType:      joinType,
-            LeftColumn:    leftCol,
-            RightColumn:   rightCol,
-            OnClause:      $"{leftCol} = {rightCol}",
-            Score:         score,
-            Confidence:    confidence,
-            Rationale:     rationale,
-            SourceFk:      null
+            NewTable: newTable,
+            JoinType: joinType,
+            LeftColumn: leftCol,
+            RightColumn: rightCol,
+            OnClause: $"{leftCol} = {rightCol}",
+            Score: score,
+            Confidence: confidence,
+            Rationale: rationale,
+            SourceFk: null
         );
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -327,16 +348,21 @@ public sealed class AutoJoinDetector
             return true;
 
         // Same semantic category (e.g. int + bigint, varchar + text)
-        return a.SemanticType == b.SemanticType
-            && a.SemanticType != ColumnSemanticType.Other;
+        return a.SemanticType == b.SemanticType && a.SemanticType != ColumnSemanticType.Other;
     }
 
     // Very basic English singulariser — covers the most common DB naming patterns
-    private static readonly Regex _trailingIes = new(@"ies$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex _trailingEs  = new(@"(ss|sh|ch|x|z)es$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex _trailingS   = new(@"s$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex _trailingIes = MyRegex();
+    private static readonly Regex _trailingEs = new(
+        @"(ss|sh|ch|x|z)es$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase
+    );
+    private static readonly Regex _trailingS = new(
+        @"s$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase
+    );
 
-    internal static string Singularize(string tableName)
+    public static string Singularize(string tableName)
     {
         if (_trailingIes.IsMatch(tableName))
             return _trailingIes.Replace(tableName, "y");
@@ -344,8 +370,10 @@ public sealed class AutoJoinDetector
         if (_trailingEs.IsMatch(tableName))
             return _trailingEs.Replace(tableName, "$1");
 
-        if (_trailingS.IsMatch(tableName)
-            && !tableName.EndsWith("ss", StringComparison.OrdinalIgnoreCase))
+        if (
+            _trailingS.IsMatch(tableName)
+            && !tableName.EndsWith("ss", StringComparison.OrdinalIgnoreCase)
+        )
             return _trailingS.Replace(tableName, string.Empty);
 
         return tableName;
@@ -353,8 +381,11 @@ public sealed class AutoJoinDetector
 
     private static string NormKey(string left, string right)
     {
-        var parts = new[] { left.ToLowerInvariant(), right.ToLowerInvariant() };
+        string[] parts = new[] { left.ToLowerInvariant(), right.ToLowerInvariant() };
         Array.Sort(parts);
         return string.Join("|", parts);
     }
+
+    [GeneratedRegex(@"ies$", RegexOptions.IgnoreCase | RegexOptions.Compiled, "pt-BR")]
+    private static partial Regex MyRegex();
 }

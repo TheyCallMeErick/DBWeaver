@@ -12,26 +12,21 @@ namespace VisualSqlArchitect.Nodes;
 /// Carries the provider dialect and the function registry so expressions
 /// can produce correct SQL without knowing the database themselves.
 /// </summary>
-public sealed class EmitContext
+public sealed class EmitContext(DatabaseProvider provider, ISqlFunctionRegistry registry)
 {
-    public DatabaseProvider Provider { get; }
-    public ISqlFunctionRegistry Registry { get; }
+    public DatabaseProvider Provider { get; } = provider;
+    public ISqlFunctionRegistry Registry { get; } = registry;
 
-    public EmitContext(DatabaseProvider provider, ISqlFunctionRegistry registry)
-    {
-        Provider = provider;
-        Registry = registry;
-    }
+    public string QuoteIdentifier(string id) =>
+        Provider switch
+        {
+            DatabaseProvider.SqlServer => $"[{id}]",
+            DatabaseProvider.MySql => $"`{id}`",
+            DatabaseProvider.Postgres => $"\"{id}\"",
+            _ => id,
+        };
 
-    public string QuoteIdentifier(string id) => Provider switch
-    {
-        DatabaseProvider.SqlServer => $"[{id}]",
-        DatabaseProvider.MySql     => $"`{id}`",
-        DatabaseProvider.Postgres  => $"\"{id}\"",
-        _                          => id
-    };
-
-    public string QuoteLiteral(string value) => $"'{value.Replace("'", "''")}'";
+    public static string QuoteLiteral(string value) => $"'{value.Replace("'", "''")}'";
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -76,7 +71,7 @@ public enum PinDataType
     Boolean,
     DateTime,
     Json,
-    Expression   // untyped SQL fragment — accepted by any slot
+    Expression, // untyped SQL fragment — accepted by any slot
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -94,14 +89,17 @@ public sealed record LiteralExpr(string RawValue, PinDataType OutputType = PinDa
 public sealed record StringLiteralExpr(string Value) : ISqlExpression
 {
     public PinDataType OutputType => PinDataType.Text;
-    public string Emit(EmitContext ctx) => ctx.QuoteLiteral(Value);
+
+    public string Emit(EmitContext ctx) => EmitContext.QuoteLiteral(Value);
 }
 
 /// <summary>A numeric constant: 3.14, -7, 0</summary>
 public sealed record NumberLiteralExpr(double Value) : ISqlExpression
 {
     public PinDataType OutputType => PinDataType.Number;
-    public string Emit(EmitContext ctx) => Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public string Emit(EmitContext ctx) =>
+        Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
 
 /// <summary>NULL sentinel.</summary>
@@ -109,6 +107,7 @@ public sealed record NullExpr : ISqlExpression
 {
     public static readonly NullExpr Instance = new();
     public PinDataType OutputType => PinDataType.Any;
+
     public string Emit(EmitContext ctx) => "NULL";
 }
 
@@ -116,8 +115,11 @@ public sealed record NullExpr : ISqlExpression
 /// A table column reference: table.column — the "output pin" of a DataSource node.
 /// Every column on the canvas becomes one of these.
 /// </summary>
-public sealed record ColumnExpr(string TableAlias, string ColumnName,
-    PinDataType OutputType = PinDataType.Any) : ISqlExpression
+public sealed record ColumnExpr(
+    string TableAlias,
+    string ColumnName,
+    PinDataType OutputType = PinDataType.Any
+) : ISqlExpression
 {
     public string Emit(EmitContext ctx) =>
         string.IsNullOrEmpty(TableAlias)
@@ -149,11 +151,12 @@ public sealed record RawSqlExpr(string Sql, PinDataType OutputType = PinDataType
 public sealed record FunctionCallExpr(
     string FunctionName,
     IReadOnlyList<ISqlExpression> Args,
-    PinDataType OutputType = PinDataType.Any) : ISqlExpression
+    PinDataType OutputType = PinDataType.Any
+) : ISqlExpression
 {
     public string Emit(EmitContext ctx)
     {
-        var emittedArgs = Args.Select(a => a.Emit(ctx)).ToArray();
+        string[] emittedArgs = [.. Args.Select(a => a.Emit(ctx))];
         return ctx.Registry.GetFunction(FunctionName, emittedArgs);
     }
 }
@@ -166,58 +169,65 @@ public sealed record FunctionCallExpr(
 /// Canonical CAST — every provider uses the SQL-standard CAST(x AS type) syntax.
 /// The target type is automatically translated to the provider's dialect.
 /// </summary>
-public sealed record CastExpr(
-    ISqlExpression Input,
-    CastTargetType TargetType) : ISqlExpression
+public sealed record CastExpr(ISqlExpression Input, CastTargetType TargetType) : ISqlExpression
 {
-    public PinDataType OutputType => TargetType switch
-    {
-        CastTargetType.Text      => PinDataType.Text,
-        CastTargetType.Integer
+    public PinDataType OutputType =>
+        TargetType switch
+        {
+            CastTargetType.Text => PinDataType.Text,
+            CastTargetType.Integer
             or CastTargetType.BigInt
             or CastTargetType.Decimal
-            or CastTargetType.Float   => PinDataType.Number,
-        CastTargetType.Boolean        => PinDataType.Boolean,
-        CastTargetType.Date
-            or CastTargetType.DateTime
-            or CastTargetType.Timestamp => PinDataType.DateTime,
-        _                             => PinDataType.Any
-    };
+            or CastTargetType.Float => PinDataType.Number,
+            CastTargetType.Boolean => PinDataType.Boolean,
+            CastTargetType.Date or CastTargetType.DateTime or CastTargetType.Timestamp =>
+                PinDataType.DateTime,
+            _ => PinDataType.Any,
+        };
 
     public string Emit(EmitContext ctx)
     {
-        var inner       = Input.Emit(ctx);
-        var providerType = TranslateType(ctx.Provider);
+        string inner = Input.Emit(ctx);
+        string providerType = TranslateType(ctx.Provider);
         return $"CAST({inner} AS {providerType})";
     }
 
-    private string TranslateType(DatabaseProvider p) => (TargetType, p) switch
-    {
-        (CastTargetType.Text,      DatabaseProvider.SqlServer) => "NVARCHAR(MAX)",
-        (CastTargetType.Text,      _)                          => "TEXT",
-        (CastTargetType.Integer,   DatabaseProvider.Postgres)  => "INTEGER",
-        (CastTargetType.Integer,   _)                          => "INT",
-        (CastTargetType.BigInt,    _)                          => "BIGINT",
-        (CastTargetType.Decimal,   _)                          => "DECIMAL(18,4)",
-        (CastTargetType.Float,     DatabaseProvider.Postgres)  => "DOUBLE PRECISION",
-        (CastTargetType.Float,     _)                          => "FLOAT",
-        (CastTargetType.Boolean,   DatabaseProvider.SqlServer) => "BIT",
-        (CastTargetType.Boolean,   _)                          => "BOOLEAN",
-        (CastTargetType.Date,      _)                          => "DATE",
-        (CastTargetType.DateTime,  DatabaseProvider.Postgres)  => "TIMESTAMP",
-        (CastTargetType.DateTime,  _)                          => "DATETIME",
-        (CastTargetType.Timestamp, DatabaseProvider.SqlServer) => "DATETIMEOFFSET",
-        (CastTargetType.Timestamp, _)                          => "TIMESTAMPTZ",
-        (CastTargetType.Uuid,      DatabaseProvider.SqlServer) => "UNIQUEIDENTIFIER",
-        (CastTargetType.Uuid,      _)                          => "UUID",
-        _                                                       => TargetType.ToString().ToUpperInvariant()
-    };
+    private string TranslateType(DatabaseProvider p) =>
+        (TargetType, p) switch
+        {
+            (CastTargetType.Text, DatabaseProvider.SqlServer) => "NVARCHAR(MAX)",
+            (CastTargetType.Text, _) => "TEXT",
+            (CastTargetType.Integer, DatabaseProvider.Postgres) => "INTEGER",
+            (CastTargetType.Integer, _) => "INT",
+            (CastTargetType.BigInt, _) => "BIGINT",
+            (CastTargetType.Decimal, _) => "DECIMAL(18,4)",
+            (CastTargetType.Float, DatabaseProvider.Postgres) => "DOUBLE PRECISION",
+            (CastTargetType.Float, _) => "FLOAT",
+            (CastTargetType.Boolean, DatabaseProvider.SqlServer) => "BIT",
+            (CastTargetType.Boolean, _) => "BOOLEAN",
+            (CastTargetType.Date, _) => "DATE",
+            (CastTargetType.DateTime, DatabaseProvider.Postgres) => "TIMESTAMP",
+            (CastTargetType.DateTime, _) => "DATETIME",
+            (CastTargetType.Timestamp, DatabaseProvider.SqlServer) => "DATETIMEOFFSET",
+            (CastTargetType.Timestamp, _) => "TIMESTAMPTZ",
+            (CastTargetType.Uuid, DatabaseProvider.SqlServer) => "UNIQUEIDENTIFIER",
+            (CastTargetType.Uuid, _) => "UUID",
+            _ => TargetType.ToString().ToUpperInvariant(),
+        };
 }
 
 public enum CastTargetType
 {
-    Text, Integer, BigInt, Decimal, Float,
-    Boolean, Date, DateTime, Timestamp, Uuid
+    Text,
+    Integer,
+    BigInt,
+    Decimal,
+    Float,
+    Boolean,
+    Date,
+    DateTime,
+    Timestamp,
+    Uuid,
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -228,44 +238,56 @@ public enum CastTargetType
 public sealed record ComparisonExpr(
     ISqlExpression Left,
     ComparisonOperator Op,
-    ISqlExpression Right) : ISqlExpression
+    ISqlExpression Right
+) : ISqlExpression
 {
     public PinDataType OutputType => PinDataType.Boolean;
 
     public string Emit(EmitContext ctx)
     {
-        var l = Left.Emit(ctx);
-        var r = Right.Emit(ctx);
-        var op = Op switch
+        string l = Left.Emit(ctx);
+        string r = Right.Emit(ctx);
+        string op = Op switch
         {
-            ComparisonOperator.Eq      => "=",
-            ComparisonOperator.Neq     => "<>",
-            ComparisonOperator.Gt      => ">",
-            ComparisonOperator.Gte     => ">=",
-            ComparisonOperator.Lt      => "<",
-            ComparisonOperator.Lte     => "<=",
-            ComparisonOperator.Like    => "LIKE",
+            ComparisonOperator.Eq => "=",
+            ComparisonOperator.Neq => "<>",
+            ComparisonOperator.Gt => ">",
+            ComparisonOperator.Gte => ">=",
+            ComparisonOperator.Lt => "<",
+            ComparisonOperator.Lte => "<=",
+            ComparisonOperator.Like => "LIKE",
             ComparisonOperator.NotLike => "NOT LIKE",
-            _ => throw new NotSupportedException($"Unknown operator: {Op}")
+            _ => throw new NotSupportedException($"Unknown operator: {Op}"),
         };
         return $"({l} {op} {r})";
     }
 }
 
-public enum ComparisonOperator { Eq, Neq, Gt, Gte, Lt, Lte, Like, NotLike }
+public enum ComparisonOperator
+{
+    Eq,
+    Neq,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+    Like,
+    NotLike,
+}
 
 /// <summary>BETWEEN … AND … or NOT BETWEEN</summary>
 public sealed record BetweenExpr(
     ISqlExpression Input,
     ISqlExpression Lo,
     ISqlExpression Hi,
-    bool Negate = false) : ISqlExpression
+    bool Negate = false
+) : ISqlExpression
 {
     public PinDataType OutputType => PinDataType.Boolean;
 
     public string Emit(EmitContext ctx)
     {
-        var keyword = Negate ? "NOT BETWEEN" : "BETWEEN";
+        string keyword = Negate ? "NOT BETWEEN" : "BETWEEN";
         return $"({Input.Emit(ctx)} {keyword} {Lo.Emit(ctx)} AND {Hi.Emit(ctx)})";
     }
 }
@@ -274,9 +296,10 @@ public sealed record BetweenExpr(
 public sealed record IsNullExpr(ISqlExpression Input, bool Negate = false) : ISqlExpression
 {
     public PinDataType OutputType => PinDataType.Boolean;
+
     public string Emit(EmitContext ctx)
     {
-        var keyword = Negate ? "IS NOT NULL" : "IS NULL";
+        string keyword = Negate ? "IS NOT NULL" : "IS NULL";
         return $"({Input.Emit(ctx)} {keyword})";
     }
 }
@@ -286,29 +309,35 @@ public sealed record IsNullExpr(ISqlExpression Input, bool Negate = false) : ISq
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// <summary>AND / OR with variadic operands.</summary>
-public sealed record LogicGateExpr(
-    LogicOperator Op,
-    IReadOnlyList<ISqlExpression> Operands) : ISqlExpression
+public sealed record LogicGateExpr(LogicOperator Op, IReadOnlyList<ISqlExpression> Operands)
+    : ISqlExpression
 {
     public PinDataType OutputType => PinDataType.Boolean;
 
     public string Emit(EmitContext ctx)
     {
-        if (Operands.Count == 0) return Op == LogicOperator.And ? "TRUE" : "FALSE";
-        if (Operands.Count == 1) return Operands[0].Emit(ctx);
+        if (Operands.Count == 0)
+            return Op == LogicOperator.And ? "TRUE" : "FALSE";
+        if (Operands.Count == 1)
+            return Operands[0].Emit(ctx);
 
-        var keyword = Op == LogicOperator.And ? " AND " : " OR ";
-        var parts   = Operands.Select(o => o.Emit(ctx));
+        string keyword = Op == LogicOperator.And ? " AND " : " OR ";
+        IEnumerable<string> parts = Operands.Select(o => o.Emit(ctx));
         return $"({string.Join(keyword, parts)})";
     }
 }
 
-public enum LogicOperator { And, Or }
+public enum LogicOperator
+{
+    And,
+    Or,
+}
 
 /// <summary>NOT — single operand.</summary>
 public sealed record NotExpr(ISqlExpression Operand) : ISqlExpression
 {
     public PinDataType OutputType => PinDataType.Boolean;
+
     public string Emit(EmitContext ctx) => $"(NOT {Operand.Emit(ctx)})";
 }
 
@@ -319,8 +348,8 @@ public sealed record NotExpr(ISqlExpression Operand) : ISqlExpression
 public sealed record AliasExpr(ISqlExpression Inner, string Alias) : ISqlExpression
 {
     public PinDataType OutputType => Inner.OutputType;
-    public string Emit(EmitContext ctx) =>
-        $"{Inner.Emit(ctx)} AS {ctx.QuoteIdentifier(Alias)}";
+
+    public string Emit(EmitContext ctx) => $"{Inner.Emit(ctx)} AS {ctx.QuoteIdentifier(Alias)}";
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -329,23 +358,33 @@ public sealed record AliasExpr(ISqlExpression Inner, string Alias) : ISqlExpress
 
 public sealed record AggregateExpr(
     AggregateFunction Function,
-    ISqlExpression? Inner,    // null for COUNT(*)
-    bool Distinct = false) : ISqlExpression
+    ISqlExpression? Inner, // null for COUNT(*)
+    bool Distinct = false
+) : ISqlExpression
 {
-    public PinDataType OutputType => Function == AggregateFunction.Count
-        ? PinDataType.Number
-        : Inner?.OutputType ?? PinDataType.Number;
+    public PinDataType OutputType =>
+        Function == AggregateFunction.Count
+            ? PinDataType.Number
+            : Inner?.OutputType ?? PinDataType.Number;
 
     public string Emit(EmitContext ctx)
     {
-        var fn = Function.ToString().ToUpperInvariant();
-        if (Inner is null) return $"{fn}(*)";
-        var distinctKw = Distinct ? "DISTINCT " : "";
+        string fn = Function.ToString().ToUpperInvariant();
+        if (Inner is null)
+            return $"{fn}(*)";
+        string distinctKw = Distinct ? "DISTINCT " : "";
         return $"{fn}({distinctKw}{Inner.Emit(ctx)})";
     }
 }
 
-public enum AggregateFunction { Count, Sum, Avg, Min, Max }
+public enum AggregateFunction
+{
+    Count,
+    Sum,
+    Avg,
+    Min,
+    Max,
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // CASE / WHEN EXPRESSION
@@ -353,20 +392,42 @@ public enum AggregateFunction { Count, Sum, Avg, Min, Max }
 
 public sealed record WhenClause(ISqlExpression Condition, ISqlExpression Result);
 
-public sealed record CaseExpr(
-    IReadOnlyList<WhenClause> Whens,
-    ISqlExpression? Else = null) : ISqlExpression
+public sealed record CaseExpr(IReadOnlyList<WhenClause> Whens, ISqlExpression? Else = null)
+    : ISqlExpression
 {
     public PinDataType OutputType => Else?.OutputType ?? PinDataType.Any;
 
     public string Emit(EmitContext ctx)
     {
         var sb = new System.Text.StringBuilder("CASE");
-        foreach (var w in Whens)
+        foreach (WhenClause w in Whens)
             sb.Append($" WHEN {w.Condition.Emit(ctx)} THEN {w.Result.Emit(ctx)}");
         if (Else is not null)
             sb.Append($" ELSE {Else.Emit(ctx)}");
         sb.Append(" END");
         return sb.ToString();
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TOP / LIMIT EXPRESSION
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// TOP / LIMIT clause: restricts the result set to N rows.
+/// Emits as TOP N (SQL Server) or LIMIT N (PostgreSQL/MySQL).
+/// </summary>
+public sealed record TopExpr(ISqlExpression Result, ISqlExpression Count) : ISqlExpression
+{
+    public PinDataType OutputType => Result.OutputType;
+
+    public string Emit(EmitContext ctx)
+    {
+        string resultSql = Result.Emit(ctx);
+
+        _ = Count.Emit(ctx);
+        // Note: The actual TOP/LIMIT syntax is typically handled at the SELECT level,
+        // but this expression wraps both the result expression and the count.
+        return resultSql; // Return the result, count is used separately in SELECT compilation
     }
 }

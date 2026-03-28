@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
              x:Class="VisualSqlArchitect.UI.Controls.AutoJoinOverlay"
              x:DataType="vm:AutoJoinOverlayViewModel">
 
@@ -71,11 +72,11 @@
                   BorderBrush="#1E3A60"
                   BorderThickness="1"
                   Margin="0,0,8,0">
-            <TextBlock Text="✦"
-                       FontSize="11"
-                       Foreground="#60A5FA"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"/>
+            <mi:MaterialIcon Kind="AutoFix"
+                             Width="13" Height="13"
+                             Foreground="#60A5FA"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
           </Border>
 
           <!-- Title -->
@@ -99,9 +100,9 @@
           <!-- Close All -->
           <Button Grid.Column="3"
                   Classes="dismiss-btn"
-                  Content="✕"
-                  FontSize="13"
-                  Name="DismissAllBtn"/>
+                  Name="DismissAllBtn">
+            <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
+          </Button>
         </Grid>
       </Border>
 
@@ -122,8 +123,8 @@
 
                 <Grid RowDefinitions="Auto,Auto,Auto">
 
-                  <!-- Row 1: Join type badge + table pair -->
-                  <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,6">
+                  <!-- Row 1: Join type badge + table pair + confidence -->
+                  <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,6">
 
                     <!-- JOIN type badge -->
                     <Border Grid.Column="0"
@@ -152,7 +153,7 @@
                     <Border Grid.Column="2"
                             CornerRadius="4"
                             Padding="5,2"
-                            Margin="6,0,0,0">
+                            Margin="6,0,4,0">
                       <Border.Background>
                         <SolidColorBrush Color="{Binding ConfidenceColor}" Opacity="0.15"/>
                       </Border.Background>
@@ -160,7 +161,38 @@
                                  FontSize="9"
                                  Foreground="{Binding ConfidenceBrush}"/>
                     </Border>
+
+                    <!-- Score percentage -->
+                    <Border Grid.Column="3"
+                            Background="#0A0D15"
+                            BorderBrush="#1E2335"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="5,2">
+                      <TextBlock Text="{Binding ScoreLabel}"
+                                 FontSize="10"
+                                 FontWeight="Bold"
+                                 FontFamily="Consolas,monospace"
+                                 Foreground="{Binding ConfidenceBrush}"
+                                 VerticalAlignment="Center"/>
+                    </Border>
                   </Grid>
+
+                  <!-- Score bar (thin strip below the header row) -->
+                  <Border Grid.Row="0" Height="2" VerticalAlignment="Bottom"
+                          Margin="0,0,0,6" CornerRadius="1">
+                    <Border.Background>
+                      <SolidColorBrush Color="{Binding ConfidenceColor}" Opacity="0.08"/>
+                    </Border.Background>
+                    <Border HorizontalAlignment="Left"
+                            Width="{Binding ScoreBarWidth}"
+                            Height="2"
+                            CornerRadius="1">
+                      <Border.Background>
+                        <SolidColorBrush Color="{Binding ConfidenceColor}" Opacity="0.7"/>
+                      </Border.Background>
+                    </Border>
+                  </Border>
 
                   <!-- Row 2: ON clause -->
                   <Border Grid.Row="1"
@@ -187,9 +219,13 @@
 
                     <Button Grid.Column="1"
                             Classes="accept-btn"
-                            Content="✓ Accept"
                             Margin="0,0,4,0"
-                            Command="{Binding AcceptCommand}"/>
+                            Command="{Binding AcceptCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <mi:MaterialIcon Kind="Check" Width="12" Height="12"/>
+                        <TextBlock Text="Accept" FontSize="11"/>
+                      </StackPanel>
+                    </Button>
 
                     <Button Grid.Column="2"
                             Classes="dismiss-btn"

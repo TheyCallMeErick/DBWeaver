@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet format:*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet tool:*)",
+      "Bash(dotnet csharpier:*)",
+      "WebFetch(domain:docs.avaloniaui.net)",
+      "Bash(git fsck:*)",
+      "Bash(find .git/objects -type f -empty -delete)",
+      "Bash(git update-ref:*)",
+      "Bash(git fetch:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

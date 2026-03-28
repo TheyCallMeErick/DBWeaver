@@ -1,0 +1,5 @@
+**/obj/
+**/bin/
+**/*.g.cs
+**/*.designer.cs
+**/ErrorDiagnostics.cs

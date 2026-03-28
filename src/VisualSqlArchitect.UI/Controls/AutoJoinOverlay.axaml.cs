@@ -10,18 +10,20 @@ public sealed partial class AutoJoinOverlay : UserControl
         InitializeComponent();
 
         // Header-level buttons
-        var acceptAll  = this.FindControl<Button>("AcceptAllBtn");
-        var dismissAll = this.FindControl<Button>("DismissAllBtn");
+        Button? acceptAll = this.FindControl<Button>("AcceptAllBtn");
+        Button? dismissAll = this.FindControl<Button>("DismissAllBtn");
 
-        if (acceptAll  is not null) acceptAll.Click  += (_, _) => (DataContext as AutoJoinOverlayViewModel)?.AcceptAll();
-        if (dismissAll is not null) dismissAll.Click += (_, _) => (DataContext as AutoJoinOverlayViewModel)?.Dismiss();
+        if (acceptAll is not null)
+            acceptAll.Click += (_, _) => (DataContext as AutoJoinOverlayViewModel)?.AcceptAll();
+        if (dismissAll is not null)
+            dismissAll.Click += (_, _) => (DataContext as AutoJoinOverlayViewModel)?.Dismiss();
 
         // Per-card buttons are wired in the ItemsControl template via code-behind
         // because AXAML Command bindings on DataTemplate items require compiled bindings
         DataContextChanged += (_, _) => WireCardButtons();
     }
 
-    private void WireCardButtons()
+    private static void WireCardButtons()
     {
         // Re-wire when the DataContext (VM) is swapped.
         // Card-level Accept/Dismiss are handled inside JoinSuggestionCardViewModel directly

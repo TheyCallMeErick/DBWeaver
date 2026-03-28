@@ -10,26 +10,21 @@ namespace VisualSqlArchitect.Nodes;
 public sealed record NodeInstance(
     string Id,
     NodeType Type,
-
     /// <summary>
     /// Literal values for input pins that are NOT wired via a Connection
     /// (e.g. a constant entered in the property panel for the "right" pin of Equals).
     /// Key = pin name, Value = raw SQL literal string.
     /// </summary>
     IReadOnlyDictionary<string, string> PinLiterals,
-
     /// <summary>
     /// Node-level parameters (not pins) — e.g. ROUND precision = "2".
     /// Key = parameter name, Value = string representation.
     /// </summary>
     IReadOnlyDictionary<string, string> Parameters,
-
     /// <summary>Optional display alias for SELECT output pins.</summary>
     string? Alias = null,
-
     /// <summary>Only used for TableSource nodes: "schema.table"</summary>
     string? TableFullName = null,
-
     /// <summary>Only used for TableSource nodes: column name → output pin name</summary>
     IReadOnlyDictionary<string, string>? ColumnPins = null
 );
@@ -58,11 +53,7 @@ public sealed record Connection(
 /// Binds a node's output pin to the SELECT list.
 /// The canvas draws a wire from any expression node to the SelectOutput sink.
 /// </summary>
-public sealed record SelectBinding(
-    string NodeId,
-    string PinName,
-    string? Alias = null
-);
+public sealed record SelectBinding(string NodeId, string PinName, string? Alias = null);
 
 /// <summary>
 /// Binds a boolean node's output pin to the WHERE clause.
@@ -71,7 +62,7 @@ public sealed record SelectBinding(
 public sealed record WhereBinding(
     string NodeId,
     string PinName,
-    string LogicOp = "AND"   // AND | OR — how to combine with the previous condition
+    string LogicOp = "AND" // AND | OR — how to combine with the previous condition
 );
 
 /// <summary>
@@ -96,17 +87,17 @@ public sealed record GroupByBinding(string NodeId, string PinName);
 /// </summary>
 public sealed class NodeGraph
 {
-    public IReadOnlyList<NodeInstance> Nodes { get; init; } = Array.Empty<NodeInstance>();
-    public IReadOnlyList<Connection>   Connections { get; init; } = Array.Empty<Connection>();
+    public IReadOnlyList<NodeInstance> Nodes { get; init; } = [];
+    public IReadOnlyList<Connection> Connections { get; init; } = [];
 
     // ── Output bindings ───────────────────────────────────────────────────────
-    public IReadOnlyList<SelectBinding>  SelectOutputs { get; init; } = Array.Empty<SelectBinding>();
-    public IReadOnlyList<WhereBinding>   WhereConditions { get; init; } = Array.Empty<WhereBinding>();
-    public IReadOnlyList<OrderBinding>   OrderBys { get; init; } = Array.Empty<OrderBinding>();
-    public IReadOnlyList<GroupByBinding> GroupBys { get; init; } = Array.Empty<GroupByBinding>();
+    public IReadOnlyList<SelectBinding> SelectOutputs { get; init; } = [];
+    public IReadOnlyList<WhereBinding> WhereConditions { get; init; } = [];
+    public IReadOnlyList<OrderBinding> OrderBys { get; init; } = [];
+    public IReadOnlyList<GroupByBinding> GroupBys { get; init; } = [];
 
     // ── Pagination ────────────────────────────────────────────────────────────
-    public int? Limit  { get; init; }
+    public int? Limit { get; init; }
     public int? Offset { get; init; }
 
     // ── Derived lookups (computed on first access) ────────────────────────────
@@ -138,8 +129,9 @@ public sealed class NodeGraph
             0 => null,
             1 => matches[0],
             _ => throw new InvalidOperationException(
-                $"Pin '{pinName}' on node '{nodeId}' has {matches.Count} connections; " +
-                $"expected at most 1. Use GetInputConnections for multi-input pins.")
+                $"Pin '{pinName}' on node '{nodeId}' has {matches.Count} connections; "
+                    + $"expected at most 1. Use GetInputConnections for multi-input pins."
+            ),
         };
     }
 
@@ -157,27 +149,26 @@ public sealed class NodeGraph
         var inDegree = Nodes.ToDictionary(n => n.Id, _ => 0);
 
         // Count in-edges (each connection increases target node's in-degree)
-        foreach (var conn in Connections)
+        foreach (Connection conn in Connections)
         {
             if (!inDegree.ContainsKey(conn.ToNodeId))
                 inDegree[conn.ToNodeId] = 0;
             inDegree[conn.ToNodeId]++;
         }
 
-        var queue = new Queue<string>(
-            inDegree.Where(kv => kv.Value == 0).Select(kv => kv.Key));
+        var queue = new Queue<string>(inDegree.Where(kv => kv.Value == 0).Select(kv => kv.Key));
 
         var sorted = new List<NodeInstance>();
-        var nodeMap = NodeMap;
+        IReadOnlyDictionary<string, NodeInstance> nodeMap = NodeMap;
 
         while (queue.Count > 0)
         {
-            var id   = queue.Dequeue();
-            if (nodeMap.TryGetValue(id, out var node))
+            string id = queue.Dequeue();
+            if (nodeMap.TryGetValue(id, out NodeInstance? node))
                 sorted.Add(node);
 
             // Find all nodes that depend on 'id' (i.e. 'id' feeds their inputs)
-            foreach (var outgoing in Connections.Where(c => c.FromNodeId == id))
+            foreach (Connection? outgoing in Connections.Where(c => c.FromNodeId == id))
             {
                 inDegree[outgoing.ToNodeId]--;
                 if (inDegree[outgoing.ToNodeId] == 0)
@@ -187,7 +178,8 @@ public sealed class NodeGraph
 
         if (sorted.Count != Nodes.Count)
             throw new InvalidOperationException(
-                "Cycle detected in the node graph. Remove circular connections.");
+                "Cycle detected in the node graph. Remove circular connections."
+            );
 
         return sorted;
     }
@@ -202,9 +194,9 @@ public sealed class NodeGraph
 /// </summary>
 public sealed record CompiledNodeGraph(
     IReadOnlyList<(ISqlExpression Expr, string? Alias)> SelectExprs,
-    IReadOnlyList<ISqlExpression>                        WhereExprs,
-    IReadOnlyList<(ISqlExpression Expr, bool Desc)>      OrderExprs,
-    IReadOnlyList<ISqlExpression>                        GroupByExprs,
+    IReadOnlyList<ISqlExpression> WhereExprs,
+    IReadOnlyList<(ISqlExpression Expr, bool Desc)> OrderExprs,
+    IReadOnlyList<ISqlExpression> GroupByExprs,
     int? Limit,
     int? Offset
 );

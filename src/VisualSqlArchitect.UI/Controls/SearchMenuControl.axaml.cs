@@ -2,7 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using VisualSqlArchitect.Nodes;
+using VisualSqlArchitect.UI.Serialization;
 using VisualSqlArchitect.UI.ViewModels;
+using VisualSqlArchitect.UI.ViewModels.Canvas;
 
 namespace VisualSqlArchitect.UI.Controls;
 
@@ -13,16 +15,28 @@ public sealed partial class SearchMenuControl : UserControl
         InitializeComponent();
         DataContextChanged += (_, _) => FocusSearch();
 
-        // Wire mouse clicks on result items
-        var list = this.FindControl<ItemsControl>("ResultsList");
-        if (list is not null)
-            list.AddHandler(PointerPressedEvent, OnResultPointerPressed, Avalonia.Interactivity.RoutingStrategies.Bubble);
+        // Wire mouse clicks on node/table result items
+        ItemsControl? list = this.FindControl<ItemsControl>("ResultsList");
+        list?.AddHandler(
+            PointerPressedEvent,
+            OnResultPointerPressed,
+            Avalonia.Interactivity.RoutingStrategies.Bubble
+        );
+
+        // Wire mouse clicks on snippet items
+        ItemsControl? snippetList = this.FindControl<ItemsControl>("SnippetsList");
+        snippetList?.AddHandler(
+            PointerPressedEvent,
+            OnSnippetPointerPressed,
+            Avalonia.Interactivity.RoutingStrategies.Bubble
+        );
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (DataContext is not SearchMenuViewModel vm) return;
+        if (DataContext is not SearchMenuViewModel vm)
+            return;
 
         switch (e.Key)
         {
@@ -36,7 +50,8 @@ public sealed partial class SearchMenuControl : UserControl
                 e.Handled = true;
                 break;
 
-            case Key.Return or Key.Enter when vm.SelectedResult is not null:
+            case Key.Return
+            or Key.Enter when vm.SelectedResult is not null:
                 SpawnResult(vm.SelectedResult, vm);
                 e.Handled = true;
                 break;
@@ -50,19 +65,23 @@ public sealed partial class SearchMenuControl : UserControl
 
     private void OnResultPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (DataContext is not SearchMenuViewModel vm) return;
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (DataContext is not SearchMenuViewModel vm)
+            return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
 
         // Walk up the logical tree from the event source to find the NodeSearchResultViewModel
-        var result = (e.Source as Avalonia.LogicalTree.ILogical)?
-            .GetLogicalAncestors()
-            .OfType<Control>()
-            .Select(c => c.DataContext)
-            .OfType<NodeSearchResultViewModel>()
-            .FirstOrDefault()
+        NodeSearchResultViewModel? result =
+            (e.Source as Avalonia.LogicalTree.ILogical)
+                ?.GetLogicalAncestors()
+                .OfType<Control>()
+                .Select(c => c.DataContext)
+                .OfType<NodeSearchResultViewModel>()
+                .FirstOrDefault()
             ?? (e.Source as Control)?.DataContext as NodeSearchResultViewModel;
 
-        if (result is null) return;
+        if (result is null)
+            return;
         vm.SelectedResult = result;
         SpawnResult(result, vm);
         e.Handled = true;
@@ -77,9 +96,32 @@ public sealed partial class SearchMenuControl : UserControl
         vm.Close();
     }
 
+    private void OnSnippetPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not SearchMenuViewModel vm)
+            return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+
+        SnippetViewModel? snippet =
+            (e.Source as Avalonia.LogicalTree.ILogical)
+                ?.GetLogicalAncestors()
+                .OfType<Control>()
+                .Select(c => c.DataContext)
+                .OfType<SnippetViewModel>()
+                .FirstOrDefault()
+            ?? (e.Source as Control)?.DataContext as SnippetViewModel;
+
+        if (snippet is null)
+            return;
+        SnippetRequested?.Invoke(this, snippet.Snippet);
+        vm.Close();
+        e.Handled = true;
+    }
+
     private void FocusSearch()
     {
-        var input = this.FindControl<TextBox>("SearchInput");
+        TextBox? input = this.FindControl<TextBox>("SearchInput");
         input?.Focus();
     }
 
@@ -87,5 +129,11 @@ public sealed partial class SearchMenuControl : UserControl
     public event EventHandler<NodeDefinition>? SpawnRequested;
 
     /// <summary>Raised when the user selects a table entry.</summary>
-    public event EventHandler<(string FullName, IReadOnlyList<(string Name, PinDataType Type)> Cols)>? SpawnTableRequested;
+    public event EventHandler<(
+        string FullName,
+        IReadOnlyList<(string Name, PinDataType Type)> Cols
+    )>? SpawnTableRequested;
+
+    /// <summary>Raised when the user clicks a saved snippet to insert it.</summary>
+    public event EventHandler<SavedSnippet>? SnippetRequested;
 }

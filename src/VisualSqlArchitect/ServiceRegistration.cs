@@ -15,13 +15,14 @@ namespace VisualSqlArchitect;
 /// </summary>
 public static class DbOrchestratorFactory
 {
-    public static IDbOrchestrator Create(ConnectionConfig config) => config.Provider switch
-    {
-        DatabaseProvider.SqlServer => new SqlServerOrchestrator(config),
-        DatabaseProvider.MySql     => new MySqlOrchestrator(config),
-        DatabaseProvider.Postgres  => new PostgresOrchestrator(config),
-        _ => throw new NotSupportedException($"Provider '{config.Provider}' is not supported.")
-    };
+    public static IDbOrchestrator Create(ConnectionConfig config) =>
+        config.Provider switch
+        {
+            DatabaseProvider.SqlServer => new SqlServerOrchestrator(config),
+            DatabaseProvider.MySql => new MySqlOrchestrator(config),
+            DatabaseProvider.Postgres => new PostgresOrchestrator(config),
+            _ => throw new NotSupportedException($"Provider '{config.Provider}' is not supported."),
+        };
 }
 
 // ─── Active Connection Context ────────────────────────────────────────────────
@@ -36,19 +37,19 @@ public sealed class ActiveConnectionContext : IAsyncDisposable
 {
     private IDbOrchestrator? _orchestrator;
     private ConnectionConfig? _config;
+    private readonly IProviderRegistry _providerRegistry = ProviderRegistry.CreateDefault();
 
     public IDbOrchestrator Orchestrator =>
-        _orchestrator ?? throw new InvalidOperationException(
-            "No active connection. Call SwitchAsync() first.");
+        _orchestrator
+        ?? throw new InvalidOperationException("No active connection. Call SwitchAsync() first.");
 
     public ISqlFunctionRegistry FunctionRegistry { get; private set; } =
         new SqlFunctionRegistry(DatabaseProvider.Postgres); // safe default
 
     public QueryBuilderService QueryBuilder { get; private set; } =
-        QueryBuilderService.Create(DatabaseProvider.Postgres);
+        QueryBuilderService.Create(DatabaseProvider.Postgres, "");
 
-    public DatabaseProvider Provider =>
-        _orchestrator?.Provider ?? DatabaseProvider.Postgres;
+    public DatabaseProvider Provider => _orchestrator?.Provider ?? DatabaseProvider.Postgres;
 
     public ConnectionConfig? Config => _config;
 
@@ -61,16 +62,17 @@ public sealed class ActiveConnectionContext : IAsyncDisposable
         if (_orchestrator is not null)
             await _orchestrator.DisposeAsync();
 
-        _config           = config;
-        _orchestrator     = DbOrchestratorFactory.Create(config);
-        FunctionRegistry  = new SqlFunctionRegistry(config.Provider);
-        QueryBuilder      = new QueryBuilderService(config.Provider, FunctionRegistry);
+        _config = config;
+        _orchestrator = DbOrchestratorFactory.Create(config);
+
+        // Use IProviderRegistry to create components with all dependencies
+        FunctionRegistry = _providerRegistry.CreateFunctionRegistry(config.Provider);
+        QueryBuilder = _providerRegistry.CreateQueryBuilder(config.Provider, "");
 
         // Eagerly validate so the canvas shows a connection error immediately
-        var test = await _orchestrator.TestConnectionAsync(ct);
+        ConnectionTestResult test = await _orchestrator.TestConnectionAsync(ct);
         if (!test.Success)
-            throw new InvalidOperationException(
-                $"Connection failed: {test.ErrorMessage}");
+            throw new InvalidOperationException($"Connection failed: {test.ErrorMessage}");
     }
 
     public async ValueTask DisposeAsync()
@@ -92,8 +94,7 @@ public static class ServiceCollectionExtensions
     /// services.AddVisualSqlArchitect();
     /// </code>
     /// </summary>
-    public static IServiceCollection AddVisualSqlArchitect(
-        this IServiceCollection services)
+    public static IServiceCollection AddVisualSqlArchitect(this IServiceCollection services)
     {
         // ActiveConnectionContext is a singleton so the canvas always shares
         // the same live connection across all view-models.
@@ -102,11 +103,14 @@ public static class ServiceCollectionExtensions
         // FunctionRegistry and QueryBuilder are resolved from the context;
         // register factory delegates so VMs can request the current instance.
         services.AddTransient<ISqlFunctionRegistry>(sp =>
-            sp.GetRequiredService<ActiveConnectionContext>().FunctionRegistry);
+            sp.GetRequiredService<ActiveConnectionContext>().FunctionRegistry
+        );
 
         services.AddTransient<QueryBuilderService>(sp =>
-            sp.GetRequiredService<ActiveConnectionContext>().QueryBuilder);
+            sp.GetRequiredService<ActiveConnectionContext>().QueryBuilder
+        );
 
         return services;
     }
 }
+

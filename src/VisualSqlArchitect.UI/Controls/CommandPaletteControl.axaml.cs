@@ -1,26 +1,51 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.Threading;
 using VisualSqlArchitect.UI.ViewModels;
 
 namespace VisualSqlArchitect.UI.Controls;
 
 public sealed partial class CommandPaletteControl : UserControl
 {
+    private CommandPaletteViewModel? _vm;
+
     public CommandPaletteControl()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) => FocusSearch();
+        DataContextChanged += (_, _) => BindViewModel();
 
-        var list = this.FindControl<ItemsControl>("ResultsList");
-        if (list is not null)
-            list.AddHandler(PointerPressedEvent, OnResultPointerPressed, Avalonia.Interactivity.RoutingStrategies.Bubble);
+        ItemsControl? list = this.FindControl<ItemsControl>("ResultsList");
+        list?.AddHandler(
+            PointerPressedEvent,
+            OnResultPointerPressed,
+            Avalonia.Interactivity.RoutingStrategies.Bubble
+        );
+    }
+
+    private void BindViewModel()
+    {
+        if (_vm is not null)
+            _vm.PropertyChanged -= OnVmPropertyChanged;
+
+        _vm = DataContext as CommandPaletteViewModel;
+
+        if (_vm is not null)
+            _vm.PropertyChanged += OnVmPropertyChanged;
+    }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CommandPaletteViewModel.IsVisible) && _vm?.IsVisible == true)
+            Dispatcher.UIThread.Post(FocusSearch, DispatcherPriority.Input);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (DataContext is not CommandPaletteViewModel vm) return;
+        if (DataContext is not CommandPaletteViewModel vm)
+            return;
 
         switch (e.Key)
         {
@@ -34,7 +59,8 @@ public sealed partial class CommandPaletteControl : UserControl
                 e.Handled = true;
                 break;
 
-            case Key.Return or Key.Enter:
+            case Key.Return
+            or Key.Enter:
                 vm.ExecuteSelected();
                 e.Handled = true;
                 break;
@@ -48,28 +74,33 @@ public sealed partial class CommandPaletteControl : UserControl
 
     private void OnResultPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (DataContext is not CommandPaletteViewModel vm) return;
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (DataContext is not CommandPaletteViewModel vm)
+            return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
 
-        var item = (e.Source as Avalonia.LogicalTree.ILogical)?
-            .GetLogicalAncestors()
-            .OfType<Control>()
-            .Select(c => c.DataContext)
-            .OfType<PaletteCommandItem>()
-            .FirstOrDefault()
+        PaletteCommandItem? item =
+            (e.Source as Avalonia.LogicalTree.ILogical)
+                ?.GetLogicalAncestors()
+                .OfType<Control>()
+                .Select(c => c.DataContext)
+                .OfType<PaletteCommandItem>()
+                .FirstOrDefault()
             ?? (e.Source as Control)?.DataContext as PaletteCommandItem;
 
-        if (item is null) return;
+        if (item is null)
+            return;
 
-        var idx = vm.Results.IndexOf(item);
-        if (idx >= 0) vm.SelectedIndex = idx;
+        int idx = vm.Results.IndexOf(item);
+        if (idx >= 0)
+            vm.SelectedIndex = idx;
         vm.ExecuteSelected();
         e.Handled = true;
     }
 
     private void FocusSearch()
     {
-        var input = this.FindControl<TextBox>("SearchInput");
+        TextBox? input = this.FindControl<TextBox>("SearchInput");
         input?.Focus();
     }
 }

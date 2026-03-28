@@ -14,36 +14,49 @@ public sealed class JoinSuggestionCardViewModel : ViewModelBase
 
     public JoinSuggestion Suggestion { get; }
 
-    public string TablePair  => $"{Suggestion.ExistingTable}  ↔  {Suggestion.NewTable}";
-    public string OnClause   => Suggestion.OnClause;
-    public string JoinType   => Suggestion.JoinType + " JOIN";
-    public string Rationale  => Suggestion.Rationale;
+    public string TablePair => $"{Suggestion.ExistingTable}  ↔  {Suggestion.NewTable}";
+    public string OnClause => Suggestion.OnClause;
+    public string JoinType => Suggestion.JoinType + " JOIN";
+    public string Rationale => Suggestion.Rationale;
     public string ScoreLabel => $"{Suggestion.Score * 100:F0}%";
-    public bool   IsCatalogFk => Suggestion.Confidence >= JoinConfidence.CatalogDefinedFk;
+    public bool IsCatalogFk => Suggestion.Confidence >= JoinConfidence.CatalogDefinedFk;
 
-    public Color ConfidenceColor => Suggestion.Confidence switch
-    {
-        >= JoinConfidence.CatalogDefinedFk      => Color.Parse("#4ADE80"),
-        >= JoinConfidence.CatalogDefinedReverse  => Color.Parse("#60A5FA"),
-        >= JoinConfidence.HeuristicStrong        => Color.Parse("#FBBF24"),
-        _                                        => Color.Parse("#94A3B8")
-    };
+    /// <summary>Width in pixels for the confidence bar (max 340px card inner width).</summary>
+    public double ScoreBarWidth => Math.Max(4, Suggestion.Score * 340);
+
+    public Color ConfidenceColor =>
+        Suggestion.Confidence switch
+        {
+            >= JoinConfidence.CatalogDefinedFk => Color.Parse("#4ADE80"),
+            >= JoinConfidence.CatalogDefinedReverse => Color.Parse("#60A5FA"),
+            >= JoinConfidence.HeuristicStrong => Color.Parse("#FBBF24"),
+            _ => Color.Parse("#94A3B8"),
+        };
 
     public SolidColorBrush ConfidenceBrush => new(ConfidenceColor);
 
-    public string ConfidenceLabel => Suggestion.Confidence switch
+    public string ConfidenceLabel =>
+        Suggestion.Confidence switch
+        {
+            >= JoinConfidence.CatalogDefinedFk => "FK Constraint",
+            >= JoinConfidence.CatalogDefinedReverse => "FK (Reverse)",
+            >= JoinConfidence.HeuristicStrong => "Naming Match",
+            _ => "Weak Match",
+        };
+
+    public bool IsAccepted
     {
-        >= JoinConfidence.CatalogDefinedFk      => "FK Constraint",
-        >= JoinConfidence.CatalogDefinedReverse  => "FK (Reverse)",
-        >= JoinConfidence.HeuristicStrong        => "Naming Match",
-        _                                        => "Weak Match"
-    };
+        get => _isAccepted;
+        private set => Set(ref _isAccepted, value);
+    }
+    public bool IsDismissed
+    {
+        get => _isDismissed;
+        private set => Set(ref _isDismissed, value);
+    }
+    public bool IsVisible => !IsAccepted && !IsDismissed;
 
-    public bool IsAccepted  { get => _isAccepted;  private set => Set(ref _isAccepted, value); }
-    public bool IsDismissed { get => _isDismissed; private set => Set(ref _isDismissed, value); }
-    public bool IsVisible   => !IsAccepted && !IsDismissed;
-
-    public ICommand AcceptCommand  { get; }
+    public ICommand AcceptCommand { get; }
     public ICommand DismissCommand { get; }
 
     public event EventHandler<JoinSuggestion>? Accepted;
@@ -51,8 +64,8 @@ public sealed class JoinSuggestionCardViewModel : ViewModelBase
 
     public JoinSuggestionCardViewModel(JoinSuggestion suggestion)
     {
-        Suggestion     = suggestion;
-        AcceptCommand  = new RelayCommand(Accept);
+        Suggestion = suggestion;
+        AcceptCommand = new RelayCommand(Accept);
         DismissCommand = new RelayCommand(Dismiss);
     }
 
@@ -82,9 +95,9 @@ public sealed class JoinSuggestionCardViewModel : ViewModelBase
 /// </summary>
 public sealed class AutoJoinOverlayViewModel : ViewModelBase
 {
-    private bool   _isVisible;
+    private bool _isVisible;
     private string _droppedTable = string.Empty;
-    private int    _acceptedCount;
+    private int _acceptedCount;
 
     public ObservableCollection<JoinSuggestionCardViewModel> Cards { get; } = [];
 
@@ -107,7 +120,7 @@ public sealed class AutoJoinOverlayViewModel : ViewModelBase
     }
 
     public bool HasCards => Cards.Any(c => c.IsVisible);
-    public string Title  => $"Auto-Join suggestions for {DroppedTable}";
+    public string Title => $"Auto-Join suggestions for {DroppedTable}";
 
     // ── Events ────────────────────────────────────────────────────────────────
 
@@ -118,14 +131,14 @@ public sealed class AutoJoinOverlayViewModel : ViewModelBase
 
     public void Show(string tableName, IReadOnlyList<JoinSuggestion> suggestions)
     {
-        DroppedTable  = tableName.Split('.').Last();
+        DroppedTable = tableName.Split('.').Last();
         AcceptedCount = 0;
         Cards.Clear();
 
-        foreach (var s in suggestions)
+        foreach (JoinSuggestion s in suggestions)
         {
             var card = new JoinSuggestionCardViewModel(s);
-            card.Accepted  += OnCardAccepted;
+            card.Accepted += OnCardAccepted;
             card.Dismissed += OnCardDismissed;
             Cards.Add(card);
         }
@@ -137,13 +150,15 @@ public sealed class AutoJoinOverlayViewModel : ViewModelBase
 
     public void Dismiss()
     {
-        foreach (var c in Cards) c.Dismiss();
+        foreach (JoinSuggestionCardViewModel c in Cards)
+            c.Dismiss();
         IsVisible = false;
     }
 
     public void AcceptAll()
     {
-        foreach (var c in Cards.Where(c => c.IsVisible)) c.Accept();
+        foreach (JoinSuggestionCardViewModel? c in Cards.Where(c => c.IsVisible))
+            c.Accept();
         CheckClose();
     }
 

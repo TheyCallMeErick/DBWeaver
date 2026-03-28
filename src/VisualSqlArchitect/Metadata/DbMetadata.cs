@@ -14,7 +14,7 @@ namespace VisualSqlArchitect.Metadata;
 public record ColumnMetadata(
     string Name,
     string DataType,
-    string NativeType,       // raw provider type, e.g. "nvarchar", "int4", "longtext"
+    string NativeType, // raw provider type, e.g. "nvarchar", "int4", "longtext"
     bool IsNullable,
     bool IsPrimaryKey,
     bool IsForeignKey,
@@ -32,18 +32,34 @@ public record ColumnMetadata(
 
     private static ColumnSemanticType InferSemanticType(string nativeType)
     {
-        var t = nativeType.ToLowerInvariant();
-        if (t.Contains("int") || t.Contains("numeric") || t.Contains("decimal")
-            || t.Contains("float") || t.Contains("double") || t.Contains("real")
-            || t.Contains("money") || t.Contains("number"))
+        string t = nativeType.ToLowerInvariant();
+        if (
+            t.Contains("int")
+            || t.Contains("numeric")
+            || t.Contains("decimal")
+            || t.Contains("float")
+            || t.Contains("double")
+            || t.Contains("real")
+            || t.Contains("money")
+            || t.Contains("number")
+        )
             return ColumnSemanticType.Numeric;
 
-        if (t.Contains("char") || t.Contains("text") || t.Contains("clob")
-            || t.Contains("string") || t.Contains("nvar"))
+        if (
+            t.Contains("char")
+            || t.Contains("text")
+            || t.Contains("clob")
+            || t.Contains("string")
+            || t.Contains("nvar")
+        )
             return ColumnSemanticType.Text;
 
-        if (t.Contains("date") || t.Contains("time") || t.Contains("timestamp")
-            || t.Contains("interval"))
+        if (
+            t.Contains("date")
+            || t.Contains("time")
+            || t.Contains("timestamp")
+            || t.Contains("interval")
+        )
             return ColumnSemanticType.DateTime;
 
         if (t.Contains("bool") || t.Contains("bit") || t.Contains("tinyint"))
@@ -55,8 +71,13 @@ public record ColumnMetadata(
         if (t.Contains("json") || t.Contains("xml") || t.Contains("jsonb"))
             return ColumnSemanticType.Document;
 
-        if (t.Contains("blob") || t.Contains("binary") || t.Contains("varbinary")
-            || t.Contains("bytes") || t.Contains("image"))
+        if (
+            t.Contains("blob")
+            || t.Contains("binary")
+            || t.Contains("varbinary")
+            || t.Contains("bytes")
+            || t.Contains("image")
+        )
             return ColumnSemanticType.Binary;
 
         if (t.Contains("geometry") || t.Contains("geography") || t.Contains("point"))
@@ -68,7 +89,15 @@ public record ColumnMetadata(
 
 public enum ColumnSemanticType
 {
-    Numeric, Text, DateTime, Boolean, Guid, Document, Binary, Spatial, Other
+    Numeric,
+    Text,
+    DateTime,
+    Boolean,
+    Guid,
+    Document,
+    Binary,
+    Spatial,
+    Other,
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -98,7 +127,7 @@ public record ForeignKeyRelation(
     int OrdinalPosition = 1
 )
 {
-    public string ChildFullTable  => Qualify(ChildSchema,  ChildTable);
+    public string ChildFullTable => Qualify(ChildSchema, ChildTable);
     public string ParentFullTable => Qualify(ParentSchema, ParentTable);
 
     private static string Qualify(string schema, string table) =>
@@ -109,11 +138,14 @@ public record ForeignKeyRelation(
     /// in either direction.
     /// </summary>
     public bool Involves(string tableA, string tableB) =>
-        (ChildFullTable.Equals(tableA, StringComparison.OrdinalIgnoreCase)
-            && ParentFullTable.Equals(tableB, StringComparison.OrdinalIgnoreCase))
-        ||
-        (ChildFullTable.Equals(tableB, StringComparison.OrdinalIgnoreCase)
-            && ParentFullTable.Equals(tableA, StringComparison.OrdinalIgnoreCase));
+        (
+            ChildFullTable.Equals(tableA, StringComparison.OrdinalIgnoreCase)
+            && ParentFullTable.Equals(tableB, StringComparison.OrdinalIgnoreCase)
+        )
+        || (
+            ChildFullTable.Equals(tableB, StringComparison.OrdinalIgnoreCase)
+            && ParentFullTable.Equals(tableA, StringComparison.OrdinalIgnoreCase)
+        );
 
     /// <summary>
     /// Returns the JOIN ON clause from the perspective of the child table.
@@ -129,7 +161,7 @@ public enum ReferentialAction
     Cascade,
     SetNull,
     SetDefault,
-    Restrict
+    Restrict,
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -159,10 +191,8 @@ public record TableMetadata(
     long? EstimatedRowCount,
     IReadOnlyList<ColumnMetadata> Columns,
     IReadOnlyList<IndexMetadata> Indexes,
-
     /// <summary>FK constraints where THIS table is the child (owns the FK column).</summary>
     IReadOnlyList<ForeignKeyRelation> OutboundForeignKeys,
-
     /// <summary>FK constraints where THIS table is the parent (is referenced).</summary>
     IReadOnlyList<ForeignKeyRelation> InboundForeignKeys
 )
@@ -184,20 +214,22 @@ public record TableMetadata(
         InboundForeignKeys.Select(r => r.ChildFullTable).Distinct();
 }
 
-public enum TableKind { Table, View, MaterializedView }
+public enum TableKind
+{
+    Table,
+    View,
+    MaterializedView,
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // SCHEMA GROUP
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// <summary>Groups tables under a schema name (TreeView first level).</summary>
-public record SchemaMetadata(
-    string Name,
-    IReadOnlyList<TableMetadata> Tables
-)
+public record SchemaMetadata(string Name, IReadOnlyList<TableMetadata> Tables)
 {
     public int TableCount => Tables.Count(t => t.Kind == TableKind.Table);
-    public int ViewCount  => Tables.Count(t => t.Kind != TableKind.Table);
+    public int ViewCount => Tables.Count(t => t.Kind != TableKind.Table);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -220,51 +252,54 @@ public record DbMetadata(
 {
     // ── Flat accessors (useful for the canvas and auto-join engine) ────────────
 
-    public IEnumerable<TableMetadata> AllTables =>
-        Schemas.SelectMany(s => s.Tables);
+    public IEnumerable<TableMetadata> AllTables => Schemas.SelectMany(s => s.Tables);
 
     public TableMetadata? FindTable(string fullName) =>
         AllTables.FirstOrDefault(t =>
-            t.FullName.Equals(fullName, StringComparison.OrdinalIgnoreCase));
+            t.FullName.Equals(fullName, StringComparison.OrdinalIgnoreCase)
+        );
 
     public TableMetadata? FindTable(string schema, string name) =>
         AllTables.FirstOrDefault(t =>
-            t.Schema.Equals(schema, StringComparison.OrdinalIgnoreCase) &&
-            t.Name.Equals(name,   StringComparison.OrdinalIgnoreCase));
+            t.Schema.Equals(schema, StringComparison.OrdinalIgnoreCase)
+            && t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
+        );
 
     /// <summary>
     /// Returns every FK relation that directly connects <paramref name="tableA"/>
     /// and <paramref name="tableB"/> in either direction.
     /// </summary>
-    public IReadOnlyList<ForeignKeyRelation> GetRelationsBetween(
-        string tableA, string tableB) =>
-        AllForeignKeys
-            .Where(r => r.Involves(tableA, tableB))
-            .ToList();
+    public IReadOnlyList<ForeignKeyRelation> GetRelationsBetween(string tableA, string tableB) =>
+        AllForeignKeys.Where(r => r.Involves(tableA, tableB)).ToList();
 
     /// <summary>
     /// Returns all FK relations that connect <paramref name="table"/> to any of
     /// the <paramref name="canvasTables"/> already on the canvas.
     /// </summary>
     public IReadOnlyList<ForeignKeyRelation> GetRelationsToCanvas(
-        string table, IEnumerable<string> canvasTables)
+        string table,
+        IEnumerable<string> canvasTables
+    )
     {
-        var set = new HashSet<string>(
-            canvasTables, StringComparer.OrdinalIgnoreCase);
+        var set = new HashSet<string>(canvasTables, StringComparer.OrdinalIgnoreCase);
 
         return AllForeignKeys
             .Where(r =>
-                (r.ChildFullTable.Equals(table, StringComparison.OrdinalIgnoreCase)
-                    && set.Contains(r.ParentFullTable))
-                ||
-                (r.ParentFullTable.Equals(table, StringComparison.OrdinalIgnoreCase)
-                    && set.Contains(r.ChildFullTable)))
+                (
+                    r.ChildFullTable.Equals(table, StringComparison.OrdinalIgnoreCase)
+                    && set.Contains(r.ParentFullTable)
+                )
+                || (
+                    r.ParentFullTable.Equals(table, StringComparison.OrdinalIgnoreCase)
+                    && set.Contains(r.ChildFullTable)
+                )
+            )
             .ToList();
     }
 
     // ── Stats (status bar) ────────────────────────────────────────────────────
 
-    public int TotalTables     => AllTables.Count(t => t.Kind == TableKind.Table);
-    public int TotalViews      => AllTables.Count(t => t.Kind != TableKind.Table);
+    public int TotalTables => AllTables.Count(t => t.Kind == TableKind.Table);
+    public int TotalViews => AllTables.Count(t => t.Kind != TableKind.Table);
     public int TotalForeignKeys => AllForeignKeys.Count;
 }

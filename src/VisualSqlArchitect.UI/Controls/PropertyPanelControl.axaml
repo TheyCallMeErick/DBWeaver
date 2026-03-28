@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
              x:Class="VisualSqlArchitect.UI.Controls.PropertyPanelControl"
              x:DataType="vm:PropertyPanelViewModel"
              Width="240">
@@ -89,12 +90,11 @@
                   Margin="0,0,10,0"
                   VerticalAlignment="Center"
                   IsVisible="{Binding HasNode}">
-            <TextBlock Text="{Binding CategoryIcon}"
-                       FontSize="12"
-                       FontWeight="Bold"
-                       Foreground="White"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"/>
+            <mi:MaterialIcon Kind="{Binding CategoryIconKind}"
+                             Width="14" Height="14"
+                             Foreground="White"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
           </Border>
 
           <!-- Title -->
@@ -183,6 +183,18 @@
                                 FontSize="11"
                                 IsVisible="{Binding IsBoolean}"/>
 
+                      <!-- DateTime picker (ISO 8601) -->
+                      <TextBox Classes="param-input"
+                               Text="{Binding Value, Mode=TwoWay}"
+                               Watermark="YYYY-MM-DDTHH:mm:ss or leave empty"
+                               IsVisible="{Binding IsDateTime}"/>
+
+                      <!-- Date picker (ISO 8601 date only) -->
+                      <TextBox Classes="param-input"
+                               Text="{Binding Value, Mode=TwoWay}"
+                               Watermark="YYYY-MM-DD or leave empty"
+                               IsVisible="{Binding IsDate}"/>
+
                     </StackPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -266,6 +278,8 @@
 
           <!-- ── OUTPUT PINS ───────────────────────────────────────────────── -->
           <Border Padding="12,10,12,6"
+                  BorderBrush="#1A1D26"
+                  BorderThickness="0,0,0,1"
                   IsVisible="{Binding HasOutputs}">
 
             <StackPanel Spacing="0">
@@ -304,6 +318,49 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <!-- ── SQL TRACE ─────────────────────────────────────────────────── -->
+          <Border Padding="12,10,12,12"
+                  IsVisible="{Binding HasSqlTrace}">
+
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Classes="section-label"
+                           Text="SQL TRACE"
+                           VerticalAlignment="Center"/>
+                <Border Grid.Column="1"
+                        Background="#0A2218"
+                        CornerRadius="4"
+                        Padding="5,1">
+                  <TextBlock Text="live"
+                             FontSize="8"
+                             FontWeight="Bold"
+                             Foreground="#14B8A6"
+                             LetterSpacing="1"/>
+                </Border>
+              </Grid>
+
+              <!-- Context label -->
+              <TextBlock Text="{Binding SqlTraceContext}"
+                         FontSize="10"
+                         Foreground="#4A5568"
+                         TextWrapping="Wrap"/>
+
+              <!-- Fragment box -->
+              <Border Background="#070B10"
+                      BorderBrush="#14B8A6"
+                      BorderThickness="0,0,0,2"
+                      CornerRadius="6"
+                      Padding="10,8">
+                <TextBlock Text="{Binding SqlTraceFragment}"
+                           FontFamily="Consolas,monospace"
+                           FontSize="11"
+                           Foreground="#14B8A6"
+                           TextWrapping="Wrap"/>
+              </Border>
             </StackPanel>
           </Border>
 

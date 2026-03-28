@@ -22,21 +22,15 @@ namespace VisualSqlArchitect.UI.Controls;
 /// This class is owned by <see cref="InfiniteCanvas"/> which calls it from
 /// its pointer event handlers.
 /// </summary>
-public sealed class PinDragInteraction
+public sealed class PinDragInteraction(CanvasViewModel vm, Canvas scene)
 {
-    private readonly CanvasViewModel _vm;
-    private readonly Canvas          _scene;
-    private PinDragState?            _dragState;
+    private readonly CanvasViewModel _vm = vm;
+    private readonly Canvas _scene = scene;
+    private PinDragState? _dragState;
 
     // ── Public state (read by InfiniteCanvas) ─────────────────────────────────
     public bool IsDragging => _dragState is not null;
     public ConnectionViewModel? LiveWire => _dragState?.LiveWire;
-
-    public PinDragInteraction(CanvasViewModel vm, Canvas scene)
-    {
-        _vm    = vm;
-        _scene = scene;
-    }
 
     // ── Begin ─────────────────────────────────────────────────────────────────
 
@@ -46,7 +40,8 @@ public sealed class PinDragInteraction
     /// </summary>
     public void BeginDrag(PinViewModel pin, Point canvasPoint)
     {
-        if (IsDragging) CancelDrag();
+        if (IsDragging)
+            CancelDrag();
 
         // If pressing an input pin that is already connected, we pick up the
         // existing wire from its source (wire re-routing gesture).
@@ -67,10 +62,9 @@ public sealed class PinDragInteraction
         }
 
         var liveWire = new ConnectionViewModel(source, source.AbsolutePosition, canvasPoint);
-        _dragState   = new PinDragState(source, liveWire,
-            _vm.Nodes.SelectMany(n => n.AllPins));
+        _dragState = new PinDragState(source, liveWire, _vm.Nodes.SelectMany(n => n.AllPins));
 
-        _vm.Connections.Add(liveWire);   // renders immediately as a pending wire
+        _vm.Connections.Add(liveWire); // renders immediately as a pending wire
     }
 
     // ── Update ────────────────────────────────────────────────────────────────
@@ -81,12 +75,13 @@ public sealed class PinDragInteraction
     /// </summary>
     public void UpdateDrag(Point canvasPoint)
     {
-        if (_dragState is null) return;
+        if (_dragState is null)
+            return;
         _dragState.UpdateWireEnd(canvasPoint);
 
         // Highlight nearest valid target
-        var nearest = _dragState.HitTest(canvasPoint, tol: 18);
-        foreach (var p in _dragState.ValidTargets)
+        PinViewModel? nearest = _dragState.HitTest(canvasPoint, tol: 18);
+        foreach (PinViewModel p in _dragState.ValidTargets)
             p.IsDropTarget = (p == nearest);
     }
 
@@ -98,14 +93,18 @@ public sealed class PinDragInteraction
     /// </summary>
     public void EndDrag(Point canvasPoint)
     {
-        if (_dragState is null) return;
+        if (_dragState is null)
+            return;
 
-        // Remove the live wire (it was a temporary rendering aid)
-        _vm.Connections.Remove(_dragState.LiveWire);
-
-        var target = _dragState.HitTest(canvasPoint, tol: 18);
+        // Connect BEFORE removing the live wire.
+        // If we removed the live wire first, Connections.CollectionChanged would fire
+        // and SyncColumnListPins would destroy the target pin before we get to use it.
+        PinViewModel? target = _dragState.HitTest(canvasPoint, tol: 18);
         if (target is not null && target.CanAccept(_dragState.SourcePin))
             _vm.ConnectPins(_dragState.SourcePin, target);
+
+        // Remove the live wire after the real connection is already in place.
+        _vm.Connections.Remove(_dragState.LiveWire);
 
         Cleanup();
     }
@@ -114,7 +113,8 @@ public sealed class PinDragInteraction
 
     public void CancelDrag()
     {
-        if (_dragState is null) return;
+        if (_dragState is null)
+            return;
         _vm.Connections.Remove(_dragState.LiveWire);
         Cleanup();
     }
@@ -134,12 +134,13 @@ public sealed class PinDragInteraction
     /// </summary>
     public PinViewModel? HitTestPin(Point canvasPoint, double tolerance = 10)
     {
-        foreach (var node in _vm.Nodes)
-        foreach (var pin in node.AllPins)
+        double tolSq = tolerance * tolerance;
+        foreach (NodeViewModel node in _vm.Nodes)
+        foreach (PinViewModel pin in node.AllPins)
         {
-            var dx = pin.AbsolutePosition.X - canvasPoint.X;
-            var dy = pin.AbsolutePosition.Y - canvasPoint.Y;
-            if (Math.Sqrt(dx * dx + dy * dy) <= tolerance)
+            double dx = pin.AbsolutePosition.X - canvasPoint.X;
+            double dy = pin.AbsolutePosition.Y - canvasPoint.Y;
+            if (dx * dx + dy * dy <= tolSq)
                 return pin;
         }
         return null;

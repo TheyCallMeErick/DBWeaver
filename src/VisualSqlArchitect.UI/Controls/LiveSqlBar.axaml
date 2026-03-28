@@ -3,6 +3,7 @@
              xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
              xmlns:core="using:VisualSqlArchitect.Core"
              xmlns:conv="using:VisualSqlArchitect.UI.Converters"
+             xmlns:mi="using:Material.Icons.Avalonia"
              x:Class="VisualSqlArchitect.UI.Controls.LiveSqlBar"
              x:DataType="vm:LiveSqlBarViewModel">
 
@@ -80,8 +81,10 @@
               IsVisible="{Binding IsMutatingCommand}">
         <StackPanel Orientation="Horizontal" Spacing="8">
           <Border CornerRadius="4" Background="#EF4444" Padding="5,2" VerticalAlignment="Center">
-            <TextBlock Text="🔒 SAFE PREVIEW MODE"
-                       FontSize="9" FontWeight="Bold" Foreground="White" LetterSpacing="0.8"/>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="Lock" Width="10" Height="10" Foreground="White" VerticalAlignment="Center"/>
+              <TextBlock Text="SAFE PREVIEW MODE" FontSize="9" FontWeight="Bold" Foreground="White" LetterSpacing="0.8"/>
+            </StackPanel>
           </Border>
           <TextBlock Text="{Binding BlockedReason}"
                      FontSize="10"
@@ -93,7 +96,7 @@
 
       <!-- ── Top strip: label + provider + actions ───────────────────────────── -->
       <Grid Grid.Row="1"
-            ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto"
+            ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto"
             Margin="12,6,8,4">
 
         <!-- Status dot -->
@@ -125,10 +128,10 @@
                 VerticalAlignment="Center"
                 IsVisible="{Binding IsMutatingCommand}"
                 ToolTip.Tip="This SQL contains a data-mutating command and cannot be run in Safe Preview Mode">
-          <TextBlock Text="🔒 BLOCKED"
-                     FontSize="9"
-                     FontWeight="Bold"
-                     Foreground="White"/>
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <mi:MaterialIcon Kind="Lock" Width="10" Height="10" Foreground="White" VerticalAlignment="Center"/>
+            <TextBlock Text="BLOCKED" FontSize="9" FontWeight="Bold" Foreground="White"/>
+          </StackPanel>
         </Border>
 
         <!-- Error hint (shown inline when invalid and not a mutating block) -->
@@ -161,21 +164,55 @@
         <!-- Copy SQL button -->
         <Button Grid.Column="4"
                 Classes="sql-action"
-                Content="⎘ Copy"
                 Name="CopyBtn"
                 ToolTip.Tip="Copy SQL to clipboard"
-                IsEnabled="{Binding HasSql}"/>
+                IsEnabled="{Binding HasSql}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <mi:MaterialIcon Kind="ContentCopy" Width="12" Height="12"/>
+            <TextBlock Text="Copy" FontSize="11"/>
+          </StackPanel>
+        </Button>
 
         <!-- Format / pretty-print -->
         <Button Grid.Column="5"
                 Classes="sql-action"
-                Content="≡ Format"
                 Name="FormatBtn"
                 ToolTip.Tip="Format SQL"
-                IsEnabled="{Binding HasSql}"/>
+                IsEnabled="{Binding HasSql}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <mi:MaterialIcon Kind="FormatAlignLeft" Width="12" Height="12"/>
+            <TextBlock Text="Format" FontSize="11"/>
+          </StackPanel>
+        </Button>
+
+        <!-- Benchmark button -->
+        <Button Grid.Column="6"
+                Classes="sql-action"
+                Name="BenchmarkBtn"
+                ToolTip.Tip="Open Query Benchmark (measure avg / median / p95 latency)"
+                IsEnabled="{Binding HasSql}"
+                AutomationProperties.Name="Open benchmark">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <mi:MaterialIcon Kind="TimerOutline" Width="12" Height="12"/>
+            <TextBlock Text="Benchmark" FontSize="11"/>
+          </StackPanel>
+        </Button>
+
+        <!-- Explain Plan button -->
+        <Button Grid.Column="7"
+                Classes="sql-action"
+                Name="ExplainBtn"
+                ToolTip.Tip="Open Explain Plan inspector — visualise the query execution plan"
+                IsEnabled="{Binding HasSql}"
+                AutomationProperties.Name="Open explain plan">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <mi:MaterialIcon Kind="TableSearch" Width="12" Height="12"/>
+            <TextBlock Text="Explain" FontSize="11"/>
+          </StackPanel>
+        </Button>
 
         <!-- Recompile indicator (spinning when active) -->
-        <ProgressBar Grid.Column="6"
+        <ProgressBar Grid.Column="8"
                      Width="20" Height="2"
                      IsIndeterminate="True"
                      Foreground="#3B82F6"
@@ -236,10 +273,10 @@
                     Padding="6,3"
                     Margin="0,2,6,0">
               <StackPanel Orientation="Horizontal" Spacing="5">
-                <TextBlock Text="⚠"
-                           FontSize="9"
-                           Foreground="#FBBF24"
-                           VerticalAlignment="Center"/>
+                <mi:MaterialIcon Kind="Alert"
+                                 Width="11" Height="11"
+                                 Foreground="#FBBF24"
+                                 VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding Message}"
                            FontSize="10"
                            Foreground="#D4A017"

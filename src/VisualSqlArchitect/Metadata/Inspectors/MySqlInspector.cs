@@ -10,9 +10,8 @@ namespace VisualSqlArchitect.Metadata.Inspectors;
 /// Row-count estimates come from information_schema.TABLES.TABLE_ROWS,
 /// which MySQL updates via ANALYZE TABLE or background stats.
 /// </summary>
-public sealed class MySqlInspector : BaseInspector
+public sealed class MySqlInspector(ConnectionConfig config) : BaseInspector(config)
 {
-    public MySqlInspector(ConnectionConfig config) : base(config) { }
     public override DatabaseProvider Provider => DatabaseProvider.MySql;
 
     protected override async Task<DbConnection> OpenAsync(CancellationToken ct)
@@ -25,17 +24,20 @@ public sealed class MySqlInspector : BaseInspector
     // ── Server version ────────────────────────────────────────────────────────
 
     protected override async Task<string> GetServerVersionAsync(
-        DbConnection conn, CancellationToken ct)
+        DbConnection conn,
+        CancellationToken ct
+    )
     {
-        await using var cmd = conn.CreateCommand();
+        await using DbCommand cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT VERSION()";
         return (await cmd.ExecuteScalarAsync(ct))?.ToString() ?? "unknown";
     }
 
     // ── Tables + Views ────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<(string, string, TableKind, long?)>>
-        FetchAllTablesAsync(DbConnection conn, CancellationToken ct)
+    protected override async Task<
+        IReadOnlyList<(string, string, TableKind, long?)>
+    > FetchAllTablesAsync(DbConnection conn, CancellationToken ct)
     {
         const string sql = """
             SELECT
@@ -53,11 +55,11 @@ public sealed class MySqlInspector : BaseInspector
         cmd.Parameters.AddWithValue("@db", Config.Database);
 
         var result = new List<(string, string, TableKind, long?)>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using MySqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var kind = reader.GetString(2) == "VIEW" ? TableKind.View : TableKind.Table;
-            var rows = reader.IsDBNull(3) ? (long?)null : reader.GetInt64(3);
+            TableKind kind = reader.GetString(2) == "VIEW" ? TableKind.View : TableKind.Table;
+            long? rows = reader.IsDBNull(3) ? (long?)null : reader.GetInt64(3);
             result.Add((reader.GetString(0), reader.GetString(1), kind, rows));
         }
 
@@ -66,8 +68,12 @@ public sealed class MySqlInspector : BaseInspector
 
     // ── Columns ───────────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<ColumnMetadata>>
-        FetchColumnsAsync(DbConnection conn, string schema, string table, CancellationToken ct)
+    protected override async Task<IReadOnlyList<ColumnMetadata>> FetchColumnsAsync(
+        DbConnection conn,
+        string schema,
+        string table,
+        CancellationToken ct
+    )
     {
         const string sql = """
             SELECT
@@ -91,41 +97,47 @@ public sealed class MySqlInspector : BaseInspector
         await using var cmd = (MySqlCommand)conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("@schema", schema);
-        cmd.Parameters.AddWithValue("@table",  table);
+        cmd.Parameters.AddWithValue("@table", table);
 
         // FK column list for this table (pre-fetch to mark columns)
-        var fkColumns = await GetFkColumnNamesAsync(conn, schema, table, ct);
+        HashSet<string> fkColumns = await GetFkColumnNamesAsync(conn, schema, table, ct);
 
         var columns = new List<ColumnMetadata>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using MySqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var name      = reader.GetString(1);
-            var columnKey = reader.GetString(9);
-            var nativeType = reader.GetString(2);
+            string name = reader.GetString(1);
+            string columnKey = reader.GetString(9);
+            string nativeType = reader.GetString(2);
 
-            columns.Add(new ColumnMetadata(
-                OrdinalPosition: reader.GetInt32(0),
-                Name:            name,
-                DataType:        NormalizeType(nativeType),
-                NativeType:      reader.GetString(3),    // full e.g. "varchar(255)"
-                IsNullable:      reader.GetString(4) == "YES",
-                MaxLength:       reader.IsDBNull(5) ? null : (int?)reader.GetInt64(5),
-                Precision:       reader.IsDBNull(6) ? null : (int?)reader.GetInt64(6),
-                Scale:           reader.IsDBNull(7) ? null : (int?)reader.GetInt64(7),
-                DefaultValue:    reader.IsDBNull(8) ? null : reader.GetString(8),
-                IsPrimaryKey:    columnKey == "PRI",
-                IsUnique:        columnKey == "UNI",
-                IsIndexed:       columnKey is "PRI" or "UNI" or "MUL",
-                IsForeignKey:    fkColumns.Contains(name, StringComparer.OrdinalIgnoreCase)
-            ));
+            columns.Add(
+                new ColumnMetadata(
+                    OrdinalPosition: reader.GetInt32(0),
+                    Name: name,
+                    DataType: NormalizeType(nativeType),
+                    NativeType: reader.GetString(3), // full e.g. "varchar(255)"
+                    IsNullable: reader.GetString(4) == "YES",
+                    MaxLength: reader.IsDBNull(5) ? null : (int?)reader.GetInt64(5),
+                    Precision: reader.IsDBNull(6) ? null : (int?)reader.GetInt64(6),
+                    Scale: reader.IsDBNull(7) ? null : (int?)reader.GetInt64(7),
+                    DefaultValue: reader.IsDBNull(8) ? null : reader.GetString(8),
+                    IsPrimaryKey: columnKey == "PRI",
+                    IsUnique: columnKey == "UNI",
+                    IsIndexed: columnKey is "PRI" or "UNI" or "MUL",
+                    IsForeignKey: fkColumns.Contains(name, StringComparer.OrdinalIgnoreCase)
+                )
+            );
         }
 
         return columns;
     }
 
-    private async Task<HashSet<string>> GetFkColumnNamesAsync(
-        DbConnection conn, string schema, string table, CancellationToken ct)
+    private static async Task<HashSet<string>> GetFkColumnNamesAsync(
+        DbConnection conn,
+        string schema,
+        string table,
+        CancellationToken ct
+    )
     {
         const string sql = """
             SELECT COLUMN_NAME
@@ -138,10 +150,10 @@ public sealed class MySqlInspector : BaseInspector
         await using var cmd = (MySqlCommand)conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("@schema", schema);
-        cmd.Parameters.AddWithValue("@table",  table);
+        cmd.Parameters.AddWithValue("@table", table);
 
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using MySqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
             set.Add(reader.GetString(0));
 
@@ -150,8 +162,12 @@ public sealed class MySqlInspector : BaseInspector
 
     // ── Indexes ───────────────────────────────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<IndexMetadata>>
-        FetchIndexesAsync(DbConnection conn, string schema, string table, CancellationToken ct)
+    protected override async Task<IReadOnlyList<IndexMetadata>> FetchIndexesAsync(
+        DbConnection conn,
+        string schema,
+        string table,
+        CancellationToken ct
+    )
     {
         const string sql = """
             SELECT
@@ -168,20 +184,22 @@ public sealed class MySqlInspector : BaseInspector
         await using var cmd = (MySqlCommand)conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("@schema", schema);
-        cmd.Parameters.AddWithValue("@table",  table);
+        cmd.Parameters.AddWithValue("@table", table);
 
         var indexes = new List<IndexMetadata>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using MySqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var idxName = reader.GetString(0);
-            indexes.Add(new IndexMetadata(
-                Name:         idxName,
-                IsUnique:     reader.GetInt32(1) == 0,     // NON_UNIQUE = 0 means unique
-                IsClustered:  idxName == "PRIMARY",
-                IsPrimaryKey: idxName == "PRIMARY",
-                Columns:      reader.GetString(2).Split(',')
-            ));
+            string idxName = reader.GetString(0);
+            indexes.Add(
+                new IndexMetadata(
+                    Name: idxName,
+                    IsUnique: reader.GetInt32(1) == 0, // NON_UNIQUE = 0 means unique
+                    IsClustered: idxName == "PRIMARY",
+                    IsPrimaryKey: idxName == "PRIMARY",
+                    Columns: reader.GetString(2).Split(',')
+                )
+            );
         }
 
         return indexes;
@@ -189,8 +207,10 @@ public sealed class MySqlInspector : BaseInspector
 
     // ── Foreign Keys — information_schema ─────────────────────────────────────
 
-    protected override async Task<IReadOnlyList<ForeignKeyRelation>>
-        FetchForeignKeysAsync(DbConnection conn, CancellationToken ct)
+    protected override async Task<IReadOnlyList<ForeignKeyRelation>> FetchForeignKeysAsync(
+        DbConnection conn,
+        CancellationToken ct
+    )
     {
         // Join KEY_COLUMN_USAGE with REFERENTIAL_CONSTRAINTS to get the
         // referential actions (ON DELETE / ON UPDATE) alongside column pairs.
@@ -220,21 +240,23 @@ public sealed class MySqlInspector : BaseInspector
         cmd.Parameters.AddWithValue("@db", Config.Database);
 
         var relations = new List<ForeignKeyRelation>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using MySqlDataReader reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            relations.Add(new ForeignKeyRelation(
-                ConstraintName:  reader.GetString(0),
-                ChildSchema:     reader.GetString(1),
-                ChildTable:      reader.GetString(2),
-                ChildColumn:     reader.GetString(3),
-                ParentSchema:    reader.GetString(4),
-                ParentTable:     reader.GetString(5),
-                ParentColumn:    reader.GetString(6),
-                OnDelete:        ParseReferentialAction(reader.GetString(7)),
-                OnUpdate:        ParseReferentialAction(reader.GetString(8)),
-                OrdinalPosition: reader.GetInt32(9)
-            ));
+            relations.Add(
+                new ForeignKeyRelation(
+                    ConstraintName: reader.GetString(0),
+                    ChildSchema: reader.GetString(1),
+                    ChildTable: reader.GetString(2),
+                    ChildColumn: reader.GetString(3),
+                    ParentSchema: reader.GetString(4),
+                    ParentTable: reader.GetString(5),
+                    ParentColumn: reader.GetString(6),
+                    OnDelete: ParseReferentialAction(reader.GetString(7)),
+                    OnUpdate: ParseReferentialAction(reader.GetString(8)),
+                    OrdinalPosition: reader.GetInt32(9)
+                )
+            );
         }
 
         return relations;
@@ -242,30 +264,31 @@ public sealed class MySqlInspector : BaseInspector
 
     // ── Type normalisation ────────────────────────────────────────────────────
 
-    private static string NormalizeType(string native) => native.ToLowerInvariant() switch
-    {
-        "tinyint"   => "tinyint",
-        "smallint"  => "smallint",
-        "mediumint" => "integer",
-        "int"       => "integer",
-        "bigint"    => "bigint",
-        "decimal" or "numeric" => "decimal",
-        "float"     => "float",
-        "double"    => "double",
-        "bit"       => "boolean",
-        "char"      => "char",
-        "varchar"   => "varchar",
-        "tinytext" or "text" or "mediumtext" or "longtext" => "text",
-        "date"      => "date",
-        "time"      => "time",
-        "datetime"  => "datetime",
-        "timestamp" => "timestamp",
-        "year"      => "year",
-        "tinyblob" or "blob" or "mediumblob" or "longblob" => "binary",
-        "binary" or "varbinary" => "binary",
-        "json"      => "json",
-        "enum"      => "enum",
-        "set"       => "set",
-        _           => native.ToLowerInvariant()
-    };
+    private static string NormalizeType(string native) =>
+        native.ToLowerInvariant() switch
+        {
+            "tinyint" => "tinyint",
+            "smallint" => "smallint",
+            "mediumint" => "integer",
+            "int" => "integer",
+            "bigint" => "bigint",
+            "decimal" or "numeric" => "decimal",
+            "float" => "float",
+            "double" => "double",
+            "bit" => "boolean",
+            "char" => "char",
+            "varchar" => "varchar",
+            "tinytext" or "text" or "mediumtext" or "longtext" => "text",
+            "date" => "date",
+            "time" => "time",
+            "datetime" => "datetime",
+            "timestamp" => "timestamp",
+            "year" => "year",
+            "tinyblob" or "blob" or "mediumblob" or "longblob" => "binary",
+            "binary" or "varbinary" => "binary",
+            "json" => "json",
+            "enum" => "enum",
+            "set" => "set",
+            _ => native.ToLowerInvariant(),
+        };
 }

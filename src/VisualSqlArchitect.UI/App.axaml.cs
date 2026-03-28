@@ -26,8 +26,9 @@ internal static class Program
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
 
     public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<App>()
+        AppBuilder
+            .Configure<App>()
             .UsePlatformDetect()
-            .WithInterFont()          // Avalonia.Fonts.Inter
+            .WithInterFont() // Avalonia.Fonts.Inter
             .LogToTrace();
 }

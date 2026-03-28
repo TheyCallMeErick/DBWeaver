@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:ctrl="using:VisualSqlArchitect.UI.Controls"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="VisualSqlArchitect.UI.Controls.SidebarControl"
+             x:DataType="vm:SidebarViewModel">
+
+  <!-- Tab Bar Style -->
+  <UserControl.Styles>
+    <Style Selector="Button.tab-button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#6B7280"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Padding" Value="16,10"/>
+      <Setter Property="Border.CornerRadius" Value="0"/>
+      <Setter Property="Border.BorderThickness" Value="0,0,0,2"/>
+      <Setter Property="Border.BorderBrush" Value="Transparent"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Foreground" Duration="0:0:0.1"/>
+          <BrushTransition Property="Border.BorderBrush" Duration="0:0:0.1"/>
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.tab-button:pointerover">
+      <Setter Property="Foreground" Value="#9CA3AF"/>
+    </Style>
+
+    <Style Selector="Button.tab-button.active">
+      <Setter Property="Foreground" Value="#60A5FA"/>
+      <Setter Property="Border.BorderBrush" Value="#60A5FA"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="40,*,Auto">
+
+    <!-- Tab Bar (Header) -->
+    <Border Grid.Row="0"
+            Background="#0D0F14"
+            BorderBrush="#1E2335"
+            BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Spacing="0">
+
+        <!-- Nodes Tab -->
+        <Button x:Name="NodesTabButton"
+                Classes="tab-button"
+                Classes.active="{Binding ShowNodes}"
+                Content="Nodes"/>
+
+        <!-- Connection Tab -->
+        <Button x:Name="ConnectionTabButton"
+                Classes="tab-button"
+                Classes.active="{Binding ShowConnection}"
+                Content="Connection"/>
+
+        <!-- Schema Tab -->
+        <Button x:Name="SchemaTabButton"
+                Classes="tab-button"
+                Classes.active="{Binding ShowSchema}"
+                Content="Schema"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Tab Content Area -->
+    <Grid Grid.Row="1" RowDefinitions="*">
+      <!-- Nodes Tab -->
+      <Grid IsVisible="{Binding ShowNodes}" Grid.Column="0">
+        <ctrl:NodesListControl x:Name="NodesControl"/>
+      </Grid>
+
+      <!-- Connection Tab -->
+      <Grid IsVisible="{Binding ShowConnection}" Grid.Column="0">
+        <ctrl:ConnectionTabControl x:Name="ConnectionControl"/>
+      </Grid>
+
+      <!-- Schema Tab -->
+      <Grid IsVisible="{Binding ShowSchema}" Grid.Column="0">
+        <ctrl:SchemaControl x:Name="SchemaControl"/>
+      </Grid>
+    </Grid>
+
+    <!-- Footer (Add Node + Preview buttons) -->
+    <Border Grid.Row="2"
+            Background="#0D0F14"
+            BorderBrush="#1E2335"
+            BorderThickness="0,1,0,0"
+            Padding="8,6">
+      <StackPanel Orientation="Horizontal" Spacing="5">
+        <Button Content="+ Add Node (⇧A)"
+                Background="#0D4F3E"
+                Foreground="#14B8A6"
+                Padding="10,7"
+                FontSize="10"
+                FontWeight="Medium"
+                CornerRadius="5"
+                BorderThickness="0"
+                HorizontalAlignment="Stretch"/>
+        <Button Content="Preview (F3)"
+                Background="#4C3D1A"
+                Foreground="#FBBF24"
+                Padding="10,7"
+                FontSize="10"
+                FontWeight="Medium"
+                CornerRadius="5"
+                BorderThickness="0"
+                HorizontalAlignment="Stretch"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+
+</UserControl>

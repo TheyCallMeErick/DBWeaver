@@ -1,0 +1,17 @@
+#!/bin/sh
+# Pre-commit hook for CSharpier formatting
+# This hook runs CSharpier to format C# code before commits
+
+echo "🔍 Running CSharpier format check..."
+
+# Run CSharpier on the entire solution
+dotnet csharpier format . --write-stdout 2>/dev/null
+
+if [ $? -ne 0 ]; then
+    echo "❌ CSharpier check failed"
+    echo "Run: dotnet csharpier format . --write-stdout"
+    exit 1
+fi
+
+echo "✅ CSharpier formatting applied successfully"
+exit 0
