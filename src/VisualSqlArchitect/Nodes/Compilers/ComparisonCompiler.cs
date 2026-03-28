@@ -65,8 +65,8 @@ public sealed class ComparisonCompiler : INodeCompiler
     )
     {
         ISqlExpression value = ctx.ResolveInput(node.Id, "value");
-        ISqlExpression lower = ctx.ResolveInput(node.Id, "lower");
-        ISqlExpression upper = ctx.ResolveInput(node.Id, "upper");
+        ISqlExpression lower = ctx.ResolveInput(node.Id, "low");
+        ISqlExpression upper = ctx.ResolveInput(node.Id, "high");
         return new BetweenExpr(value, lower, upper, negate);
     }
 

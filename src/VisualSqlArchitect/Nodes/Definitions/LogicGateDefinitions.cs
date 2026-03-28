@@ -14,7 +14,7 @@ public static class LogicGateDefinitions
         "AND",
         "All conditions must be true",
         [
-            // Dynamic cond_N input pins are added by NodeViewModel.
+            In("conditions", PinDataType.Boolean, required: false, multi: true),
             Out("result", PinDataType.Boolean),
         ],
         EmptyParams
@@ -26,7 +26,7 @@ public static class LogicGateDefinitions
         "OR",
         "At least one condition must be true",
         [
-            // Dynamic cond_N input pins are added by NodeViewModel.
+            In("conditions", PinDataType.Boolean, required: false, multi: true),
             Out("result", PinDataType.Boolean),
         ],
         EmptyParams

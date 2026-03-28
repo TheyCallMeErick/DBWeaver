@@ -31,7 +31,7 @@ public sealed class LogicGateCompiler : INodeCompiler
         LogicOperator op
     )
     {
-        IReadOnlyList<ISqlExpression> inputs = ctx.ResolveInputs(node.Id, "inputs");
+        IReadOnlyList<ISqlExpression> inputs = ctx.ResolveInputs(node.Id, "conditions");
         if (inputs.Count == 0)
             return new LiteralExpr(op == LogicOperator.And ? "TRUE" : "FALSE", PinDataType.Boolean);
 

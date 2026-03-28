@@ -37,7 +37,7 @@ public sealed class JsonCompiler : INodeCompiler
             ),
 
             VisualSqlArchitect.Core.DatabaseProvider.Postgres => new RawSqlExpr(
-                $"{json.Emit(ctx.EmitContext)}::jsonb @> '{path}'",
+                BuildPostgresJsonExtract(json.Emit(ctx.EmitContext), path),
                 PinDataType.Text
             ),
 
@@ -46,6 +46,13 @@ public sealed class JsonCompiler : INodeCompiler
                 PinDataType.Text
             ),
         };
+    }
+
+    private static string BuildPostgresJsonExtract(string jsonExpr, string path)
+    {
+        // Convert $.key notation to Postgres ->> operator: column ->> 'key'
+        string key = path.StartsWith("$.", StringComparison.Ordinal) ? path[2..] : path.TrimStart('$', '.');
+        return $"{jsonExpr} ->> '{key}'";
     }
 
     private static ISqlExpression CompileJsonArrayLength(

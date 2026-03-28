@@ -87,7 +87,7 @@ public sealed class PostgresDialect : ISqlDialect
         var parts = new List<string>();
         if (limit.HasValue)
             parts.Add($"LIMIT {limit.Value}");
-        if (offset.HasValue)
+        if (offset.HasValue && offset.Value > 0)
             parts.Add($"OFFSET {offset.Value}");
         return string.Join(" ", parts);
     }

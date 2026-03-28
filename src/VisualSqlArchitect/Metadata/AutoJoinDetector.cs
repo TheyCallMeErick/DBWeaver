@@ -357,6 +357,11 @@ public sealed partial class AutoJoinDetector(DbMetadata metadata)
         @"(ss|sh|ch|x|z)es$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase
     );
+    // handles "buses" → "bus": a non-s char followed by "ses" at end
+    private static readonly Regex _trailingSes = new(
+        @"([^s])ses$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase
+    );
     private static readonly Regex _trailingS = new(
         @"s$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase
@@ -370,9 +375,13 @@ public sealed partial class AutoJoinDetector(DbMetadata metadata)
         if (_trailingEs.IsMatch(tableName))
             return _trailingEs.Replace(tableName, "$1");
 
+        if (_trailingSes.IsMatch(tableName))
+            return _trailingSes.Replace(tableName, "$1s");
+
         if (
             _trailingS.IsMatch(tableName)
             && !tableName.EndsWith("ss", StringComparison.OrdinalIgnoreCase)
+            && !tableName.EndsWith("us", StringComparison.OrdinalIgnoreCase)
         )
             return _trailingS.Replace(tableName, string.Empty);
 

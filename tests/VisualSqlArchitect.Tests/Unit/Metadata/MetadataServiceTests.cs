@@ -441,7 +441,7 @@ public class AutoJoinDetectorTests
     public void Suggest_NamingHeuristic_DetectsConvention()
     {
         // Build a schema where there is NO catalog FK, but column names imply a join
-        _ = MetadataFixtures.Fk("app", "invoices", "customer_id", "app", "clients", "id");
+        _ = MetadataFixtures.Fk("app", "invoices", "client_id", "app", "clients", "id");
 
         // No FK defined — remove outbound FK from the table
         TableMetadata invoices = MetadataFixtures.Table(
@@ -449,7 +449,7 @@ public class AutoJoinDetectorTests
             "invoices",
             [
                 MetadataFixtures.Col("id", isPk: true),
-                MetadataFixtures.Col("customer_id", isFk: false), // no FK in catalog
+                MetadataFixtures.Col("client_id", isFk: false), // no FK in catalog
             ]
         );
 
@@ -472,7 +472,7 @@ public class AutoJoinDetectorTests
         var detector = new AutoJoinDetector(db);
         IReadOnlyList<JoinSuggestion> results = detector.Suggest("app.invoices", ["app.clients"]);
 
-        // Should still detect via naming heuristic (invoices.customer_id → clients.id)
+        // Should still detect via naming heuristic (invoices.client_id → clients.id)
         Assert.NotEmpty(results);
         Assert.True(results[0].Score >= 0.7);
         Assert.Equal(JoinConfidence.HeuristicStrong, results[0].Confidence);
