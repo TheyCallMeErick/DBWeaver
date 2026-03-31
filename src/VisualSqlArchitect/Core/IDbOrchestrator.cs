@@ -45,6 +45,7 @@ public record ConnectionConfig(
             DatabaseProvider.SqlServer => BuildSqlServerCs(),
             DatabaseProvider.MySql => BuildMySqlCs(),
             DatabaseProvider.Postgres => BuildPostgresCs(),
+            DatabaseProvider.SQLite => BuildSqliteCs(),
             _ => throw new NotSupportedException($"Provider {Provider} is not supported."),
         };
 
@@ -61,6 +62,9 @@ public record ConnectionConfig(
 
     private string BuildPostgresCs() =>
         $"Host={Host};Port={Port};Database={Database};Username={Username};Password={Password};Timeout={TimeoutSeconds};";
+
+    private string BuildSqliteCs() =>
+        $"Data Source={Database};Timeout={TimeoutSeconds};";
 }
 
 public record ConnectionTestResult(
@@ -84,6 +88,7 @@ public enum DatabaseProvider
     SqlServer,
     MySql,
     Postgres,
+    SQLite,
 }
 
 // ─── Core Orchestrator Interface ──────────────────────────────────────────────

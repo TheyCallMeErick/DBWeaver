@@ -15,9 +15,10 @@ public sealed class DeleteConnectionCommand(ConnectionViewModel connection) : IC
 
         canvas.Connections.Remove(_connection);
 
-        _connection.FromPin.IsConnected = canvas.Connections.Any(c =>
-            c.FromPin == _connection.FromPin
-        );
+        if (_connection.FromPin is not null)
+            _connection.FromPin.IsConnected = canvas.Connections.Any(c =>
+                c.FromPin == _connection.FromPin
+            );
         if (_connection.ToPin is not null)
             _connection.ToPin.IsConnected = canvas.Connections.Any(c =>
                 c.ToPin == _connection.ToPin

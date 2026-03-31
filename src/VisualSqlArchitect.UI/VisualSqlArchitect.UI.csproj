@@ -32,6 +32,11 @@
   </ItemGroup>
 
   <!-- ── AXAML files handled by Avalonia SDK auto-discovery ── -->
+  <ItemGroup>
+    <Content Include="Assets\Localization\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
 
 <!--

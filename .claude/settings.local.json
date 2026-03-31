@@ -8,12 +8,19 @@
       "Bash(dotnet new:*)",
       "Bash(dotnet tool:*)",
       "Bash(dotnet csharpier:*)",
+      "Bash(dotnet fsi:*)",
+      "Bash(grep -r MaterialIconKind. /home/erickazevedo/Downloads/files/src/VisualSqlArchitect.UI/ --include=*.cs)",
+      "Bash(python3 -c \":*)",
+      "Bash(grep -n \"InvalidateWires\\\\|Dispatcher\" /home/erickazevedo/Downloads/files/src/VisualSqlArchitect.UI/MainWindow.axaml.cs /home/erickazevedo/Downloads/files/src/VisualSqlArchitect.UI/Services/*.cs)",
       "WebFetch(domain:docs.avaloniaui.net)",
       "Bash(git fsck:*)",
       "Bash(find .git/objects -type f -empty -delete)",
       "Bash(git update-ref:*)",
       "Bash(git fetch:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(python3:*)",
+      "Bash(git commit:*)",
+      "Bash(dotnet test:*)"
     ]
   }
 }

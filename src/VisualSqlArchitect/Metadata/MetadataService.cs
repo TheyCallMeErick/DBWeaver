@@ -89,7 +89,7 @@ public sealed class MetadataService(
     IDatabaseInspector inspector,
     TimeSpan? cacheTtl = null,
     ILogger<MetadataService>? logger = null
-)
+) : IDisposable
 {
     private readonly IDatabaseInspector _inspector =
         inspector ?? throw new ArgumentNullException(nameof(inspector));
@@ -100,6 +100,7 @@ public sealed class MetadataService(
     private volatile CacheEntry? _cache;
     private readonly SemaphoreSlim _fetchLock = new(1, 1);
     private readonly ConcurrentStringSet _canvasTables = new();
+    private bool _disposed;
 
     public static MetadataService Create(
         ConnectionConfig config,
@@ -296,6 +297,13 @@ public sealed class MetadataService(
         {
             Schemas = newSchemas,
         };
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _fetchLock?.Dispose();
+        _disposed = true;
     }
 }
 

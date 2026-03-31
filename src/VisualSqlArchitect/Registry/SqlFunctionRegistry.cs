@@ -105,6 +105,7 @@ public sealed partial class SqlFunctionRegistry(DatabaseProvider provider) : ISq
             DatabaseProvider.Postgres => new PostgresFunctionFragments(),
             DatabaseProvider.MySql => new MySqlFunctionFragments(),
             DatabaseProvider.SqlServer => new SqlServerFunctionFragments(),
+            DatabaseProvider.SQLite => new SqliteFunctionFragments(),
             _ => throw new NotSupportedException($"Provider {provider} is not supported."),
         };
 
@@ -135,6 +136,15 @@ public sealed partial class SqlFunctionRegistry(DatabaseProvider provider) : ISq
             SqlFn.RegexReplace,
             SqlFn.RegexExtract,
         },
+        [DatabaseProvider.SQLite] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            SqlFn.RegexReplace,
+            SqlFn.RegexExtract,
+            SqlFn.StringAgg,      // SQLite uses GROUP_CONCAT with different syntax
+            SqlFn.DateTrunc,       // SQLite doesn't have DATE_TRUNC; use strftime()
+            SqlFn.JsonArrayLength, // Limited json1 support
+            SqlFn.JsonExists,      // Limited json1 support
+        },
     };
 
     private static readonly IReadOnlyDictionary<
@@ -145,12 +155,28 @@ public sealed partial class SqlFunctionRegistry(DatabaseProvider provider) : ISq
     )
     {
         [SqlFn.RegexReplace] = (
-            "REGEXP_REPLACE is not natively supported in SQL Server",
-            "Use a CLR scalar function, or switch the provider to PostgreSQL or MySQL."
+            "REGEXP_REPLACE is not natively supported in SQL Server or SQLite",
+            "Use a CLR scalar function (SQL Server), or switch the provider to PostgreSQL or MySQL."
         ),
         [SqlFn.RegexExtract] = (
-            "REGEXP_SUBSTR is not natively supported in SQL Server",
-            "Use a CLR scalar function, or switch the provider to PostgreSQL or MySQL."
+            "REGEXP_SUBSTR is not natively supported in SQL Server or SQLite",
+            "Use a CLR scalar function (SQL Server), or switch the provider to PostgreSQL or MySQL."
+        ),
+        [SqlFn.StringAgg] = (
+            "STRING_AGG is not available in SQLite; use GROUP_CONCAT instead",
+            "SQLite uses GROUP_CONCAT(col, ',') for string aggregation."
+        ),
+        [SqlFn.DateTrunc] = (
+            "DATE_TRUNC is not available in SQLite",
+            "Use strftime('%Y-%m-%d', date_column) or equivalent."
+        ),
+        [SqlFn.JsonArrayLength] = (
+            "JSON array functions have limited support in SQLite",
+            "Enable json1 extension or switch to PostgreSQL/MySQL for full JSON support."
+        ),
+        [SqlFn.JsonExists] = (
+            "JSON functions have limited support in SQLite",
+            "Enable json1 extension or switch to PostgreSQL/MySQL for full JSON support."
         ),
     };
 
@@ -190,7 +216,66 @@ public sealed partial class SqlFunctionRegistry(DatabaseProvider provider) : ISq
             DatabaseProvider.Postgres => PostgresMap(),
             DatabaseProvider.MySql => MySqlMap(),
             DatabaseProvider.SqlServer => SqlServerMap(),
+            DatabaseProvider.SQLite => SqliteMap(),
             _ => throw new NotSupportedException($"Provider {p} is not supported."),
+        };
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SQLITE
+    // ─────────────────────────────────────────────────────────────────────────
+    private static Dictionary<string, FnRenderer> SqliteMap() =>
+        new()
+        {
+            [SqlFn.Regex] = a => $"{a[0]} GLOB {a[1]}",
+            [SqlFn.RegexReplace] = a =>
+                throw new NotSupportedException(
+                    "REGEXP_REPLACE is not supported in SQLite. Use REPLACE() or switch to Postgres/MySQL."
+                ),
+            [SqlFn.RegexExtract] = a =>
+                throw new NotSupportedException(
+                    "REGEXP_SUBSTR is not supported in SQLite. Switch to Postgres/MySQL for regex support."
+                ),
+            [SqlFn.Replace] = a => $"REPLACE({a[0]}, {a[1]}, {a[2]})",
+            [SqlFn.Contains] = a => $"{a[0]} LIKE '%' || {a[1]} || '%'",
+            [SqlFn.StartsWith] = a => $"{a[0]} LIKE {a[1]} || '%'",
+            [SqlFn.EndsWith] = a => $"{a[0]} LIKE '%' || {a[1]}",
+            [SqlFn.Concat] = a => $"({Join(a)})", // SQLite concatenation with ||
+            [SqlFn.Length] = a => $"LENGTH({a[0]})",
+            [SqlFn.Upper] = a => $"UPPER({a[0]})",
+            [SqlFn.Lower] = a => $"LOWER({a[0]})",
+            [SqlFn.Trim] = a => $"TRIM({a[0]})",
+            [SqlFn.Coalesce] = a => $"COALESCE({Join(a)})",
+            [SqlFn.NullIf] = a => $"NULLIF({a[0]}, {a[1]})",
+            [SqlFn.DateDiff] = a => $"CAST((julianday({a[1]}) - julianday({a[0]})) AS INTEGER)",
+            [SqlFn.DateTrunc] = a =>
+                throw new NotSupportedException(
+                    "DATE_TRUNC is not available in SQLite. Use strftime('%' || {a[0]} || '', {a[1]}) or similar."
+                ),
+            [SqlFn.CurrentDate] = _ => "DATE('now')",
+            [SqlFn.Year] = a => $"CAST(strftime('%Y', {a[0]}) AS INTEGER)",
+            [SqlFn.Month] = a => $"CAST(strftime('%m', {a[0]}) AS INTEGER)",
+            [SqlFn.Day] = a => $"CAST(strftime('%d', {a[0]}) AS INTEGER)",
+            [SqlFn.StringAgg] = a =>
+                throw new NotSupportedException(
+                    "STRING_AGG is not supported in SQLite. Use GROUP_CONCAT({a[0]}, {a[1]}) instead."
+                ),
+            [SqlFn.IfNull] = a => $"IFNULL({a[0]}, {a[1]})",
+            [SqlFn.Greatest] = a => $"MAX({Join(a)})",
+            [SqlFn.Least] = a => $"MIN({Join(a)})",
+
+            // ── JSON — SQLite has limited json1 extension support ──
+            [SqlFn.JsonExtract] = a =>
+                $"json_unquote(json_extract({a[0]}, {a[1]}))",
+            [SqlFn.JsonQuery] = a =>
+                $"json_extract({a[0]}, {a[1]})",
+            [SqlFn.JsonArrayLength] = a =>
+                throw new NotSupportedException(
+                    "JSON array functions have limited support in SQLite. Enable json1 extension or switch to Postgres/MySQL."
+                ),
+            [SqlFn.JsonExists] = a =>
+                throw new NotSupportedException(
+                    "JSON_EXISTS is not reliably supported in SQLite. Use Postgres or MySQL for full JSON support."
+                ),
         };
 
     // ─────────────────────────────────────────────────────────────────────────

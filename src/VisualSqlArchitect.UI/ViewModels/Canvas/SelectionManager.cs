@@ -40,35 +40,35 @@ public sealed class SelectionManager
 
         AlignLeftCommand = new RelayCommand(
             () => AlignNodes(AlignMode.Left),
-            () => SelectedNodes().Count >= 2
+            () => HasAtLeastSelected(2)
         );
         AlignRightCommand = new RelayCommand(
             () => AlignNodes(AlignMode.Right),
-            () => SelectedNodes().Count >= 2
+            () => HasAtLeastSelected(2)
         );
         AlignTopCommand = new RelayCommand(
             () => AlignNodes(AlignMode.Top),
-            () => SelectedNodes().Count >= 2
+            () => HasAtLeastSelected(2)
         );
         AlignBottomCommand = new RelayCommand(
             () => AlignNodes(AlignMode.Bottom),
-            () => SelectedNodes().Count >= 2
+            () => HasAtLeastSelected(2)
         );
         AlignCenterHCommand = new RelayCommand(
             () => AlignNodes(AlignMode.CenterH),
-            () => SelectedNodes().Count >= 2
+            () => HasAtLeastSelected(2)
         );
         AlignCenterVCommand = new RelayCommand(
             () => AlignNodes(AlignMode.CenterV),
-            () => SelectedNodes().Count >= 2
+            () => HasAtLeastSelected(2)
         );
         DistributeHCommand = new RelayCommand(
             () => AlignNodes(AlignMode.DistributeH),
-            () => SelectedNodes().Count >= 3
+            () => HasAtLeastSelected(3)
         );
         DistributeVCommand = new RelayCommand(
             () => AlignNodes(AlignMode.DistributeV),
-            () => SelectedNodes().Count >= 3
+            () => HasAtLeastSelected(3)
         );
     }
 
@@ -99,6 +99,25 @@ public sealed class SelectionManager
     }
 
     public List<NodeViewModel> SelectedNodes() => [.. _nodes.Where(n => n.IsSelected)];
+
+    private bool HasAtLeastSelected(int threshold)
+    {
+        if (threshold <= 0)
+            return true;
+
+        int count = 0;
+        foreach (NodeViewModel node in _nodes)
+        {
+            if (!node.IsSelected)
+                continue;
+
+            count++;
+            if (count >= threshold)
+                return true;
+        }
+
+        return false;
+    }
 
     public void AlignNodes(AlignMode mode)
     {

@@ -110,6 +110,7 @@ public sealed class ExplainPlanViewModel : ViewModelBase
         DatabaseProvider.Postgres  => "PostgreSQL",
         DatabaseProvider.MySql     => "MySQL",
         DatabaseProvider.SqlServer => "SQL Server",
+        DatabaseProvider.SQLite    => "SQLite",
         _                          => _provider.ToString(),
     };
 
@@ -118,6 +119,7 @@ public sealed class ExplainPlanViewModel : ViewModelBase
         DatabaseProvider.Postgres  => "EXPLAIN (FORMAT TEXT)",
         DatabaseProvider.MySql     => "EXPLAIN",
         DatabaseProvider.SqlServer => "SET SHOWPLAN_TEXT ON",
+        DatabaseProvider.SQLite    => "EXPLAIN QUERY PLAN",
         _                          => "EXPLAIN",
     };
 
@@ -138,8 +140,24 @@ public sealed class ExplainPlanViewModel : ViewModelBase
         Provider = _canvas.LiveSql.Provider;
         IsVisible = true;
 
-        // Auto-run on open
-        _ = RunExplainAsync();
+        // Auto-run on open with explicit exception handling
+        _ = RunExplainAsyncSafe();
+    }
+
+    private async Task RunExplainAsyncSafe()
+    {
+        try
+        {
+            await RunExplainAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log or handle exception in fire-and-forget context
+            // Prevents unhandled exceptions from crashing the app
+            ErrorMessage = $"Explain plan error: {ex.Message}";
+            IsLoading = false;
+            System.Diagnostics.Debug.WriteLine($"[ExplainPlan] Unhandled exception in fire-and-forget: {ex}");
+        }
     }
 
     public void Close() => IsVisible = false;

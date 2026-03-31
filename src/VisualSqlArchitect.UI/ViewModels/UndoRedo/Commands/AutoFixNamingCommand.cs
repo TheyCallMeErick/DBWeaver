@@ -29,13 +29,13 @@ public sealed class AutoFixNamingCommand : ICanvasCommand
 
     public void Execute(CanvasViewModel canvas)
     {
-        foreach ((NodeViewModel node, string _, string newAlias) in _renames)
+        foreach ((NodeViewModel node, string? _, string newAlias) in _renames)
             node.Alias = newAlias;
     }
 
     public void Undo(CanvasViewModel canvas)
     {
-        foreach ((NodeViewModel node, string oldAlias, string _) in _renames)
+        foreach ((NodeViewModel node, string? oldAlias, string _) in _renames)
             node.Alias = oldAlias;
     }
 }

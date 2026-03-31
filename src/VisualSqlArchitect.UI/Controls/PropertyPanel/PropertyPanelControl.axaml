@@ -1,0 +1,372 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+             xmlns:loc="using:VisualSqlArchitect.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="VisualSqlArchitect.UI.Controls.PropertyPanelControl"
+             x:DataType="vm:PropertyPanelViewModel"
+             Width="240">
+
+  <UserControl.Styles>
+
+    <!-- Section header -->
+    <Style Selector="TextBlock.section-label">
+      <Setter Property="FontSize"      Value="9"/>
+      <Setter Property="FontWeight"    Value="Bold"/>
+      <Setter Property="Foreground"    Value="#4A5568"/>
+      <Setter Property="LetterSpacing" Value="1.5"/>
+      <Setter Property="Margin"        Value="0,0,0,6"/>
+    </Style>
+
+    <!-- Parameter label -->
+    <Style Selector="TextBlock.param-label">
+      <Setter Property="FontSize"   Value="11"/>
+      <Setter Property="Foreground" Value="#8B95A8"/>
+      <Setter Property="Margin"     Value="0,0,0,3"/>
+    </Style>
+
+    <!-- Parameter input -->
+    <Style Selector="TextBox.param-input">
+      <Setter Property="Background"    Value="#0D0F14"/>
+      <Setter Property="BorderBrush"   Value="#252C3F"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground"    Value="#E8EAED"/>
+      <Setter Property="FontFamily"    Value="Consolas,monospace"/>
+      <Setter Property="FontSize"      Value="11"/>
+      <Setter Property="CornerRadius"  Value="6"/>
+      <Setter Property="Padding"       Value="7,5"/>
+    </Style>
+    <Style Selector="TextBox.param-input:focus /template/ Border#PART_BorderElement">
+      <Setter Property="BorderBrush" Value="#3B82F6"/>
+    </Style>
+
+    <!-- ComboBox -->
+    <Style Selector="ComboBox.param-combo">
+      <Setter Property="Background"    Value="#0D0F14"/>
+      <Setter Property="BorderBrush"   Value="#252C3F"/>
+      <Setter Property="Foreground"    Value="#E8EAED"/>
+      <Setter Property="FontSize"      Value="11"/>
+      <Setter Property="CornerRadius"  Value="6"/>
+      <Setter Property="Padding"       Value="7,5"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <!-- Pin row -->
+    <Style Selector="Border.pin-info-row">
+      <Setter Property="Padding"       Value="8,5"/>
+      <Setter Property="CornerRadius"  Value="6"/>
+      <Setter Property="Background"    Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.08"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.pin-info-row:pointerover">
+      <Setter Property="Background" Value="#131720"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- ══ Panel shell ════════════════════════════════════════════════════════ -->
+  <Border Background="#0F1219"
+          BorderBrush="#1A1D26"
+          BorderThickness="1,0,0,0">
+
+    <Grid RowDefinitions="Auto,*">
+
+      <!-- ── Panel header ──────────────────────────────────────────────────── -->
+      <Border Grid.Row="0"
+              Background="#0D0F14"
+              Padding="12,10"
+              BorderBrush="#1A1D26"
+              BorderThickness="0,0,0,1">
+
+        <Grid ColumnDefinitions="Auto,*">
+
+          <!-- Node category gradient badge -->
+          <Border Grid.Column="0"
+                  Width="28" Height="28"
+                  CornerRadius="7"
+                  Background="{Binding HeaderGradient}"
+                  Margin="0,0,10,0"
+                  VerticalAlignment="Center"
+                  IsVisible="{Binding HasNode}">
+            <mi:MaterialIcon Kind="{Binding CategoryIconKind}"
+                             Width="14" Height="14"
+                             Foreground="White"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
+          </Border>
+
+          <!-- Title -->
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+            <TextBlock Text="{Binding PanelTitle}"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#E8EAED"
+                       TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding NodeCategory}"
+                       FontSize="10"
+                       Foreground="#4A5568"
+                       IsVisible="{Binding HasNode}"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- ── Scrollable content ────────────────────────────────────────────── -->
+      <ScrollViewer Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled">
+
+        <StackPanel Spacing="0" IsVisible="{Binding HasNode}">
+
+          <!-- ── ALIAS ──────────────────────────────────────────────────────── -->
+          <Border Padding="12,12,12,8"
+                  BorderBrush="#1A1D26"
+                  BorderThickness="0,0,0,1">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="section-label" Text="{Binding [property.outputAlias], Source={x:Static loc:LocalizationService.Instance}}"/>
+              <TextBox Classes="param-input"
+                       Text="{Binding NodeAlias, Mode=TwoWay}"
+                       Watermark="{Binding [property.aliasWatermark], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="11"/>
+            </StackPanel>
+          </Border>
+
+          <!-- ── PARAMETERS ─────────────────────────────────────────────────── -->
+          <Border Padding="12,10,12,8"
+                  BorderBrush="#1A1D26"
+                  BorderThickness="0,0,0,1"
+                  IsVisible="{Binding HasParams}">
+
+            <StackPanel Spacing="0">
+              <TextBlock Classes="section-label" Text="{Binding [property.parameters], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+              <ItemsControl ItemsSource="{Binding Parameters}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ParameterRowViewModel">
+                    <StackPanel Spacing="3" Margin="0,0,0,10">
+
+                      <!-- Param label + dirty indicator -->
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Classes="param-label"
+                                   Text="{Binding Name}"/>
+                        <Ellipse Grid.Column="1"
+                                 Width="5" Height="5"
+                                 Fill="#FBBF24"
+                                 VerticalAlignment="Center"
+                                 IsVisible="{Binding IsDirty}"/>
+                      </Grid>
+
+                      <!-- Text / JsonPath input -->
+                      <TextBox Classes="param-input"
+                               Text="{Binding Value, Mode=TwoWay}"
+                               Watermark="{Binding Description}"
+                               IsVisible="{Binding IsText}"/>
+
+                      <!-- Number input -->
+                      <TextBox Classes="param-input"
+                               Text="{Binding Value, Mode=TwoWay}"
+                               Watermark="0"
+                               IsVisible="{Binding IsNumber}"/>
+
+                      <!-- Enum / Cast type picker -->
+                      <ComboBox Classes="param-combo"
+                                ItemsSource="{Binding EnumValues}"
+                                SelectedItem="{Binding Value, Mode=TwoWay}"
+                                IsVisible="{Binding IsEnum}"/>
+
+                      <!-- Boolean toggle -->
+                      <CheckBox Content="{Binding [property.enabled], Source={x:Static loc:LocalizationService.Instance}}"
+                                IsChecked="{Binding Value, Mode=TwoWay, Converter={x:Static BoolConverters.Not}}"
+                                Foreground="#8B95A8"
+                                FontSize="11"
+                                IsVisible="{Binding IsBoolean}"/>
+
+                      <!-- DateTime picker (ISO 8601) -->
+                      <TextBox Classes="param-input"
+                               Text="{Binding Value, Mode=TwoWay}"
+                               Watermark="{Binding [property.datetimeWatermark], Source={x:Static loc:LocalizationService.Instance}}"
+                               IsVisible="{Binding IsDateTime}"/>
+
+                      <!-- Date picker (ISO 8601 date only) -->
+                      <TextBox Classes="param-input"
+                               Text="{Binding Value, Mode=TwoWay}"
+                               Watermark="{Binding [property.dateWatermark], Source={x:Static loc:LocalizationService.Instance}}"
+                               IsVisible="{Binding IsDate}"/>
+
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- Apply button -->
+                    <Button Content="{Binding [property.apply], Source={x:Static loc:LocalizationService.Instance}}"
+                      HorizontalAlignment="Right"
+                      Background="#0F1A30"
+                      BorderBrush="#1E3A60"
+                      BorderThickness="1"
+                      Foreground="#60A5FA"
+                      FontSize="11"
+                      CornerRadius="6"
+                      Padding="10,4"
+                      Name="ApplyBtn">
+                <Button.Styles>
+                  <Style Selector="Button:pointerover">
+                    <Setter Property="Background" Value="#162540"/>
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </StackPanel>
+          </Border>
+
+          <!-- ── INPUT PINS ────────────────────────────────────────────────── -->
+          <Border Padding="12,10,12,6"
+                  BorderBrush="#1A1D26"
+                  BorderThickness="0,0,0,1"
+                  IsVisible="{Binding HasInputs}">
+
+            <StackPanel Spacing="0">
+              <TextBlock Classes="section-label" Text="{Binding [property.inputPins], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+              <ItemsControl ItemsSource="{Binding InputPins}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PinInfoRowViewModel">
+                    <Border Classes="pin-info-row">
+                      <Grid ColumnDefinitions="10,*,Auto,Auto">
+
+                        <!-- Color dot -->
+                        <Ellipse Grid.Column="0"
+                                 Width="7" Height="7"
+                                 Fill="{Binding ColorBrush}"
+                                 VerticalAlignment="Center"/>
+
+                        <!-- Name -->
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   FontSize="11"
+                                   Foreground="#8B95A8"
+                                   Margin="7,0,0,0"
+                                   VerticalAlignment="Center"
+                                   FontFamily="Consolas,monospace"/>
+
+                        <!-- Type badge -->
+                        <Border Grid.Column="2"
+                                Background="#0D0F14"
+                                CornerRadius="4"
+                                Padding="4,1"
+                                Margin="4,0">
+                          <TextBlock Text="{Binding TypeLabel}"
+                                     FontSize="9"
+                                     Foreground="{Binding ColorBrush}"/>
+                        </Border>
+
+                        <!-- Connected indicator -->
+                        <Ellipse Grid.Column="3"
+                                 Width="5" Height="5"
+                                 Fill="{Binding ColorBrush}"
+                                 VerticalAlignment="Center"
+                                 Opacity="{Binding Connected, Converter={x:Static BoolConverters.Not}}"
+                                 IsVisible="{Binding Connected}"/>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <!-- ── OUTPUT PINS ───────────────────────────────────────────────── -->
+          <Border Padding="12,10,12,6"
+                  BorderBrush="#1A1D26"
+                  BorderThickness="0,0,0,1"
+                  IsVisible="{Binding HasOutputs}">
+
+            <StackPanel Spacing="0">
+              <TextBlock Classes="section-label" Text="{Binding [property.outputPins], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+              <ItemsControl ItemsSource="{Binding OutputPins}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PinInfoRowViewModel">
+                    <Border Classes="pin-info-row">
+                      <Grid ColumnDefinitions="10,*,Auto">
+
+                        <Ellipse Grid.Column="0"
+                                 Width="7" Height="7"
+                                 Fill="{Binding ColorBrush}"
+                                 VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   FontSize="11"
+                                   Foreground="#8B95A8"
+                                   Margin="7,0,0,0"
+                                   VerticalAlignment="Center"
+                                   FontFamily="Consolas,monospace"/>
+
+                        <Border Grid.Column="2"
+                                Background="#0D0F14"
+                                CornerRadius="4"
+                                Padding="4,1"
+                                Margin="4,0">
+                          <TextBlock Text="{Binding TypeLabel}"
+                                     FontSize="9"
+                                     Foreground="{Binding ColorBrush}"/>
+                        </Border>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <!-- ── SQL TRACE ─────────────────────────────────────────────────── -->
+          <Border Padding="12,10,12,12"
+                  IsVisible="{Binding HasSqlTrace}">
+
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Classes="section-label"
+                           Text="{Binding [property.sqlTrace], Source={x:Static loc:LocalizationService.Instance}}"
+                           VerticalAlignment="Center"/>
+                <Border Grid.Column="1"
+                        Background="#0A2218"
+                        CornerRadius="4"
+                        Padding="5,1">
+                  <TextBlock Text="{Binding [property.live], Source={x:Static loc:LocalizationService.Instance}}"
+                             FontSize="8"
+                             FontWeight="Bold"
+                             Foreground="#14B8A6"
+                             LetterSpacing="1"/>
+                </Border>
+              </Grid>
+
+              <!-- Context label -->
+              <TextBlock Text="{Binding SqlTraceContext}"
+                         FontSize="10"
+                         Foreground="#4A5568"
+                         TextWrapping="Wrap"/>
+
+              <!-- Fragment box -->
+              <Border Background="#070B10"
+                      BorderBrush="#14B8A6"
+                      BorderThickness="0,0,0,2"
+                      CornerRadius="6"
+                      Padding="10,8">
+                <TextBlock Text="{Binding SqlTraceFragment}"
+                           FontFamily="Consolas,monospace"
+                           FontSize="11"
+                           Foreground="#14B8A6"
+                           TextWrapping="Wrap"/>
+              </Border>
+            </StackPanel>
+          </Border>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Border>
+</UserControl>

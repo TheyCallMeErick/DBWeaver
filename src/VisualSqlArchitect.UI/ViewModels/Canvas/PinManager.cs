@@ -89,6 +89,8 @@ public sealed class PinManager(
     /// </summary>
     public void ClearNarrowingIfNeeded(IEnumerable<NodeViewModel> nodes)
     {
+        var concreteByPin = BuildConcreteTypesByPin();
+
         foreach (NodeViewModel node in nodes)
         {
             // Check all pins (both input and output)
@@ -99,31 +101,9 @@ public sealed class PinManager(
                     continue;
 
                 PinDataType narrowedType = pin.NarrowedDataType.Value;
-                bool hasValidConnection = false;
-
-                // Check all connections to see if any justify keeping this narrowing
-                foreach (ConnectionViewModel conn in _connections)
-                {
-                    // Find if this pin is involved in the connection
-                    PinViewModel? otherPin = null;
-                    if (conn.FromPin == pin)
-                        otherPin = conn.ToPin;
-                    else if (conn.ToPin == pin)
-                        otherPin = conn.FromPin;
-                    else
-                        continue;
-
-                    // Check if the other pin has a concrete type that matches the narrowed type
-                    if (
-                        otherPin != null
-                        && otherPin.DataType != PinDataType.Any
-                        && otherPin.DataType == narrowedType
-                    )
-                    {
-                        hasValidConnection = true;
-                        break;
-                    }
-                }
+                bool hasValidConnection =
+                    concreteByPin.TryGetValue(pin, out HashSet<PinDataType>? supported)
+                    && supported.Contains(narrowedType);
 
                 // If no valid connection exists, reset the narrowing
                 if (!hasValidConnection)
@@ -132,5 +112,38 @@ public sealed class PinManager(
                 }
             }
         }
+    }
+
+    private Dictionary<PinViewModel, HashSet<PinDataType>> BuildConcreteTypesByPin()
+    {
+        var map = new Dictionary<PinViewModel, HashSet<PinDataType>>();
+
+        foreach (ConnectionViewModel conn in _connections)
+        {
+            if (conn.ToPin is null)
+                continue;
+
+            AddConcreteType(map, conn.FromPin, conn.ToPin.DataType);
+            AddConcreteType(map, conn.ToPin, conn.FromPin.DataType);
+        }
+
+        return map;
+    }
+
+    private static void AddConcreteType(
+        Dictionary<PinViewModel, HashSet<PinDataType>> map,
+        PinViewModel pin,
+        PinDataType otherType)
+    {
+        if (otherType == PinDataType.Any)
+            return;
+
+        if (!map.TryGetValue(pin, out HashSet<PinDataType>? set))
+        {
+            set = [];
+            map[pin] = set;
+        }
+
+        set.Add(otherType);
     }
 }

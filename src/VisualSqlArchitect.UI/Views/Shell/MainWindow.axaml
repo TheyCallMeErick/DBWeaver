@@ -1,0 +1,518 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VisualSqlArchitect.UI.ViewModels"
+        xmlns:ctrl="using:VisualSqlArchitect.UI.Controls"
+  xmlns:loc="using:VisualSqlArchitect.UI.Services.Localization"
+        xmlns:mi="using:Material.Icons.Avalonia"
+        x:Class="VisualSqlArchitect.UI.MainWindow"
+        x:DataType="vm:CanvasViewModel"
+        Title="Visual SQL Architect"
+        Width="1440" Height="900"
+        MinWidth="960" MinHeight="620"
+        Background="#0D0F14"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        SystemDecorations="BorderOnly"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.Styles>
+    <!-- Splitter default / hover -->
+    <Style Selector="GridSplitter">
+      <Setter Property="Background" Value="#1E2335"/>
+    </Style>
+    <Style Selector="GridSplitter:pointerover">
+      <Setter Property="Background" Value="#3B82F6"/>
+    </Style>
+    <Style Selector="Button.tb">
+      <Setter Property="Background"      Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground"      Value="#8B95A8"/>
+      <Setter Property="Padding"         Value="7,5"/>
+      <Setter Property="CornerRadius"    Value="6"/>
+      <Setter Property="FontSize"        Value="12"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.tb:pointerover">
+      <Setter Property="Background" Value="#1E2335"/>
+      <Setter Property="Foreground" Value="#E8EAED"/>
+    </Style>
+    <Style Selector="Button.tb.danger:pointerover">
+      <Setter Property="Background" Value="#5C1A1A"/>
+      <Setter Property="Foreground" Value="#FB7185"/>
+    </Style>
+  </Window.Styles>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       ROOT: TitleBar | Body | StatusBar
+  ═══════════════════════════════════════════════════════════════════ -->
+  <Grid RowDefinitions="36,Auto,*,28">
+
+    <!-- ╔══ TITLE BAR ══════════════════════════════════════════════════╗ -->
+    <Border Grid.Row="0"
+            Background="#0B0D13"
+            BorderBrush="#1A1D26"
+            BorderThickness="0,0,0,1"
+            PointerPressed="TitleBar_PointerPressed">
+
+      <Grid ColumnDefinitions="Auto,*,Auto">
+
+        <!-- Brand + connection -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                    Margin="12,0,0,0" VerticalAlignment="Center">
+
+          <Border Width="22" Height="22" CornerRadius="6"
+                  Background="#1A1E2C" BorderBrush="#3B82F6" BorderThickness="1">
+            <TextBlock Text="VS" FontSize="8" FontWeight="ExtraBold"
+                       Foreground="#3B82F6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+
+          <TextBlock Text="{Binding [main.brand], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="12" FontWeight="SemiBold" Foreground="#C8D0DC" VerticalAlignment="Center"/>
+
+          <Button Classes="tb" Name="ConnectionBadgeBtn"
+                  ToolTip.Tip="{Binding ConnectionManager.ConnectionHealthTooltip}"
+                  AutomationProperties.Name="Open connection manager">
+            <Border Background="#0F1A30" BorderBrush="#1E3A60" BorderThickness="1"
+                    CornerRadius="4" Padding="6,2">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <Ellipse Width="5" Height="5"
+                         Fill="{Binding ConnectionManager.ConnectionIndicatorColor}"/>
+                <TextBlock Text="{Binding ConnectionManager.ActiveConnectionLabel}"
+                           FontSize="10" Foreground="#60A5FA"/>
+              </StackPanel>
+            </Border>
+          </Button>
+        </StackPanel>
+
+        <!-- Tab bar -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+          <StackPanel Name="QueryTabsHost"
+                      Orientation="Horizontal"
+                      Spacing="2"
+                      VerticalAlignment="Center"/>
+          <Button Classes="tb" Width="26" Height="26" Padding="0"
+                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+              Name="NewTabBtn" ToolTip.Tip="{Binding [tooltip.newCanvas], Source={x:Static loc:LocalizationService.Instance}}">
+            <mi:MaterialIcon Kind="Plus" Width="14" Height="14"/>
+          </Button>
+        </StackPanel>
+
+        <!-- Right controls -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3"
+                    Margin="0,0,8,0" VerticalAlignment="Center">
+
+          <!-- Undo/Redo -->
+          <Button Classes="tb" Command="{Binding UndoCommand}"
+                  ToolTip.Tip="{Binding UndoRedo.UndoDescription}" Width="28" Height="28"
+                  Padding="0" HorizontalContentAlignment="Center"
+                  AutomationProperties.Name="Undo">
+            <mi:MaterialIcon Kind="Undo" Width="16" Height="16"/>
+          </Button>
+          <Button Classes="tb" Command="{Binding RedoCommand}"
+                  ToolTip.Tip="{Binding UndoRedo.RedoDescription}" Width="28" Height="28"
+                  Padding="0" HorizontalContentAlignment="Center"
+                  AutomationProperties.Name="Redo">
+            <mi:MaterialIcon Kind="Redo" Width="16" Height="16"/>
+          </Button>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- File -->
+          <Button Classes="tb" Name="NewBtn" FontSize="11"
+              ToolTip.Tip="{Binding [tooltip.newCanvas], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="New canvas">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="FileOutline" Width="14" Height="14"/>
+              <TextBlock Text="{Binding [main.new], Source={x:Static loc:LocalizationService.Instance}}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+          <Button Classes="tb" Name="OpenBtn" FontSize="11"
+              ToolTip.Tip="{Binding [tooltip.openCanvas], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Open canvas">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="FolderOpenOutline" Width="14" Height="14"/>
+              <TextBlock Text="{Binding [main.open], Source={x:Static loc:LocalizationService.Instance}}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+          <Button Classes="tb" Name="SaveBtn" FontSize="11"
+              ToolTip.Tip="{Binding [tooltip.saveCanvas], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Save canvas">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="ContentSave" Width="14" Height="14"/>
+              <TextBlock Text="{Binding [main.save], Source={x:Static loc:LocalizationService.Instance}}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+
+          <Button Classes="tb" Name="FileHistoryBtn" FontSize="11"
+              ToolTip.Tip="{Binding [tooltip.fileHistory], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Open file history">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="History" Width="14" Height="14"/>
+              <TextBlock Text="{Binding [main.history], Source={x:Static loc:LocalizationService.Instance}}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- Zoom -->
+          <Border Background="#131720" CornerRadius="4" Padding="7,3" VerticalAlignment="Center">
+            <TextBlock Text="{Binding ZoomPercent}" FontSize="10" Foreground="#4A5568"/>
+          </Border>
+          <Button Classes="tb" Command="{Binding ZoomOutCommand}"
+                  Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center"
+              ToolTip.Tip="{Binding [tooltip.zoomOut], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Zoom out">
+            <mi:MaterialIcon Kind="MagnifyMinus" Width="14" Height="14"/>
+          </Button>
+          <Button Classes="tb" Command="{Binding ZoomInCommand}"
+                  Width="24" Height="24" Padding="0" HorizontalContentAlignment="Center"
+              ToolTip.Tip="{Binding [tooltip.zoomIn], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Zoom in">
+            <mi:MaterialIcon Kind="MagnifyPlus" Width="14" Height="14"/>
+          </Button>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- Orphan cleanup (visible only when orphans are detected) -->
+          <Button Classes="tb" FontSize="11"
+                  Command="{Binding CleanupOrphansCommand}"
+                  IsVisible="{Binding HasOrphanNodes}"
+                  ToolTip.Tip="{Binding OrphanCount, StringFormat='Remove {0} orphan node(s) not connected to the output (Ctrl+Z to undo)'}"
+                  AutomationProperties.Name="Cleanup orphan nodes">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="VectorUnion" Width="14" Height="14"/>
+              <TextBlock Text="{Binding OrphanCount, StringFormat='{}{0} Orphan(s)'}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"
+                  IsVisible="{Binding HasOrphanNodes}"/>
+
+          <!-- Auto-fix naming conventions (visible only when violations exist) -->
+          <Button Classes="tb" FontSize="11"
+                  Command="{Binding AutoFixNamingCommand}"
+                  IsVisible="{Binding HasNamingViolations}"
+                  ToolTip.Tip="{Binding NamingConformance, StringFormat='Fix alias naming to snake_case — conformance: {0}%  (Ctrl+Z to undo)'}"
+                  AutomationProperties.Name="Auto-fix alias naming">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="AutoFix" Width="14" Height="14"/>
+              <TextBlock Text="{Binding NamingConformance, StringFormat='Naming {0}%'}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"
+                  IsVisible="{Binding HasNamingViolations}"/>
+
+          <!-- Auto Layout -->
+          <Button Classes="tb" FontSize="11"
+                  Command="{Binding AutoLayoutCommand}"
+              ToolTip.Tip="{Binding [tooltip.autoLayout], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Auto layout canvas">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="FormatHorizontalAlignCenter" Width="14" Height="14"/>
+              <TextBlock Text="{Binding [main.layout], Source={x:Static loc:LocalizationService.Instance}}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+
+          <!-- Snap to grid toggle -->
+          <Button Classes="tb" FontSize="11"
+                  Command="{Binding ToggleSnapCommand}"
+              ToolTip.Tip="{Binding [tooltip.snapToGrid], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Toggle snap to grid">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="GridLarge" Width="14" Height="14"/>
+              <TextBlock Text="{Binding SnapToGridLabel}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- Preview toggle -->
+          <Button Classes="tb" Name="TogglePreviewBtn"
+              ToolTip.Tip="{Binding [tooltip.dataPreview], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Toggle data preview">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="TableEye" Width="14" Height="14"/>
+              <TextBlock Text="{Binding [main.preview], Source={x:Static loc:LocalizationService.Instance}}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+
+          <Button Classes="tb" Name="LanguageToggleBtn"
+              ToolTip.Tip="{Binding [tooltip.toggleLanguage], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Toggle language">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="Translate" Width="14" Height="14"/>
+              <TextBlock Text="{Binding CurrentLanguageLabel, Source={x:Static loc:LocalizationService.Instance}}" FontSize="11"/>
+            </StackPanel>
+          </Button>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- Diagnostics -->
+          <Button Classes="tb"
+                  Command="{Binding OpenDiagnosticsCommand}"
+              ToolTip.Tip="{Binding [tooltip.appDiagnostics], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Open diagnostics">
+            <mi:MaterialIcon Kind="HeartPulse" Width="16" Height="16"/>
+          </Button>
+
+          <Button Classes="tb" Name="ShortcutsBtn"
+              ToolTip.Tip="{Binding [tooltip.keyboardShortcuts], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="Open keyboard shortcuts">
+            <mi:MaterialIcon Kind="Keyboard" Width="16" Height="16"/>
+          </Button>
+
+          <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+
+          <!-- Window chrome -->
+          <Button Classes="tb" Name="MinimizeBtn"
+                  Width="28" Height="28" Padding="0" HorizontalContentAlignment="Center">
+            <mi:MaterialIcon Kind="WindowMinimize" Width="14" Height="14"/>
+          </Button>
+          <Button Classes="tb" Name="MaximizeBtn"
+                  Width="28" Height="28" Padding="0" HorizontalContentAlignment="Center">
+            <mi:MaterialIcon Kind="WindowMaximize" Width="14" Height="14"/>
+          </Button>
+          <Button Classes="tb danger" Name="CloseWindowBtn"
+                  Width="28" Height="28" Padding="0" HorizontalContentAlignment="Center">
+            <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ╔══ RESTORE BANNER ══════════════════════════════════════════════╗ -->
+    <Border Grid.Row="1" Name="RestoreBanner" IsVisible="False"
+            Background="#0F1A30" BorderBrush="#1E3A60" BorderThickness="0,0,0,1"
+            Padding="12,7">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+        <mi:MaterialIcon Grid.Column="0" Kind="History" Width="16" Height="16" Foreground="#60A5FA"
+                        VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <TextBlock Grid.Column="1" FontSize="11" Foreground="#C8D0DC" VerticalAlignment="Center">
+              <Run Text="{Binding [main.restore.prompt], Source={x:Static loc:LocalizationService.Instance}}"/>
+        </TextBlock>
+        <Button Grid.Column="2" Name="RestoreSessionBtn"
+                Content="{Binding [main.restore.button], Source={x:Static loc:LocalizationService.Instance}}"
+                Background="#1E3A60" BorderBrush="#3B82F6" BorderThickness="1"
+                Foreground="#60A5FA" FontSize="11" CornerRadius="5"
+                Padding="10,4" Margin="8,0,4,0" Cursor="Hand"/>
+        <Button Grid.Column="3" Name="DismissRestoreBtn"
+                Background="Transparent" BorderThickness="0"
+                Foreground="#4A5568" Padding="6,4" Cursor="Hand">
+          <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- ╔══ BODY ════════════════════════════════════════════════════════╗ -->
+    <Grid Grid.Row="2" Name="BodyGrid">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="320" MinWidth="220" MaxWidth="500"/>
+        <ColumnDefinition Width="8"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="8"/>
+        <ColumnDefinition Width="240" MinWidth="200" MaxWidth="500"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- ╠═ LEFT: Sidebar with Tabs (Nodes, Connection, Schema) ═══════════════════════════════════════╣ -->
+      <ctrl:SidebarControl Grid.Column="0"
+                           DataContext="{Binding Sidebar}"/>
+
+      <!-- Vertical splitters -->
+      <GridSplitter Grid.Column="1" Width="8" VerticalAlignment="Stretch"
+                    ResizeDirection="Columns" Cursor="SizeWestEast" Name="LeftSplitter"/>
+      <GridSplitter Grid.Column="3" Width="8" VerticalAlignment="Stretch"
+                    ResizeDirection="Columns" Cursor="SizeWestEast" Name="RightSplitter"/>
+
+      <!-- ╠═ CENTRE: Canvas + Preview ════════════════════════════════════════╣ -->
+      <Grid Grid.Column="2" Name="CenterGrid">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="8"/>
+          <RowDefinition Height="220" MinHeight="150"/>
+        </Grid.RowDefinitions>
+
+        <!-- Canvas + overlays -->
+        <Panel Grid.Row="0" ClipToBounds="True">
+          <ctrl:InfiniteCanvas Name="TheCanvas" ViewModel="{Binding}" ClipToBounds="True"/>
+
+          <!-- Search overlay (Shift+A) -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,70,0,0"
+                 IsVisible="{Binding SearchMenu.IsVisible}">
+            <ctrl:SearchMenuControl DataContext="{Binding SearchMenu}" Name="SearchOverlay"/>
+          </Panel>
+
+          <!-- Command Palette overlay (Ctrl+K) -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,60,0,0"
+                 IsVisible="{Binding CommandPalette.IsVisible}">
+            <ctrl:CommandPaletteControl DataContext="{Binding CommandPalette}" Name="CommandPaletteOverlay"/>
+          </Panel>
+
+          <!-- App Diagnostics overlay -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,60,0,0"
+                 IsVisible="{Binding Diagnostics.IsVisible}">
+            <ctrl:AppDiagnosticsControl DataContext="{Binding Diagnostics}" Name="DiagnosticsOverlay"/>
+          </Panel>
+
+          <!-- Auto-Join overlay -->
+          <Panel HorizontalAlignment="Right" VerticalAlignment="Top"
+                 Margin="0,20,20,0" ZIndex="10"
+                 IsVisible="{Binding AutoJoin.IsVisible}"
+                 Name="AutoJoinPanel">
+            <ctrl:AutoJoinOverlay DataContext="{Binding AutoJoin}" Name="AutoJoinOverlayCtrl"/>
+          </Panel>
+
+          <!-- Connection Manager overlay (Ctrl+Shift+C) -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="20"
+                 IsVisible="{Binding ConnectionManager.IsVisible}">
+            <ctrl:ConnectionManagerControl DataContext="{Binding ConnectionManager}"
+                                           Name="ConnectionManagerOverlay"/>
+          </Panel>
+
+          <!-- Benchmark overlay -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="20"
+                 IsVisible="{Binding Benchmark.IsVisible}">
+            <ctrl:BenchmarkOverlay DataContext="{Binding Benchmark}"
+                                   Name="BenchmarkOverlayCtrl"/>
+          </Panel>
+
+          <!-- Explain Plan overlay (F4 / Explain button) -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="20"
+                 IsVisible="{Binding ExplainPlan.IsVisible}">
+            <ctrl:ExplainPlanOverlay DataContext="{Binding ExplainPlan}"
+                                     Name="ExplainPlanOverlayCtrl"/>
+          </Panel>
+
+          <!-- SQL Importer overlay -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="20"
+                 IsVisible="{Binding SqlImporter.IsVisible}">
+            <ctrl:SqlImporterOverlay DataContext="{Binding SqlImporter}"
+                                     Name="SqlImporterOverlayCtrl"/>
+          </Panel>
+
+          <!-- Flow Version History overlay (Ctrl+Shift+H) -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="20"
+                 IsVisible="{Binding FlowVersions.IsVisible}">
+            <ctrl:FlowVersionOverlay DataContext="{Binding FlowVersions}"
+                                     Name="FlowVersionsOverlayCtrl"/>
+          </Panel>
+
+          <!-- File Save/Load Version History overlay (Ctrl+Alt+H) -->
+          <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="20"
+              IsVisible="{Binding FileHistory.IsVisible}">
+            <ctrl:FileVersionHistoryOverlay DataContext="{Binding FileHistory}"
+                          Name="FileHistoryOverlayCtrl"/>
+          </Panel>
+
+          <!-- Loading overlay (while connecting) -->
+          <Panel HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                 Background="#000000" Opacity="0.4" ZIndex="30"
+                 IsVisible="{Binding IsCanvasDisabled}"
+                 IsHitTestVisible="True"/>
+
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15" ZIndex="31"
+                      IsVisible="{Binding IsCanvasDisabled}">
+            <ProgressBar IsIndeterminate="True" Foreground="#60A5FA" Background="#1E2335"
+                         Width="200" Height="6" CornerRadius="3"/>
+            <TextBlock Text="{Binding [main.connectingDb], Source={x:Static loc:LocalizationService.Instance}}" FontSize="14" Foreground="#D1D5DB"
+                       HorizontalAlignment="Center" FontWeight="SemiBold"/>
+          </StackPanel>
+
+          <!-- Empty canvas hint -->
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10"
+                      IsVisible="{Binding IsCanvasEmpty}">
+            <TextBlock Text="{Binding [main.brand], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="30" FontWeight="Light" Foreground="#161A26" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding [main.emptyHint], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="13" Foreground="#1E2335" HorizontalAlignment="Center"/>
+          </StackPanel>
+
+          <!-- Mini zoom toolbar (bottom-right) -->
+          <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                  Margin="0,0,16,16" Background="#0F1219"
+                  BorderBrush="#252C3F" BorderThickness="1"
+                  CornerRadius="9" Padding="5,3" ZIndex="5">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+              <Button Classes="tb" Content="−" Command="{Binding ZoomOutCommand}"
+                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"
+                      ToolTip.Tip="{Binding [tooltip.zoomOut], Source={x:Static loc:LocalizationService.Instance}}"
+                      AutomationProperties.Name="Zoom out"/>
+              <Border Width="38" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding ZoomPercent}" FontSize="10" Foreground="#4A5568"
+                           HorizontalAlignment="Center"
+                           AutomationProperties.Name="Zoom level"/>
+              </Border>
+              <Button Classes="tb" Content="+" Command="{Binding ZoomInCommand}"
+                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"
+                      ToolTip.Tip="{Binding [tooltip.zoomIn], Source={x:Static loc:LocalizationService.Instance}}"
+                      AutomationProperties.Name="Zoom in"/>
+              <Border Width="1" Height="14" Background="#252C3F" Margin="2,0"/>
+              <Button Classes="tb" Content="⊡" Command="{Binding FitToScreenCommand}"
+                      Width="26" Height="26" Padding="0" HorizontalContentAlignment="Center"
+                      ToolTip.Tip="{Binding [tooltip.fitToScreen], Source={x:Static loc:LocalizationService.Instance}}"
+                      AutomationProperties.Name="Fit to screen"/>
+            </StackPanel>
+          </Border>
+        </Panel>
+
+        <!-- Horizontal splitter above DataPreview -->
+        <GridSplitter Grid.Row="1" Height="8" HorizontalAlignment="Stretch"
+                      ResizeDirection="Rows" Cursor="SizeNorthSouth" Name="BottomSplitter"
+                      IsVisible="{Binding DataPreview.IsVisible}"/>
+
+        <!-- Data Preview panel -->
+        <Border Grid.Row="2" IsVisible="{Binding DataPreview.IsVisible}">
+          <ctrl:DataPreviewPanel Name="PreviewPanel"
+                                 DataContext="{Binding DataPreview}"/>
+        </Border>
+      </Grid>
+
+      <!-- ╠═ RIGHT: Property Panel ══════════════════════════════════════════╣ -->
+      <ctrl:PropertyPanelControl Grid.Column="4"
+                                 DataContext="{Binding PropertyPanel}"
+                                 Name="PropPanel"/>
+
+    </Grid>
+
+    <!-- ╔══ STATUS BAR ════════════════════════════════════════════════════╗ -->
+    <Border Grid.Row="3" Background="#0B0D12"
+            BorderBrush="#1A1D26" BorderThickness="0,1,0,0" Padding="12,0">
+
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Ellipse Width="5" Height="5"
+                     Fill="{Binding ConnectionManager.ConnectionIndicatorColor}"/>
+            <TextBlock Text="{Binding ConnectionManager.ActiveConnectionLabel}"
+                       FontSize="10" Foreground="#6B7A99"/>
+          </StackPanel>
+
+          <Border Width="1" Height="12" Background="#1E2335"/>
+
+          <TextBlock FontSize="10" Foreground="#6B7A99" VerticalAlignment="Center">
+            <Run Text="{Binding Nodes.Count}"/>
+            <Run Text="{Binding [status.nodesSeparator], Source={x:Static loc:LocalizationService.Instance}}"/>
+            <Run Text="{Binding Connections.Count}"/>
+            <Run Text="{Binding [status.connectionsSuffix], Source={x:Static loc:LocalizationService.Instance}}"/>
+          </TextBlock>
+
+          <Border Width="1" Height="12" Background="#1E2335"/>
+
+          <!-- Undo history depth indicator -->
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <TextBlock FontSize="10" Foreground="#6B7A99" VerticalAlignment="Center">
+              <Run Text="{Binding [status.undo], Source={x:Static loc:LocalizationService.Instance}}"/>
+              <Run Text="{Binding UndoRedo.UndoDescription}"/>
+            </TextBlock>
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock Grid.Column="1" FontSize="10" Foreground="#4A5568"
+                   VerticalAlignment="Center"
+                   Text="{Binding [status.shortcuts], Source={x:Static loc:LocalizationService.Instance}}"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

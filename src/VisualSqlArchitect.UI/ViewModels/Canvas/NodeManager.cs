@@ -97,7 +97,10 @@ public sealed class NodeManager(
     /// <summary>Spawns a typed node at the given canvas position (undoable).</summary>
     public NodeViewModel SpawnNode(NodeDefinition def, Point pos)
     {
-        var vm = new NodeViewModel(def, pos);
+        var vm = new NodeViewModel(def, pos)
+        {
+            ZOrder = _nodes.Count == 0 ? 0 : _nodes.Max(n => n.ZOrder) + 1,
+        };
         _undoRedo.Execute(new AddNodeCommand(vm));
         _searchMenu.Close();
         return vm;
@@ -110,7 +113,10 @@ public sealed class NodeManager(
         Point pos
     )
     {
-        var vm = new NodeViewModel(table, cols, pos);
+        var vm = new NodeViewModel(table, cols, pos)
+        {
+            ZOrder = _nodes.Count == 0 ? 0 : _nodes.Max(n => n.ZOrder) + 1,
+        };
         _undoRedo.Execute(new AddNodeCommand(vm));
         _searchMenu.Close();
         return vm;
@@ -125,11 +131,13 @@ public sealed class NodeManager(
         if (nodes.Count == 0)
             return;
 
+        var nodeSet = new HashSet<NodeViewModel>(nodes);
+
         List<ConnectionViewModel> wires =
         [
             .. _connections.Where(c =>
-                nodes.Contains(c.FromPin.Owner)
-                || (c.ToPin is not null && nodes.Contains(c.ToPin.Owner))
+                nodeSet.Contains(c.FromPin.Owner)
+                || (c.ToPin is not null && nodeSet.Contains(c.ToPin.Owner))
             ),
         ];
 
@@ -144,11 +152,13 @@ public sealed class NodeManager(
         if (orphans.Count == 0)
             return;
 
+        var orphanSet = new HashSet<NodeViewModel>(orphans);
+
         List<ConnectionViewModel> wires =
         [
             .. _connections.Where(c =>
-                orphans.Contains(c.FromPin.Owner)
-                || (c.ToPin is not null && orphans.Contains(c.ToPin.Owner))
+                orphanSet.Contains(c.FromPin.Owner)
+                || (c.ToPin is not null && orphanSet.Contains(c.ToPin.Owner))
             ),
         ];
 

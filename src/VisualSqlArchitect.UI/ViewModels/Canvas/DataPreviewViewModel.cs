@@ -258,7 +258,7 @@ public sealed class DataPreviewViewModel : ViewModelBase
         System.Console.WriteLine($"[ShowResults] After ResultData assignment: _data={_data?.Rows.Count ?? 0}, HasData={HasData}");
         System.Diagnostics.Debug.WriteLine($"[DataPreviewViewModel] ResultData set to DataTable, HasData={HasData}, Rows={dt?.Rows.Count}");
 
-        RowCount = dt.Rows.Count;
+        RowCount = dt?.Rows.Count ?? 0;
         System.Console.WriteLine($"[ShowResults] RowCount set to {RowCount}");
 
         ExecutionMs = ms;

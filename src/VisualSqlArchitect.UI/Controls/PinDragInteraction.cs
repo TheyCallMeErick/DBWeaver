@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using VisualSqlArchitect.UI.ViewModels;
 
-namespace VisualSqlArchitect.UI.Controls;
+namespace VisualSqlArchitect.UI.Controls.LegacyCopies;
 
 /// <summary>
 /// Manages the drag-to-connect gesture on the canvas.
@@ -27,6 +27,7 @@ public sealed class PinDragInteraction(CanvasViewModel vm, Canvas scene)
     private readonly CanvasViewModel _vm = vm;
     private readonly Canvas _scene = scene;
     private PinDragState? _dragState;
+    private ConnectionViewModel? _rerouteExistingWire;
 
     // ── Public state (read by InfiniteCanvas) ─────────────────────────────────
     public bool IsDragging => _dragState is not null;
@@ -36,12 +37,13 @@ public sealed class PinDragInteraction(CanvasViewModel vm, Canvas scene)
 
     /// <summary>
     /// Called when the user presses on a pin dot.
-    /// <paramref name="canvasPoint"/> is in canvas (unzoomed) coordinates.
     /// </summary>
     public void BeginDrag(PinViewModel pin, Point canvasPoint)
     {
         if (IsDragging)
             CancelDrag();
+
+        _rerouteExistingWire = null;
 
         // If pressing an input pin that is already connected, we pick up the
         // existing wire from its source (wire re-routing gesture).
@@ -55,16 +57,22 @@ public sealed class PinDragInteraction(CanvasViewModel vm, Canvas scene)
             {
                 // We grab the source end of the existing wire
                 source = existingWire.FromPin;
-                // Remove the connection so the user can re-route it
-                _vm.DeleteConnection(existingWire);
-                pin.IsConnected = _vm.Connections.Any(c => c.ToPin == pin);
+                // Keep existing connection alive while dragging.
+                // Only remove it after a successful drop target to avoid
+                // silent data loss when drag is cancelled.
+                _rerouteExistingWire = existingWire;
             }
         }
 
-        var liveWire = new ConnectionViewModel(source, source.AbsolutePosition, canvasPoint);
+        // Start from the exact pin center (Nodify/NodeEditor behavior) to avoid
+        // one-frame offset caused by pointer-space mismatches on press.
+        var liveWire = new ConnectionViewModel(source, source.AbsolutePosition, source.AbsolutePosition);
         _dragState = new PinDragState(source, liveWire, _vm.Nodes.SelectMany(n => n.AllPins));
 
         _vm.Connections.Add(liveWire); // renders immediately as a pending wire
+
+        // Snap to cursor after creation (if caller provided a valid point).
+        UpdateDrag(canvasPoint);
     }
 
     // ── Update ────────────────────────────────────────────────────────────────
@@ -77,6 +85,10 @@ public sealed class PinDragInteraction(CanvasViewModel vm, Canvas scene)
     {
         if (_dragState is null)
             return;
+
+        // Keep source endpoint glued to the live source pin while dragging.
+        // This is resilient to viewport changes and node movement mid-drag.
+        _dragState.LiveWire.FromPoint = _dragState.SourcePin.AbsolutePosition;
         _dragState.UpdateWireEnd(canvasPoint);
 
         // Highlight nearest valid target
@@ -101,7 +113,21 @@ public sealed class PinDragInteraction(CanvasViewModel vm, Canvas scene)
         // and SyncColumnListPins would destroy the target pin before we get to use it.
         PinViewModel? target = _dragState.HitTest(canvasPoint, tol: 18);
         if (target is not null && target.CanAccept(_dragState.SourcePin))
-            _vm.ConnectPins(_dragState.SourcePin, target);
+        {
+            if (_rerouteExistingWire is not null)
+            {
+                bool isSameTarget = ReferenceEquals(_rerouteExistingWire.ToPin, target);
+                if (!isSameTarget)
+                {
+                    _vm.DeleteConnection(_rerouteExistingWire);
+                    _vm.ConnectPins(_dragState.SourcePin, target);
+                }
+            }
+            else
+            {
+                _vm.ConnectPins(_dragState.SourcePin, target);
+            }
+        }
 
         // Remove the live wire after the real connection is already in place.
         _vm.Connections.Remove(_dragState.LiveWire);
@@ -123,6 +149,7 @@ public sealed class PinDragInteraction(CanvasViewModel vm, Canvas scene)
     {
         _dragState?.Cancel();
         _dragState = null;
+        _rerouteExistingWire = null;
     }
 
     // ── Pin hit-test helper ───────────────────────────────────────────────────

@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using Avalonia;
 using VisualSqlArchitect.Core;
 using VisualSqlArchitect.Metadata;
 using VisualSqlArchitect.Nodes;
 using VisualSqlArchitect.UI.Serialization;
 using VisualSqlArchitect.UI.ViewModels.Canvas;
+using VisualSqlArchitect.UI.ViewModels.UndoRedo;
 using VisualSqlArchitect.UI.ViewModels.UndoRedo.Commands;
 
 namespace VisualSqlArchitect.UI.ViewModels;
@@ -19,7 +21,7 @@ namespace VisualSqlArchitect.UI.ViewModels;
 ///   - <see cref="NodeLayoutManager"/>  — zoom, pan, snap, auto-layout
 ///   - <see cref="ValidationManager"/>  — graph validation and orphan detection
 /// </summary>
-public sealed class CanvasViewModel : ViewModelBase
+public sealed class CanvasViewModel : ViewModelBase, IDisposable
 {
     // ── Core collections ─────────────────────────────────────────────────────
 
@@ -40,6 +42,8 @@ public sealed class CanvasViewModel : ViewModelBase
     public BenchmarkViewModel Benchmark { get; private set; } = null!;
     public ExplainPlanViewModel ExplainPlan { get; private set; } = null!;
     public SqlImporterViewModel SqlImporter { get; private set; } = null!;
+    public FlowVersionOverlayViewModel FlowVersions { get; private set; } = null!;
+    public FileVersionHistoryViewModel FileHistory { get; private set; } = null!;
     public SidebarViewModel Sidebar { get; private set; } = null!;
 
     // ── Managers ──────────────────────────────────────────────────────────────
@@ -52,6 +56,14 @@ public sealed class CanvasViewModel : ViewModelBase
     private readonly SelectionManager _selectionManager;
     private readonly NodeLayoutManager _layoutManager;
     private readonly ValidationManager _validationManager;
+
+    // ── Event handler storage for proper disposal ─────────────────────────────
+    // These fields store references to event handlers so they can be unsubscribed in Dispose()
+    private PropertyChangedEventHandler? _liveSqlPropertyChangedHandler;
+    private PropertyChangedEventHandler? _selfPropertyChangedHandler;
+    private PropertyChangedEventHandler? _layoutManagerPropertyChangedHandler;
+    private NotifyCollectionChangedEventHandler? _nodesCollectionChangedHandler;
+    private NotifyCollectionChangedEventHandler? _connectionsCollectionChangedHandler;
 
     // ── Canvas state ──────────────────────────────────────────────────────────
 
@@ -163,6 +175,11 @@ public sealed class CanvasViewModel : ViewModelBase
     public RelayCommand AutoLayoutCommand { get; }
     public RelayCommand OpenDiagnosticsCommand { get; }
     public RelayCommand TogglePreviewCommand { get; }
+    public RelayCommand BringSelectionToFrontCommand { get; }
+    public RelayCommand SendSelectionToBackCommand { get; }
+    public RelayCommand BringSelectionForwardCommand { get; }
+    public RelayCommand SendSelectionBackwardCommand { get; }
+    public RelayCommand NormalizeLayersCommand { get; }
 
     // ─ Delegated from SelectionManager
     public RelayCommand SelectAllCommand => _selectionManager.SelectAllCommand;
@@ -199,6 +216,37 @@ public sealed class CanvasViewModel : ViewModelBase
         _pinManager = new PinManager(Nodes, Connections, UndoRedo);
         _validationManager = new ValidationManager(this);
 
+        // Forward layout manager changes through this ViewModel so bindings observing
+        // CanvasViewModel receive updates for delegated properties (Zoom/Pan/Snap labels).
+        _layoutManagerPropertyChangedHandler = (_, e) =>
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(NodeLayoutManager.Zoom):
+                    RaisePropertyChanged(nameof(Zoom));
+                    RaisePropertyChanged(nameof(ZoomPercent));
+                    break;
+
+                case nameof(NodeLayoutManager.PanOffset):
+                    RaisePropertyChanged(nameof(PanOffset));
+                    break;
+
+                case nameof(NodeLayoutManager.SnapToGrid):
+                    RaisePropertyChanged(nameof(SnapToGrid));
+                    RaisePropertyChanged(nameof(SnapToGridLabel));
+                    break;
+
+                case nameof(NodeLayoutManager.ZoomPercent):
+                    RaisePropertyChanged(nameof(ZoomPercent));
+                    break;
+
+                case nameof(NodeLayoutManager.SnapToGridLabel):
+                    RaisePropertyChanged(nameof(SnapToGridLabel));
+                    break;
+            }
+        };
+        _layoutManager.PropertyChanged += _layoutManagerPropertyChangedHandler;
+
         // Build commands
         UndoCommand = new RelayCommand(UndoRedo.Undo, () => UndoRedo.CanUndo);
         RedoCommand = new RelayCommand(UndoRedo.Redo, () => UndoRedo.CanRedo);
@@ -211,6 +259,26 @@ public sealed class CanvasViewModel : ViewModelBase
         );
         OpenDiagnosticsCommand = new RelayCommand(() => Diagnostics.Open());
         TogglePreviewCommand = new RelayCommand(DataPreview.Toggle);
+        BringSelectionToFrontCommand = new RelayCommand(
+            () => BringSelectionToFront(),
+            () => Nodes.Any(n => n.IsSelected)
+        );
+        SendSelectionToBackCommand = new RelayCommand(
+            () => SendSelectionToBack(),
+            () => Nodes.Any(n => n.IsSelected)
+        );
+        BringSelectionForwardCommand = new RelayCommand(
+            () => BringSelectionForward(),
+            () => Nodes.Any(n => n.IsSelected)
+        );
+        SendSelectionBackwardCommand = new RelayCommand(
+            () => SendSelectionBackward(),
+            () => Nodes.Any(n => n.IsSelected)
+        );
+        NormalizeLayersCommand = new RelayCommand(
+            () => NormalizeLayers(),
+            () => Nodes.Count > 0
+        );
 
         // Link commands into validation manager for CanExecute refresh
         _validationManager.CleanupOrphansCommand = CleanupOrphansCommand;
@@ -221,6 +289,8 @@ public sealed class CanvasViewModel : ViewModelBase
         Benchmark    = new BenchmarkViewModel(this);
         ExplainPlan  = new ExplainPlanViewModel(this);
         SqlImporter  = new SqlImporterViewModel(this);
+        FlowVersions = new FlowVersionOverlayViewModel(this);
+        FileHistory  = new FileVersionHistoryViewModel(this);
 
         // Initialize Sidebar with its three tabs
         var nodesList = new NodesListViewModel(
@@ -237,11 +307,13 @@ public sealed class CanvasViewModel : ViewModelBase
         );
         Sidebar = new SidebarViewModel(nodesList, ConnectionManager, schemaVM);
 
-        LiveSql.PropertyChanged += (_, e) =>
+        // Subscribe to LiveSql property changes with stored handler
+        _liveSqlPropertyChangedHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(LiveSqlBarViewModel.RawSql))
                 PropertyPanel.UpdateSqlTrace(LiveSql.RawSql);
         };
+        LiveSql.PropertyChanged += _liveSqlPropertyChangedHandler;
 
         SearchMenu.LoadTables(NodeManager.DemoCatalog);
 
@@ -250,15 +322,18 @@ public sealed class CanvasViewModel : ViewModelBase
         ConnectionManager.Canvas = this;
 
         // Update schema tab when database metadata changes
-        this.PropertyChanged += (_, e) =>
+        // Store handler for proper unsubscribe in Dispose()
+        _selfPropertyChangedHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(DatabaseMetadata))
                 schemaVM.Metadata = DatabaseMetadata;
         };
+        this.PropertyChanged += _selfPropertyChangedHandler;
 
         AutoJoin.JoinAccepted += OnJoinAccepted;
 
-        Nodes.CollectionChanged += (_, e) =>
+        // Store collection changed handlers for proper unsubscribe
+        _nodesCollectionChangedHandler = (_, e) =>
         {
             IsDirty = true;
             RaisePropertyChanged(nameof(IsCanvasEmpty));
@@ -266,7 +341,12 @@ public sealed class CanvasViewModel : ViewModelBase
             if (e.NewItems is not null)
                 foreach (NodeViewModel n in e.NewItems)
                 {
-                    PropertyChangedEventHandler h = (_, _) => _validationManager.ScheduleValidation();
+                    PropertyChangedEventHandler h = (_, e) =>
+                    {
+                        _validationManager.ScheduleValidation();
+                        if (e.PropertyName == nameof(NodeViewModel.IsSelected))
+                            NotifyLayerCommandsCanExecuteChanged();
+                    };
                     n.PropertyChanged += h;
                     _nodeValidationHandlers[n] = h;
                 }
@@ -281,11 +361,13 @@ public sealed class CanvasViewModel : ViewModelBase
 
             _validationManager.ScheduleValidation();
         };
+        Nodes.CollectionChanged += _nodesCollectionChangedHandler;
 
-        Connections.CollectionChanged += (_, _) =>
+        _connectionsCollectionChangedHandler = (_, _) =>
         {
             IsDirty = true;
             _validationManager.ScheduleValidation();
+            NotifyLayerCommandsCanExecuteChanged();
             // Single pass — check each node type once instead of three Where iterations
             foreach (NodeViewModel n in Nodes)
             {
@@ -294,9 +376,20 @@ public sealed class CanvasViewModel : ViewModelBase
                 else if (n.IsLogicGate) n.SyncLogicGatePins(Connections);
             }
         };
+        Connections.CollectionChanged += _connectionsCollectionChangedHandler;
 
         _nodeManager.SpawnDemoNodes(UndoRedo);
+        NotifyLayerCommandsCanExecuteChanged();
         IsDirty = false;
+    }
+
+    private void NotifyLayerCommandsCanExecuteChanged()
+    {
+        BringSelectionToFrontCommand.NotifyCanExecuteChanged();
+        SendSelectionToBackCommand.NotifyCanExecuteChanged();
+        BringSelectionForwardCommand.NotifyCanExecuteChanged();
+        SendSelectionBackwardCommand.NotifyCanExecuteChanged();
+        NormalizeLayersCommand.NotifyCanExecuteChanged();
     }
 
     // ── Node operations (delegated to NodeManager) ────────────────────────────
@@ -358,6 +451,8 @@ public sealed class CanvasViewModel : ViewModelBase
     /// </summary>
     public void LoadTemplate(QueryTemplate template)
     {
+        var stateBeforeTemplate = new RestoreCanvasStateCommand(this, "Load Template");
+
         Connections.Clear();
         Nodes.Clear();
         CurrentFilePath = null;
@@ -366,7 +461,9 @@ public sealed class CanvasViewModel : ViewModelBase
         PanOffset = new Point(0, 0);
         template.Build(this);
         IsDirty = false;
-        UndoRedo.Clear();
+
+        stateBeforeTemplate.CaptureAfterState(this);
+        UndoRedo.Execute(stateBeforeTemplate);
     }
 
     /// <summary>
@@ -445,6 +542,44 @@ public sealed class CanvasViewModel : ViewModelBase
     public void SelectNode(NodeViewModel node, bool add = false) =>
         _selectionManager.SelectNode(node, add);
 
+    public bool BringSelectionToFront() =>
+        ApplyLayerOrder("Bring to front", NodeLayerOrdering.BringToFront, requireSelection: true);
+
+    public bool SendSelectionToBack() =>
+        ApplyLayerOrder("Send to back", NodeLayerOrdering.SendToBack, requireSelection: true);
+
+    public bool BringSelectionForward() =>
+        ApplyLayerOrder("Bring forward", NodeLayerOrdering.BringForward, requireSelection: true);
+
+    public bool SendSelectionBackward() =>
+        ApplyLayerOrder("Send backward", NodeLayerOrdering.SendBackward, requireSelection: true);
+
+    public bool NormalizeLayers() =>
+        ApplyLayerOrder("Normalize layers", NodeLayerOrdering.OrderByZ, requireSelection: false);
+
+    private bool ApplyLayerOrder(
+        string action,
+        Func<List<NodeViewModel>, List<NodeViewModel>> reorder,
+        bool requireSelection
+    )
+    {
+        List<NodeViewModel> all = Nodes.ToList();
+        if (all.Count == 0)
+            return false;
+        if (requireSelection && all.All(n => !n.IsSelected))
+            return false;
+
+        Dictionary<NodeViewModel, int> from = all.ToDictionary(n => n, n => n.ZOrder);
+        List<NodeViewModel> ordered = reorder(all);
+        Dictionary<NodeViewModel, int> to = NodeLayerOrdering.BuildNormalizedMap(ordered);
+
+        if (from.All(kv => to.TryGetValue(kv.Key, out int z) && z == kv.Value))
+            return false;
+
+        UndoRedo.Execute(new ReorderNodesCommand(action, from, to));
+        return true;
+    }
+
     // ── Coordinate transforms ─────────────────────────────────────────────────
 
     public void ZoomToward(Point screen, double factor)
@@ -456,6 +591,14 @@ public sealed class CanvasViewModel : ViewModelBase
             screen.Y - (screen.Y - PanOffset.Y) * (Zoom / old)
         );
     }
+
+    /// <summary>
+    /// Informs the layout manager of the current viewport size so that
+    /// <c>FitToScreen</c> can compute an accurate zoom level and pan offset.
+    /// Called by <c>InfiniteCanvas.ArrangeOverride</c> after each layout pass.
+    /// </summary>
+    public void SetViewportSize(double width, double height) =>
+        _layoutManager.SetViewportSize(width, height);
 
     public Point ScreenToCanvas(Point s) =>
         new((s.X - PanOffset.X) / Zoom, (s.Y - PanOffset.Y) / Zoom);
@@ -502,6 +645,9 @@ public sealed class CanvasViewModel : ViewModelBase
     /// </summary>
     public void TriggerAutoJoinAnalysis(string newTableFullName)
     {
+        if (string.IsNullOrWhiteSpace(newTableFullName))
+            return;
+
         // Need at least one other table to compare against
         List<NodeViewModel> tables = Nodes
             .Where(n => n.IsTableSource && n.Subtitle != newTableFullName)
@@ -511,9 +657,18 @@ public sealed class CanvasViewModel : ViewModelBase
 
         DbMetadata meta = BuildMetadataFromCanvas();
         var detector = new AutoJoinDetector(meta);
+        List<string> candidateTables = tables
+            .Select(GetTableIdentifier)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (candidateTables.Count == 0)
+            return;
+
         IReadOnlyList<JoinSuggestion> suggestions = detector.Suggest(
             newTableFullName,
-            tables.Select(n => n.Subtitle)
+            candidateTables
         );
 
         if (suggestions.Count > 0)
@@ -537,10 +692,16 @@ public sealed class CanvasViewModel : ViewModelBase
 
         foreach (NodeViewModel t in tables)
         {
+            string current = GetTableIdentifier(t);
+            if (string.IsNullOrWhiteSpace(current))
+                continue;
+
             IEnumerable<string> others = tables
                 .Where(x => x != t)
-                .Select(x => x.Subtitle);
-            foreach (JoinSuggestion s in detector.Suggest(t.Subtitle, others))
+                .Select(GetTableIdentifier)
+                .Where(name => !string.IsNullOrWhiteSpace(name));
+
+            foreach (JoinSuggestion s in detector.Suggest(current, others))
             {
                 // De-duplicate symmetric pairs
                 string[] pair = new[] { s.ExistingTable, s.NewTable };
@@ -585,7 +746,8 @@ public sealed class CanvasViewModel : ViewModelBase
     private static TableMetadata BuildTableMetadata(NodeViewModel node)
     {
         // node.Subtitle = full table name (e.g. "public.orders")
-        string full = node.Subtitle ?? node.Title;
+        // Safely handle null Subtitle and Title
+        string full = node.Subtitle ?? node.Title ?? "unknown.table";
         string[] parts = full.Split('.', 2);
         string schema = parts.Length == 2 ? parts[0] : "public";
         string name = parts.Length == 2 ? parts[1] : full;
@@ -633,7 +795,51 @@ public sealed class CanvasViewModel : ViewModelBase
         );
     }
 
+    private static string GetTableIdentifier(NodeViewModel node)
+    {
+        if (!string.IsNullOrWhiteSpace(node.Subtitle))
+            return node.Subtitle;
+
+        return node.Title ?? string.Empty;
+    }
+
     // ── Auto-join handler ─────────────────────────────────────────────────────
+
+    private static bool TrySplitJoinClauseOnEquality(
+        string onClause,
+        out string leftExpr,
+        out string rightExpr)
+    {
+        leftExpr = string.Empty;
+        rightExpr = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(onClause))
+            return false;
+
+        string clause = onClause.Trim();
+
+        // Reject composite predicates and unsupported operators.
+        if (clause.Contains(" AND ", StringComparison.OrdinalIgnoreCase)
+            || clause.Contains(" OR ", StringComparison.OrdinalIgnoreCase)
+            || clause.Contains(">=", StringComparison.Ordinal)
+            || clause.Contains("<=", StringComparison.Ordinal)
+            || clause.Contains("!=", StringComparison.Ordinal)
+            || clause.Contains("==", StringComparison.Ordinal))
+            return false;
+
+        int idx = clause.IndexOf('=');
+        if (idx <= 0 || idx >= clause.Length - 1)
+            return false;
+
+        // Ensure only a single equality operator exists.
+        if (clause.IndexOf('=', idx + 1) >= 0)
+            return false;
+
+        leftExpr = clause[..idx].Trim();
+        rightExpr = clause[(idx + 1)..].Trim();
+
+        return leftExpr.Length > 0 && rightExpr.Length > 0;
+    }
 
     private void OnJoinAccepted(object? _, JoinSuggestion suggestion)
     {
@@ -648,12 +854,11 @@ public sealed class CanvasViewModel : ViewModelBase
         if (fromTable is null || toTable is null)
             return;
 
-        string[] parts = suggestion.OnClause.Split('=');
-        if (parts.Length != 2)
+        if (!TrySplitJoinClauseOnEquality(suggestion.OnClause, out string leftExpr, out string rightExpr))
             return;
 
-        string leftCol = parts[0].Trim().Split('.').Last();
-        string rightCol = parts[1].Trim().Split('.').Last();
+        string leftCol = leftExpr.Split('.').Last();
+        string rightCol = rightExpr.Split('.').Last();
 
         PinViewModel? fromPin =
             fromTable.OutputPins.FirstOrDefault(p =>
@@ -673,5 +878,45 @@ public sealed class CanvasViewModel : ViewModelBase
 
         if (fromPin is not null && toPin is not null)
             ConnectPins(fromPin, toPin);
+    }
+
+    /// <summary>
+    /// Disposes all resources and unsubscribes from all event handlers.
+    /// Called when the CanvasViewModel is being replaced (e.g., Ctrl+N to create new canvas).
+    /// Prevents memory leaks by releasing references to event handlers and collection handlers.
+    /// </summary>
+    public void Dispose()
+    {
+        // Dispose AutoJoin overlay (which clears its cards and handlers)
+        AutoJoin?.Dispose();
+
+        // Unsubscribe from LiveSql PropertyChanged
+        if (_liveSqlPropertyChangedHandler is not null)
+            LiveSql.PropertyChanged -= _liveSqlPropertyChangedHandler;
+
+        // Unsubscribe from self PropertyChanged
+        if (_selfPropertyChangedHandler is not null)
+            this.PropertyChanged -= _selfPropertyChangedHandler;
+
+        // Unsubscribe from layout manager PropertyChanged forwarding
+        if (_layoutManagerPropertyChangedHandler is not null)
+            _layoutManager.PropertyChanged -= _layoutManagerPropertyChangedHandler;
+
+        // Unsubscribe from AutoJoin events
+        if (AutoJoin is not null)
+            AutoJoin.JoinAccepted -= OnJoinAccepted;
+
+        // Unsubscribe from collection changed handlers
+        if (_nodesCollectionChangedHandler is not null)
+            Nodes.CollectionChanged -= _nodesCollectionChangedHandler;
+
+        if (_connectionsCollectionChangedHandler is not null)
+            Connections.CollectionChanged -= _connectionsCollectionChangedHandler;
+
+        // Unsubscribe from all node validation handlers
+        foreach (var handler in _nodeValidationHandlers.Values)
+            foreach (var node in Nodes)
+                node.PropertyChanged -= handler;
+        _nodeValidationHandlers.Clear();
     }
 }

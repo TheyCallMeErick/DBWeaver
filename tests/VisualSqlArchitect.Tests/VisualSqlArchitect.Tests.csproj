@@ -19,5 +19,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/VisualSqlArchitect/VisualSqlArchitect.csproj" />
+    <ProjectReference Include="../../src/VisualSqlArchitect.UI/VisualSqlArchitect.UI.csproj" />
   </ItemGroup>
 </Project>

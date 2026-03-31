@@ -14,12 +14,29 @@ namespace VisualSqlArchitect.UI.ViewModels;
 /// </summary>
 public sealed class NodeViewModel : ViewModelBase
 {
+    private static readonly Dictionary<NodeCategory, Color> _headerColors = BuildHeaderColors();
+    private static readonly Dictionary<NodeCategory, Color> _headerLightColors = BuildHeaderLightColors();
+    private static readonly Dictionary<NodeCategory, LinearGradientBrush> _headerGradients = BuildHeaderGradients();
+
+    private static readonly SolidColorBrush SelectedBorderBrush = new(Color.Parse("#3B82F6"));
+    private static readonly SolidColorBrush ErrorBorderBrush = new(Color.Parse("#EF4444"));
+    private static readonly SolidColorBrush WarningBorderBrush = new(Color.Parse("#FBBF24"));
+    private static readonly SolidColorBrush OrphanBorderBrush = new(Color.Parse("#6B7280"));
+    private static readonly SolidColorBrush DefaultBorderBrush = new(Color.Parse("#252C3F"));
+
+    private static readonly BoxShadows SelectedShadow = BoxShadows.Parse("0 0 0 2 #3B82F6, 0 8 32 0 #603B82F6");
+    private static readonly BoxShadows ErrorShadow = BoxShadows.Parse("0 0 0 2 #EF4444, 0 4 16 0 #40EF4444");
+    private static readonly BoxShadows WarningShadow = BoxShadows.Parse("0 0 0 1 #FBBF24, 0 4 12 0 #30FBBF24");
+    private static readonly BoxShadows OrphanShadow = BoxShadows.Parse("0 2 8 0 #206B7280");
+    private static readonly BoxShadows DefaultShadow = BoxShadows.Parse("0 4 24 0 #40000000, 0 1 4 0 #50000000");
+
     private Point _position;
     private bool _isSelected,
         _isHovered,
         _isOrphan;
     private string? _alias;
     private double _width = 220;
+    private int _zOrder;
     private List<ValidationIssue> _validationIssues = [];
 
     /// <summary>Unique identifier for this node instance.</summary>
@@ -155,50 +172,30 @@ public sealed class NodeViewModel : ViewModelBase
         set => Set(ref _width, value);
     }
 
+    /// <summary>Layer order inside canvas. Higher values render in front.</summary>
+    public int ZOrder
+    {
+        get => _zOrder;
+        set => Set(ref _zOrder, value);
+    }
+
     /// <summary>Header color based on node category (for visual distinction).</summary>
     public Color HeaderColor =>
-        Category switch
-        {
-            NodeCategory.DataSource => Color.Parse("#0F766E"),
-            NodeCategory.StringTransform => Color.Parse("#4338CA"),
-            NodeCategory.MathTransform => Color.Parse("#B45309"),
-            NodeCategory.TypeCast => Color.Parse("#7E22CE"),
-            NodeCategory.Comparison => Color.Parse("#BE123C"),
-            NodeCategory.LogicGate => Color.Parse("#C2410C"),
-            NodeCategory.Json => Color.Parse("#6D28D9"),
-            NodeCategory.Aggregate => Color.Parse("#15803D"),
-            NodeCategory.Conditional => Color.Parse("#0E7490"),
-            _ => Color.Parse("#374151"),
-        };
+        _headerColors.TryGetValue(Category, out Color color)
+            ? color
+            : _headerColors[default];
 
     /// <summary>Lighter shade of HeaderColor for gradient.</summary>
     public Color HeaderColorLight =>
-        Category switch
-        {
-            NodeCategory.DataSource => Color.Parse("#14B8A6"),
-            NodeCategory.StringTransform => Color.Parse("#818CF8"),
-            NodeCategory.MathTransform => Color.Parse("#FBBF24"),
-            NodeCategory.TypeCast => Color.Parse("#C084FC"),
-            NodeCategory.Comparison => Color.Parse("#FB7185"),
-            NodeCategory.LogicGate => Color.Parse("#FB923C"),
-            NodeCategory.Json => Color.Parse("#A78BFA"),
-            NodeCategory.Aggregate => Color.Parse("#4ADE80"),
-            NodeCategory.Conditional => Color.Parse("#22D3EE"),
-            _ => Color.Parse("#9CA3AF"),
-        };
+        _headerLightColors.TryGetValue(Category, out Color color)
+            ? color
+            : _headerLightColors[default];
 
     /// <summary>Gradient brush for the node header.</summary>
     public LinearGradientBrush HeaderGradient =>
-        new()
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-            GradientStops =
-            [
-                new GradientStop(HeaderColor, 0.0),
-                new GradientStop(HeaderColorLight, 1.0),
-            ],
-        };
+        _headerGradients.TryGetValue(Category, out LinearGradientBrush? gradient)
+            ? gradient
+            : _headerGradients[default];
 
     // ── Validation state ─────────────────────────────────────────────────────
 
@@ -315,19 +312,19 @@ public sealed class NodeViewModel : ViewModelBase
 
     /// <summary>Border brush color based on selection/validation state.</summary>
     public SolidColorBrush NodeBorderBrush =>
-        IsSelected ? new SolidColorBrush(Color.Parse("#3B82F6"))
-        : HasError ? new SolidColorBrush(Color.Parse("#EF4444"))
-        : HasWarning ? new SolidColorBrush(Color.Parse("#FBBF24"))
-        : IsOrphan ? new SolidColorBrush(Color.Parse("#6B7280"))
-        : new SolidColorBrush(Color.Parse("#252C3F"));
+        IsSelected ? SelectedBorderBrush
+        : HasError ? ErrorBorderBrush
+        : HasWarning ? WarningBorderBrush
+        : IsOrphan ? OrphanBorderBrush
+        : DefaultBorderBrush;
 
     /// <summary>Shadow effects based on state.</summary>
     public BoxShadows NodeShadow =>
-        IsSelected ? BoxShadows.Parse("0 0 0 2 #3B82F6, 0 8 32 0 #603B82F6")
-        : HasError ? BoxShadows.Parse("0 0 0 2 #EF4444, 0 4 16 0 #40EF4444")
-        : HasWarning ? BoxShadows.Parse("0 0 0 1 #FBBF24, 0 4 12 0 #30FBBF24")
-        : IsOrphan ? BoxShadows.Parse("0 2 8 0 #206B7280")
-        : BoxShadows.Parse("0 4 24 0 #40000000, 0 1 4 0 #50000000");
+        IsSelected ? SelectedShadow
+        : HasError ? ErrorShadow
+        : HasWarning ? WarningShadow
+        : IsOrphan ? OrphanShadow
+        : DefaultShadow;
 
     /// <summary>Opacity reduced for orphan nodes (visual signal).</summary>
     public double NodeOpacity => IsOrphan ? 0.45 : 1.0;
@@ -406,17 +403,28 @@ public sealed class NodeViewModel : ViewModelBase
         {
             await Task.Delay(450);   // simulate network/DB round-trip
 
-            string tableShort = (Subtitle ?? Title).Split('.').Last().ToLowerInvariant();
+            // Safely handle null Subtitle and Title
+            string tableName = Subtitle ?? Title ?? "Unknown";
+            string tableShort = !string.IsNullOrEmpty(tableName)
+                ? tableName.Split('.').Last().ToLowerInvariant()
+                : "unknown";
 
-            // Resolve schema from DemoCatalog or fall back to first entry
+            // Resolve schema from DemoCatalog or fall back to first entry if available
             var entry = InlinePreviewCatalog.FirstOrDefault(e =>
                 e.TableName.Contains(tableShort, StringComparison.OrdinalIgnoreCase));
 
-            if (entry is null)
+            if (entry is null && InlinePreviewCatalog.Length > 0)
                 entry = InlinePreviewCatalog[0];
 
+            if (entry is null)
+            {
+                InlinePreviewError = "No catalog available";
+                IsPreviewLoading = false;
+                return;
+            }
+
             var dt   = new DataTable();
-            var rng  = new Random((Subtitle ?? Title).GetHashCode() ^ 0xA1B2);
+            var rng  = new Random((Subtitle ?? Title ?? "seed").GetHashCode() ^ 0xA1B2);
 
             foreach (var col in entry.Columns)
                 dt.Columns.Add(col.Name);
@@ -484,6 +492,60 @@ public sealed class NodeViewModel : ViewModelBase
             new("value", (_,   rng) => rng.Next(1, 1000)),
         ]),
     ];
+
+    private static Dictionary<NodeCategory, LinearGradientBrush> BuildHeaderGradients()
+    {
+        var map = new Dictionary<NodeCategory, LinearGradientBrush>();
+        foreach (NodeCategory category in Enum.GetValues<NodeCategory>())
+        {
+            Color start = _headerColors.TryGetValue(category, out Color startColor)
+                ? startColor
+                : _headerColors[default];
+
+            Color end = _headerLightColors.TryGetValue(category, out Color endColor)
+                ? endColor
+                : _headerLightColors[default];
+
+            map[category] = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                GradientStops =
+                [
+                    new GradientStop(start, 0.0),
+                    new GradientStop(end, 1.0),
+                ],
+            };
+        }
+
+        return map;
+    }
+
+    private static Dictionary<NodeCategory, Color> BuildHeaderColors() => new()
+    {
+        [NodeCategory.DataSource] = Color.Parse("#0F766E"),
+        [NodeCategory.StringTransform] = Color.Parse("#4338CA"),
+        [NodeCategory.MathTransform] = Color.Parse("#B45309"),
+        [NodeCategory.TypeCast] = Color.Parse("#7E22CE"),
+        [NodeCategory.Comparison] = Color.Parse("#BE123C"),
+        [NodeCategory.LogicGate] = Color.Parse("#C2410C"),
+        [NodeCategory.Json] = Color.Parse("#6D28D9"),
+        [NodeCategory.Aggregate] = Color.Parse("#15803D"),
+        [NodeCategory.Conditional] = Color.Parse("#0E7490"),
+    };
+
+    private static Dictionary<NodeCategory, Color> BuildHeaderLightColors() => new()
+    {
+        [NodeCategory.DataSource] = Color.Parse("#14B8A6"),
+        [NodeCategory.StringTransform] = Color.Parse("#818CF8"),
+        [NodeCategory.MathTransform] = Color.Parse("#FBBF24"),
+        [NodeCategory.TypeCast] = Color.Parse("#C084FC"),
+        [NodeCategory.Comparison] = Color.Parse("#FB7185"),
+        [NodeCategory.LogicGate] = Color.Parse("#FB923C"),
+        [NodeCategory.Json] = Color.Parse("#A78BFA"),
+        [NodeCategory.Aggregate] = Color.Parse("#4ADE80"),
+        [NodeCategory.Conditional] = Color.Parse("#22D3EE"),
+    };
 
     /// <summary>Material icon kind for category visualization.</summary>
     public MaterialIconKind CategoryIconKind => NodeIconCatalog.GetKindForCategory(Category);

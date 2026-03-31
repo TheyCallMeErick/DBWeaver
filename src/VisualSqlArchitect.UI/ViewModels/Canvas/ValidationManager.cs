@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using VisualSqlArchitect.Nodes;
 
 namespace VisualSqlArchitect.UI.ViewModels.Canvas;
@@ -12,6 +13,7 @@ namespace VisualSqlArchitect.UI.ViewModels.Canvas;
 public sealed class ValidationManager(CanvasViewModel canvasViewModel) : ViewModelBase
 {
     private readonly CanvasViewModel _canvasViewModel = canvasViewModel;
+    private readonly object _validationLock = new();  // Synchronization for _validationCts
     private CancellationTokenSource? _validationCts;
 
     private bool _hasErrors;
@@ -64,21 +66,39 @@ public sealed class ValidationManager(CanvasViewModel canvasViewModel) : ViewMod
     /// <summary>
     /// Schedules a validation run with 200ms debounce to avoid excessive processing.
     /// Cancels any pending validation before scheduling a new one.
+    /// Thread-safe: uses lock to synchronize access to _validationCts.
     /// </summary>
     public void ScheduleValidation()
     {
-        _validationCts?.Cancel();
-        _validationCts = new CancellationTokenSource();
-        CancellationToken token = _validationCts.Token;
-        Task.Delay(200, token)
-            .ContinueWith(
-                _ =>
-                {
-                    if (!token.IsCancellationRequested)
-                        Avalonia.Threading.Dispatcher.UIThread.Post(RunValidation);
-                },
-                TaskScheduler.Default
-            );
+        lock (_validationLock)
+        {
+            _validationCts?.Cancel();
+            _validationCts?.Dispose();
+            _validationCts = new CancellationTokenSource();
+            CancellationToken token = _validationCts.Token;
+
+            Task.Delay(200, token)
+                .ContinueWith(
+                    _ =>
+                    {
+                        if (!token.IsCancellationRequested)
+                            Avalonia.Threading.Dispatcher.UIThread.Post(RunValidationSafely);
+                    },
+                    TaskScheduler.Default
+                );
+        }
+    }
+
+    private void RunValidationSafely()
+    {
+        try
+        {
+            RunValidation();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ValidationManager] Unhandled exception during validation: {ex}");
+        }
     }
 
     /// <summary>

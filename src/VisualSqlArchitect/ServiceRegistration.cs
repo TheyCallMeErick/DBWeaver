@@ -21,6 +21,7 @@ public static class DbOrchestratorFactory
             DatabaseProvider.SqlServer => new SqlServerOrchestrator(config),
             DatabaseProvider.MySql => new MySqlOrchestrator(config),
             DatabaseProvider.Postgres => new PostgresOrchestrator(config),
+            DatabaseProvider.SQLite => new SqliteOrchestrator(config),
             _ => throw new NotSupportedException($"Provider '{config.Provider}' is not supported."),
         };
 }

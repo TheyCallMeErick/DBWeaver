@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
 using Avalonia;
 using VisualSqlArchitect.Nodes;
+using VisualSqlArchitect.UI.ViewModels.UndoRedo;
+
 
 namespace VisualSqlArchitect.UI.ViewModels.Canvas;
 
@@ -129,18 +131,33 @@ public sealed class SqlImporterViewModel(CanvasViewModel canvas) : ViewModelBase
 
         await Task.Delay(80); // yield to update UI before heavy work
 
+        // REGRESSION FIX: Capture canvas state before import for undo capability
+        // Previously: SQL Import would clear canvas without any way to restore state
+        // Now: Create restore command before import and register it to undo stack if successful
+        var stateBeforeImport = new RestoreCanvasStateCommand(_canvas, "SQL Import");
+
         try
         {
             (int imported, int partial, int skipped) = BuildGraph(SqlInput.Trim(), Report);
             StatusMessage =
                 $"Done — {imported} imported, {partial} partial, {skipped} skipped.";
             HasReport = true;
+
+            // Capture post-import state so Redo can reapply import after Undo.
+            stateBeforeImport.CaptureAfterState(_canvas);
+
+            // Register restore command in undo stack to allow undoing the import
+            // This lets users undo the import and go back to the pre-import state
+            _canvas.UndoRedo.Execute(stateBeforeImport);
+
             if (imported + partial > 0)
                 Close();
         }
         catch (Exception ex)
         {
             StatusMessage = $"Parse error: {ex.Message}";
+            // On error, restore the pre-import canvas state immediately
+            stateBeforeImport.Execute(_canvas);
         }
         finally
         {
@@ -313,7 +330,7 @@ public sealed class SqlImporterViewModel(CanvasViewModel canvas) : ViewModelBase
         const double colGap = 280;
         const double rowGap = 220;
 
-        // Clear demo nodes — this is a fresh import
+        // Clear canvas and prepare for import
         _canvas.Connections.Clear();
         _canvas.Nodes.Clear();
         _canvas.UndoRedo.Clear();

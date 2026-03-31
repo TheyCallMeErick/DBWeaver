@@ -17,6 +17,16 @@ public sealed class NodeLayoutManager : ViewModelBase
     private readonly CanvasViewModel _canvasViewModel;
     private readonly UndoRedoStack _undoRedo;
 
+    // Viewport size — updated by InfiniteCanvas after each ArrangeOverride pass.
+    // Defaults to a reasonable fallback matching the minimum window size.
+    private double _viewportWidth = 1200;
+    private double _viewportHeight = 800;
+
+    // Estimated node dimensions used when the real size has not been measured yet.
+    private const double FallbackNodeWidth = 230;
+    private const double FallbackNodeHeight = 130;
+    private const double FitPadding = 60; // canvas units of space around the content
+
     /// <summary>Grid size used for snap-to-grid (in canvas units).</summary>
     public const int GridSize = 16;
 
@@ -111,14 +121,56 @@ public sealed class NodeLayoutManager : ViewModelBase
     public Point CanvasToScreen(Point c) => new(c.X * Zoom + PanOffset.X, c.Y * Zoom + PanOffset.Y);
 
     /// <summary>
-    /// Fits the entire canvas to the screen view.
+    /// Updates the stored viewport size so that <see cref="FitToScreen"/> can compute
+    /// an accurate zoom level.  Called by <c>InfiniteCanvas.ArrangeOverride</c>.
+    /// </summary>
+    public void SetViewportSize(double width, double height)
+    {
+        if (width > 0) _viewportWidth = width;
+        if (height > 0) _viewportHeight = height;
+    }
+
+    /// <summary>
+    /// Fits all nodes into the current viewport by computing the real bounding box
+    /// and deriving an appropriate zoom level and pan offset.
+    /// Falls back to no-op when there are no nodes.
     /// </summary>
     private void FitToScreen()
     {
         if (_canvasViewModel.Nodes.Count == 0)
             return;
-        Zoom = 0.85;
-        PanOffset = new Point(80, 80);
+
+        // ── 1. Compute bounding box of all nodes ────────────────────────────
+        double minX = double.MaxValue, minY = double.MaxValue;
+        double maxX = double.MinValue, maxY = double.MinValue;
+
+        foreach (NodeViewModel node in _canvasViewModel.Nodes)
+        {
+            double w = node.Width > 0 ? node.Width : FallbackNodeWidth;
+            double x = node.Position.X;
+            double y = node.Position.Y;
+
+            minX = Math.Min(minX, x);
+            minY = Math.Min(minY, y);
+            maxX = Math.Max(maxX, x + w);
+            maxY = Math.Max(maxY, y + FallbackNodeHeight);
+        }
+
+        // ── 2. Compute zoom to fit content (with padding) into the viewport ──
+        double contentW = maxX - minX + FitPadding * 2;
+        double contentH = maxY - minY + FitPadding * 2;
+
+        double zoomX = _viewportWidth / contentW;
+        double zoomY = _viewportHeight / contentH;
+        Zoom = Math.Clamp(Math.Min(zoomX, zoomY), 0.15, 2.0);
+
+        // ── 3. Center the content inside the viewport ────────────────────────
+        double scaledCenterX = (minX + (maxX - minX) / 2.0) * Zoom;
+        double scaledCenterY = (minY + (maxY - minY) / 2.0) * Zoom;
+        PanOffset = new Point(
+            _viewportWidth / 2.0 - scaledCenterX,
+            _viewportHeight / 2.0 - scaledCenterY
+        );
     }
 
     /// <summary>
