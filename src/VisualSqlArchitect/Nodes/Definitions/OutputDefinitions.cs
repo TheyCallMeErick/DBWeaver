@@ -17,9 +17,49 @@ public static class OutputDefinitions
         [
             Out(
                 "result",
-                PinDataType.Any,
+                PinDataType.ColumnSet,
                 desc: "Connect to ResultOutput to define columns for SELECT"
             ),
+        ],
+        []
+    );
+
+    public static readonly NodeDefinition ColumnSetBuilder = new(
+        NodeType.ColumnSetBuilder,
+        NodeCategory.Output,
+        "ColumnSet Builder",
+        "Builds a structural ColumnSet from individual column references",
+        [
+            In(
+                "columns",
+                PinDataType.ColumnRef,
+                required: false,
+                multi: true,
+                desc: "Connect columns or expressions to include in the set"
+            ),
+            Out(
+                "result",
+                PinDataType.ColumnSet,
+                desc: "Connect to ResultOutput.columns to define SELECT columns"
+            ),
+        ],
+        []
+    );
+
+    public static readonly NodeDefinition ColumnSetMerge = new(
+        NodeType.ColumnSetMerge,
+        NodeCategory.Output,
+        "ColumnSet Merge",
+        "Merges multiple ColumnSet inputs into a single output set",
+        [
+            In(
+                "sets",
+                PinDataType.ColumnSet,
+                required: false,
+                multi: true,
+                desc: "Connect one or more ColumnSet outputs"
+            ),
+            Out("result", PinDataType.ColumnSet, desc: "Merged ColumnSet output"),
         ],
         []
     );
@@ -32,7 +72,7 @@ public static class OutputDefinitions
         [
             In(
                 "top",
-                PinDataType.Any,
+                PinDataType.ColumnSet,
                 required: false,
                 desc: "Connect a TOP / LIMIT node to restrict the number of rows"
             ),
@@ -44,13 +84,20 @@ public static class OutputDefinitions
             ),
             In(
                 "columns",
-                PinDataType.Any,
+                PinDataType.ColumnSet,
                 required: false,
-                desc: "Connect ColumnList output to include columns in SELECT"
+                desc: "Connect ColumnList/ColumnSetBuilder output to include columns in SELECT"
+            ),
+            In(
+                "column",
+                PinDataType.ColumnRef,
+                required: false,
+                multi: true,
+                desc: "Connect individual columns directly (without ColumnList)"
             ),
             Out(
                 "result",
-                PinDataType.Any,
+                PinDataType.ColumnSet,
                 desc: "Connect to an Export node to generate an output file"
             ),
         ],
@@ -69,7 +116,7 @@ public static class OutputDefinitions
         NodeCategory.Output,
         "JSON Export",
         "Exports the result schema as a JSON template file",
-        [In("query", PinDataType.Any, required: true, desc: "Connect from a Result Output node")],
+        [In("query", PinDataType.ColumnSet, required: true, desc: "Connect from a Result Output node")],
         [
             new(
                 "file_name",
@@ -85,7 +132,7 @@ public static class OutputDefinitions
         NodeCategory.Output,
         "CSV Export",
         "Exports the result schema as a CSV file with a header row",
-        [In("query", PinDataType.Any, required: true, desc: "Connect from a Result Output node")],
+        [In("query", PinDataType.ColumnSet, required: true, desc: "Connect from a Result Output node")],
         [
             new(
                 "file_name",
@@ -108,7 +155,7 @@ public static class OutputDefinitions
         NodeCategory.Output,
         "Excel Export (XLSX)",
         "Exports the result schema as an Excel workbook with a header row",
-        [In("query", PinDataType.Any, required: true, desc: "Connect from a Result Output node")],
+        [In("query", PinDataType.ColumnSet, required: true, desc: "Connect from a Result Output node")],
         [
             new(
                 "file_name",

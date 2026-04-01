@@ -14,7 +14,7 @@ public static class JsonDefinitions
         NodeCategory.Json,
         "JSON Extract",
         "Extracts a value from a JSON column by path",
-        [In("json", PinDataType.Json), Out("value", PinDataType.Any)],
+        [In("json", PinDataType.Json), Out("value", PinDataType.Expression)],
         [
             new(
                 "path",

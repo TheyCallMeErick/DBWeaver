@@ -91,10 +91,9 @@ public sealed class PinDragInteraction(CanvasViewModel vm, Canvas scene)
         _dragState.LiveWire.FromPoint = _dragState.SourcePin.AbsolutePosition;
         _dragState.UpdateWireEnd(canvasPoint);
 
-        // Highlight nearest valid target
+        // Highlight nearest valid target — O(1): only the two changed pins are toggled.
         PinViewModel? nearest = _dragState.HitTest(canvasPoint, tol: 18);
-        foreach (PinViewModel p in _dragState.ValidTargets)
-            p.IsDropTarget = (p == nearest);
+        _dragState.SetNearestDropTarget(nearest);
     }
 
     // ── End ───────────────────────────────────────────────────────────────────

@@ -69,7 +69,7 @@ husky install
 
 1. **PRÉ-SPRINT:** [SETUP_PRECOMMIT_HOOKS.md](./SETUP_PRECOMMIT_HOOKS.md) — Configurar hooks (10 min)
 2. Ler [EXECUTIVE_SUMMARY.md](./EXECUTIVE_SUMMARY.md) — Overview
-3. Aprofundar em [REFACTORING_ROADMAP.md](./REFACTORING_ROADMAP.md)
+3. Aprofundar em [PROJECT_BACKLOG.md](../../PROJECT_BACKLOG.md)
    - Seções: "Eixos de Refatoração Prioritários" (P0-P3)
    - Analisar trade-offs e padrões de design
 4. Verificar [IMPLEMENTATION_EXAMPLES.md](./IMPLEMENTATION_EXAMPLES.md)
@@ -83,9 +83,9 @@ husky install
 1. **PRÉ-SPRINT:** [SETUP_PRECOMMIT_HOOKS.md](./SETUP_PRECOMMIT_HOOKS.md) — Setup (15 min)
 2. Ler todos os documentos em ordem:
    - [EXECUTIVE_SUMMARY.md](./EXECUTIVE_SUMMARY.md) — Contexto
-   - [REFACTORING_ROADMAP.md](./REFACTORING_ROADMAP.md) — O quê e por quê
+   - [PROJECT_BACKLOG.md](../../PROJECT_BACKLOG.md) — O quê e por quê
    - [IMPLEMENTATION_EXAMPLES.md](./IMPLEMENTATION_EXAMPLES.md) — Como implementar
-   - [STATUS_AND_TRACKING.md](./STATUS_AND_TRACKING.md) — Sprint planning
+   - [PROJECT_BACKLOG.md](../../PROJECT_BACKLOG.md) — Sprint planning
 
 3. Usar como referência durante desenvolvimento:
    - Seguir padrões em IMPLEMENTATION_EXAMPLES.md
@@ -102,7 +102,7 @@ husky install
 3. [IMPLEMENTATION_EXAMPLES.md](./IMPLEMENTATION_EXAMPLES.md) — Seção "Testes Parametrizados"
    - Como usar ProviderTestFixture
    - Testes xUnit parametrizados
-4. [STATUS_AND_TRACKING.md](./STATUS_AND_TRACKING.md) — Métricas de sucesso
+4. [PROJECT_BACKLOG.md](../../PROJECT_BACKLOG.md) — Métricas de sucesso
 
 ---
 

@@ -43,14 +43,19 @@ public static class GraphValidator
         );
 
         // Rule: no table source on the canvas (global warning, not per-node)
-        if (vm.Nodes.Any() && !vm.Nodes.Any(n => n.Type == NodeType.TableSource))
+        if (
+            vm.Nodes.Any()
+            && !vm.Nodes.Any(n =>
+                n.Type is NodeType.TableSource or NodeType.CteSource or NodeType.Subquery
+            )
+        )
             issues.Add(
                 new ValidationIssue(
                     IssueSeverity.Warning,
                     "",
                     "NO_TABLE",
-                    "No table source on canvas",
-                    "Add a table node from the search menu (Shift+A)"
+                    "No data source on canvas",
+                    "Add a Table Source, CTE Source, or Subquery node from the search menu (Shift+A)"
                 )
             );
 
@@ -63,7 +68,7 @@ public static class GraphValidator
             .ToHashSet();
 
         // Rule: ResultOutput node must have at least one column connected
-        foreach (NodeViewModel? n in vm.Nodes.Where(n => n.Type == NodeType.ResultOutput))
+        foreach (NodeViewModel? n in vm.Nodes.Where(n => n.Type is NodeType.ResultOutput or NodeType.SelectOutput))
         {
             if (n.OutputColumnOrder.Count == 0)
                 issues.Add(
@@ -75,6 +80,61 @@ public static class GraphValidator
                         "Connect column or expression output pins to this node's input"
                     )
                 );
+        }
+
+        // Rule: reject structural mismatches on wires (e.g. RowSet -> ColumnRef)
+        foreach (ConnectionViewModel conn in vm.Connections.Where(c => c.ToPin is not null))
+        {
+            PinViewModel fromPin = conn.FromPin;
+            PinViewModel toPin = conn.ToPin!;
+
+            if (!IsStructuralMismatch(fromPin.EffectiveDataType, toPin.EffectiveDataType))
+            {
+                // Rule: non-structural incompatibilities should still surface as explicit errors
+                // with pin-level context, especially for imported/deserialized graphs.
+                if (!toPin.CanAccept(fromPin))
+                {
+                    issues.Add(
+                        new ValidationIssue(
+                            IssueSeverity.Error,
+                            toPin.Owner.Id,
+                            "PIN_TYPE_MISMATCH",
+                            $"Cannot connect {fromPin.Owner.Title}.{fromPin.Name} ({fromPin.EffectiveDataType}) to {toPin.Owner.Title}.{toPin.Name} ({toPin.EffectiveDataType})",
+                            "Connect pins with compatible semantic types (e.g. ColumnRef->ColumnRef, Boolean->Boolean, RowSet->RowSet)"
+                        )
+                    );
+                }
+
+                // Rule: detect broad Expression flow where a typed ColumnRef was expected.
+                if (
+                    fromPin.EffectiveDataType == PinDataType.Expression
+                    && toPin.EffectiveDataType == PinDataType.ColumnRef
+                    && fromPin.Owner.Type is not (NodeType.ColumnRefCast or NodeType.ScalarFromColumn)
+                )
+                {
+                    issues.Add(
+                        new ValidationIssue(
+                            IssueSeverity.Warning,
+                            toPin.Owner.Id,
+                            "UNJUSTIFIED_EXPRESSION_PIN",
+                            $"Expression output feeding ColumnRef input: {fromPin.Owner.Title}.{fromPin.Name} -> {toPin.Owner.Title}.{toPin.Name}",
+                            "Prefer typed ColumnRef nodes; when coercion is intentional, use ColumnRefCast or ScalarFromColumn"
+                        )
+                    );
+                }
+
+                continue;
+            }
+
+            issues.Add(
+                new ValidationIssue(
+                    IssueSeverity.Error,
+                    toPin.Owner.Id,
+                    "STRUCTURAL_TYPE_MISMATCH",
+                    $"Invalid structural connection: '{fromPin.EffectiveDataType}' → '{toPin.EffectiveDataType}'",
+                    "Connect row-set pins only to row-set inputs, and column pins to column/expression inputs"
+                )
+            );
         }
 
         // Detect orphan nodes and emit a warning per orphan
@@ -190,4 +250,18 @@ public static class GraphValidator
             NodeType.Substring => ["start"],
             _ => [],
         };
+
+    private static bool IsStructuralMismatch(PinDataType from, PinDataType to)
+    {
+        if (from.IsNumericScalar() && to.IsNumericScalar())
+            return false;
+
+        bool fromRowSet = from == PinDataType.RowSet;
+        bool toRowSet = to == PinDataType.RowSet;
+
+        if (fromRowSet != toRowSet)
+            return true;
+
+        return false;
+    }
 }

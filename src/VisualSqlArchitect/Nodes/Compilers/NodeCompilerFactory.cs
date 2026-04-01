@@ -18,7 +18,7 @@ public sealed class NodeCompilerFactory
             new DataSourceCompiler(),
             new StringTransformCompiler(),
             new MathTransformCompiler(),
-            new ComparisonCompiler(),
+            new ComparisonNodeCompiler(),
             new AggregateCompiler(),
             new ConditionalCompiler(),
             new JsonCompiler(),

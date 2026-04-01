@@ -31,23 +31,14 @@ public static class CredentialProtector
 
     /// <summary>
     /// Encrypts <paramref name="plaintext"/> and returns an "enc:…" string.
-    /// Returns <paramref name="plaintext"/> unchanged if it is null/empty,
-    /// or if encryption unexpectedly fails (degraded-mode fallback).
+    /// Returns <paramref name="plaintext"/> unchanged if it is null/empty.
+    /// Throws if encryption fails — callers must not silently store plaintext as fallback.
     /// </summary>
     public static string Protect(string plaintext)
     {
         if (string.IsNullOrEmpty(plaintext))
             return plaintext;
-        try
-        {
-            return _activeProtector.Value.Protect(plaintext);
-        }
-        catch
-        {
-            // Encryption failed (should not normally happen).
-            // Return plaintext rather than crashing — persistence is best-effort.
-            return plaintext;
-        }
+        return _activeProtector.Value.Protect(plaintext);
     }
 
     /// <summary>
@@ -150,29 +141,34 @@ public static class CredentialProtector
 
     private static byte[] LoadOrCreateInstallationSecret()
     {
+        string dir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "VisualSqlArchitect"
+        );
+        string path = Path.Combine(dir, ".credential_salt.bin");
+
+        // Existing file: reading must succeed — returning random bytes here would silently
+        // invalidate every credential previously encrypted with the persisted key.
+        if (File.Exists(path))
+        {
+            byte[] existing = File.ReadAllBytes(path);
+            if (existing.Length == InstallationSecretLength)
+                return existing;
+        }
+
+        // No valid file yet — this is a fresh install or the file was removed.
+        // If the write fails, an ephemeral key is acceptable: there are no prior
+        // encrypted credentials to invalidate on a first-run scenario.
         try
         {
-            string dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "VisualSqlArchitect"
-            );
             Directory.CreateDirectory(dir);
-
-            string path = Path.Combine(dir, ".credential_salt.bin");
-            if (File.Exists(path))
-            {
-                byte[] existing = File.ReadAllBytes(path);
-                if (existing.Length == InstallationSecretLength)
-                    return existing;
-            }
-
             byte[] secret = RandomNumberGenerator.GetBytes(InstallationSecretLength);
             File.WriteAllBytes(path, secret);
             return secret;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[CredentialProtector] Failed to persist installation secret, using process fallback: {ex.Message}");
+            Debug.WriteLine($"[CredentialProtector] Failed to persist installation secret: {ex.Message}. Encrypted credentials will not survive restarts.");
             return RandomNumberGenerator.GetBytes(InstallationSecretLength);
         }
     }
@@ -227,6 +223,7 @@ public static class CredentialProtector
 public sealed class CredentialVaultStore
 {
     private readonly string _vaultPath;
+    public static event Action<string>? WarningRaised;
 
     public CredentialVaultStore(string? appDataRoot = null)
     {
@@ -291,8 +288,9 @@ public sealed class CredentialVaultStore
             return JsonSerializer.Deserialize<Dictionary<string, string>>(json)
                    ?? new Dictionary<string, string>(StringComparer.Ordinal);
         }
-        catch
+        catch (Exception ex)
         {
+            WarningRaised?.Invoke($"Failed to load credential vault '{_vaultPath}': {ex.Message}");
             return new Dictionary<string, string>(StringComparer.Ordinal);
         }
     }
@@ -305,9 +303,9 @@ public sealed class CredentialVaultStore
             string json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_vaultPath, json);
         }
-        catch
+        catch (Exception ex)
         {
-            // best effort
+            WarningRaised?.Invoke($"Failed to persist credential vault '{_vaultPath}': {ex.Message}");
         }
     }
 }

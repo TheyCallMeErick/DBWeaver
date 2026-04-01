@@ -26,7 +26,9 @@ public sealed record NodeInstance(
     /// <summary>Only used for TableSource nodes: "schema.table"</summary>
     string? TableFullName = null,
     /// <summary>Only used for TableSource nodes: column name → output pin name</summary>
-    IReadOnlyDictionary<string, string>? ColumnPins = null
+    IReadOnlyDictionary<string, string>? ColumnPins = null,
+    /// <summary>Only used for TableSource nodes: output pin name → structural pin type</summary>
+    IReadOnlyDictionary<string, PinDataType>? ColumnPinTypes = null
 );
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -75,6 +77,28 @@ public sealed record OrderBinding(string NodeId, string PinName, bool Descending
 /// </summary>
 public sealed record GroupByBinding(string NodeId, string PinName);
 
+/// <summary>
+/// Binds a boolean/aggregate expression to the HAVING clause.
+/// Multiple HavingBindings are AND-ed by default.
+/// </summary>
+public sealed record HavingBinding(string NodeId, string PinName);
+
+/// <summary>
+/// Binds a boolean expression to post-window filtering (QUALIFY semantics).
+/// Multiple QualifyBindings are AND-ed by default.
+/// </summary>
+public sealed record QualifyBinding(string NodeId, string PinName);
+
+/// <summary>
+/// Defines a CTE to prepend to the query with WITH name AS (...).
+/// </summary>
+public sealed record CteBinding(
+    string Name,
+    string FromTable,
+    NodeGraph Graph,
+    bool Recursive = false
+);
+
 // ═════════════════════════════════════════════════════════════════════════════
 // NODE GRAPH  (complete canvas state → compiler input)
 // ═════════════════════════════════════════════════════════════════════════════
@@ -90,11 +114,20 @@ public sealed class NodeGraph
     public IReadOnlyList<NodeInstance> Nodes { get; init; } = [];
     public IReadOnlyList<Connection> Connections { get; init; } = [];
 
+    // ── Common table expressions ─────────────────────────────────────────────
+    public IReadOnlyList<CteBinding> Ctes { get; init; } = [];
+
     // ── Output bindings ───────────────────────────────────────────────────────
     public IReadOnlyList<SelectBinding> SelectOutputs { get; init; } = [];
     public IReadOnlyList<WhereBinding> WhereConditions { get; init; } = [];
+    public IReadOnlyList<HavingBinding> Havings { get; init; } = [];
+    public IReadOnlyList<QualifyBinding> Qualifies { get; init; } = [];
+    public string? QueryHints { get; init; }
+    public string? PivotMode { get; init; }
+    public string? PivotConfig { get; init; }
     public IReadOnlyList<OrderBinding> OrderBys { get; init; } = [];
     public IReadOnlyList<GroupByBinding> GroupBys { get; init; } = [];
+    public bool Distinct { get; init; }
 
     // ── Pagination ────────────────────────────────────────────────────────────
     public int? Limit { get; init; }
@@ -195,8 +228,11 @@ public sealed class NodeGraph
 public sealed record CompiledNodeGraph(
     IReadOnlyList<(ISqlExpression Expr, string? Alias)> SelectExprs,
     IReadOnlyList<ISqlExpression> WhereExprs,
+    IReadOnlyList<ISqlExpression> HavingExprs,
+    IReadOnlyList<ISqlExpression> QualifyExprs,
     IReadOnlyList<(ISqlExpression Expr, bool Desc)> OrderExprs,
     IReadOnlyList<ISqlExpression> GroupByExprs,
+    bool Distinct,
     int? Limit,
     int? Offset
 );

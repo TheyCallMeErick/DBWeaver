@@ -154,8 +154,8 @@ public static class StringTransformDefinitions
         "CONCAT",
         "Concatenates two or more strings",
         [
-            In("a", PinDataType.Any),
-            In("b", PinDataType.Any),
+            In("a", PinDataType.Text),
+            In("b", PinDataType.Text),
             In("separator", PinDataType.Text, required: false),
             Out("result", PinDataType.Text),
         ],

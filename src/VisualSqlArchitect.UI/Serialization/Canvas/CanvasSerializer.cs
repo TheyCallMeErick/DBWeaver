@@ -73,7 +73,14 @@ public record SavedNode(
     string? TableFullName,
     Dictionary<string, string> Parameters,
     Dictionary<string, string> PinLiterals,
-    List<SavedColumn>? Columns = null  // For TableSource: persisted column definitions
+    List<SavedColumn>? Columns = null,  // For TableSource: persisted column definitions
+    SavedCteSubgraph? CteSubgraph = null
+);
+
+public record SavedCteSubgraph(
+    List<SavedNode> Nodes,
+    List<SavedConnection> Connections,
+    string? ResultOutputNodeId
 );
 
 public record SavedConnection(
@@ -107,9 +114,10 @@ public static class CanvasSerializer
 {
     /// <summary>Current schema version written by this build.</summary>
     public const int CurrentSchemaVersion = 3;
+    public const string CteSubgraphParameterKey = "__cteSubgraphJson";
 
     /// <summary>Semantic version of the application (bumped per release).</summary>
-    public const string AppVersion = "1.0.0";
+    public const string AppVersion = AppConstants.AppVersion;
     public const int CompressionThresholdBytes = 64 * 1024;
     public const int MaxLocalFileVersions = 30;
     public const int MaxAutomaticBackups = 20;
@@ -136,7 +144,7 @@ public static class CanvasSerializer
             Zoom: vm.Zoom,
             PanX: vm.PanOffset.X,
             PanY: vm.PanOffset.Y,
-            Nodes: [.. vm.Nodes.Select(SerialiseNode)],
+            Nodes: [.. vm.Nodes.Select(n => SerialiseNode(n, vm.Nodes, vm.Connections))],
             Connections: [.. vm.Connections
                 .Select(SerialiseConnection)
                 .Where(c => c is not null)
@@ -165,7 +173,7 @@ public static class CanvasSerializer
         List<NodeViewModel> nodeList = [.. nodes];
         HashSet<string> ids = nodeList.Select(n => n.Id).ToHashSet(StringComparer.Ordinal);
         return (
-            [.. nodeList.Select(SerialiseNode)],
+            [.. nodeList.Select(n => SerialiseNode(n, nodeList, connections, includeCteSubgraph: false))],
             [.. connections.Where(c =>
                 ids.Contains(c.FromPin.Owner.Id) && ids.Contains(c.ToPin?.Owner.Id ?? "")
             )
@@ -232,6 +240,9 @@ public static class CanvasSerializer
             if (fromPin is null || toPin is null)
                 continue;
 
+            if (!IsConnectionCompatible(fromPin, toPin))
+                continue;
+
             var conn = new ConnectionViewModel(fromPin, default, default) { ToPin = toPin };
             fromPin.IsConnected = true;
             toPin.IsConnected = true;
@@ -239,9 +250,15 @@ public static class CanvasSerializer
         }
     }
 
-    private static SavedNode SerialiseNode(NodeViewModel n)
+    private static SavedNode SerialiseNode(
+        NodeViewModel n,
+        IEnumerable<NodeViewModel> allNodes,
+        IEnumerable<ConnectionViewModel> allConnections,
+        bool includeCteSubgraph = true
+    )
     {
         var parameters = new Dictionary<string, string>(n.Parameters);
+        parameters.Remove(CteSubgraphParameterKey);
         // Persist ResultOutput column order as a joined string
         if (n.Type == NodeType.ResultOutput && n.OutputColumnOrder.Count > 0)
             parameters["__colOrder"] = string.Join("|", n.OutputColumnOrder.Select(e => e.Key));
@@ -251,9 +268,13 @@ public static class CanvasSerializer
         if (n.Type == NodeType.TableSource)
         {
             columns = n.OutputPins
-                .Select(p => new SavedColumn(p.Name, p.DataType.ToString()))
+                .Select(p => new SavedColumn(p.Name, p.EffectiveDataType.ToString()))
                 .ToList();
         }
+
+        SavedCteSubgraph? cteSubgraph = includeCteSubgraph
+            ? BuildCteSubgraph(n, allNodes, allConnections)
+            : null;
 
         return new(
             NodeId: n.Id,
@@ -265,8 +286,88 @@ public static class CanvasSerializer
             TableFullName: n.Type == NodeType.TableSource ? n.Subtitle : null,
             Parameters: parameters,
             PinLiterals: new Dictionary<string, string>(n.PinLiterals),
-            Columns: columns
+            Columns: columns,
+            CteSubgraph: cteSubgraph
         );
+    }
+
+    private static SavedCteSubgraph? BuildCteSubgraph(
+        NodeViewModel node,
+        IEnumerable<NodeViewModel> allNodes,
+        IEnumerable<ConnectionViewModel> allConnections
+    )
+    {
+        if (node.Type != NodeType.CteDefinition)
+            return null;
+
+        if (node.Parameters.TryGetValue(CteSubgraphParameterKey, out string? payload)
+            && !string.IsNullOrWhiteSpace(payload))
+        {
+            try
+            {
+                SavedCteSubgraph? persisted = JsonSerializer.Deserialize<SavedCteSubgraph>(payload);
+                if (persisted is not null)
+                    return persisted;
+            }
+            catch
+            {
+                // Fall back to graph extraction when payload is malformed.
+            }
+        }
+
+        ConnectionViewModel? queryWire = allConnections.FirstOrDefault(c =>
+            c.ToPin?.Owner == node
+            && c.ToPin.Name == "query"
+            && c.FromPin.Owner.Type == NodeType.ResultOutput
+        );
+        if (queryWire?.FromPin.Owner is not NodeViewModel resultOutput)
+            return null;
+
+        HashSet<string> upstream = CollectUpstreamNodeIds(resultOutput, allConnections, includeCteDefinitions: false);
+
+        var scopedNodes = allNodes.Where(n => upstream.Contains(n.Id)).ToList();
+        var scopedIds = scopedNodes.Select(n => n.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var scopedConnections = allConnections.Where(c =>
+            c.ToPin is not null
+            && scopedIds.Contains(c.FromPin.Owner.Id)
+            && scopedIds.Contains(c.ToPin!.Owner.Id)
+        );
+
+        return new SavedCteSubgraph(
+            Nodes: [.. scopedNodes.Select(n => SerialiseNode(n, scopedNodes, scopedConnections, includeCteSubgraph: false))],
+            Connections: [.. scopedConnections
+                .Select(SerialiseConnection)
+                .Where(c => c is not null)
+                .Select(c => c!)],
+            ResultOutputNodeId: resultOutput.Id
+        );
+    }
+
+    private static HashSet<string> CollectUpstreamNodeIds(
+        NodeViewModel sinkNode,
+        IEnumerable<ConnectionViewModel> allConnections,
+        bool includeCteDefinitions
+    )
+    {
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { sinkNode.Id };
+        var queue = new Queue<string>();
+        queue.Enqueue(sinkNode.Id);
+
+        while (queue.Count > 0)
+        {
+            string current = queue.Dequeue();
+            foreach (ConnectionViewModel conn in allConnections.Where(c => c.ToPin?.Owner.Id == current))
+            {
+                NodeViewModel fromOwner = conn.FromPin.Owner;
+                if (!includeCteDefinitions && fromOwner.Type == NodeType.CteDefinition)
+                    continue;
+
+                if (visited.Add(fromOwner.Id))
+                    queue.Enqueue(fromOwner.Id);
+            }
+        }
+
+        return visited;
     }
 
     private static SavedConnection? SerialiseConnection(ConnectionViewModel c)
@@ -293,11 +394,12 @@ public static class CanvasSerializer
     {
         var warnings = new List<string>();
         SavedCanvas c = canvas;
+        int originalVersion = c.Version;
 
         // v1 → v2: no structural changes; alias/PinLiterals defaulted to empty
         if (c.Version == 1)
         {
-            warnings.Add("File was created with schema v1 — migrated to v3 (no data loss).");
+            warnings.Add("Migration step applied: schema v1 -> v2 (compatibility defaults).");
             c = c with { Version = 2 };
         }
 
@@ -305,8 +407,7 @@ public static class CanvasSerializer
         if (c.Version == 2)
         {
             warnings.Add(
-                $"File was created with schema v2 — migrated to v3. "
-                    + $"AppVersion set to 'unknown (pre-v3)', CreatedAt set to import time."
+                "Migration step applied: schema v2 -> v3 (metadata backfill for AppVersion/CreatedAt)."
             );
             c = c with
             {
@@ -315,6 +416,29 @@ public static class CanvasSerializer
                 CreatedAt = DateTime.UtcNow.ToString("o"),
             };
         }
+
+        // Some early v3 files may still miss metadata fields; backfill them assistively.
+        if (
+            c.Version == CurrentSchemaVersion
+            && (string.IsNullOrWhiteSpace(c.AppVersion) || string.IsNullOrWhiteSpace(c.CreatedAt))
+        )
+        {
+            warnings.Add(
+                "Migration step applied: schema v3 metadata normalization (filled missing AppVersion/CreatedAt)."
+            );
+            c = c with
+            {
+                AppVersion = string.IsNullOrWhiteSpace(c.AppVersion)
+                    ? "unknown (pre-v3)"
+                    : c.AppVersion,
+                CreatedAt = string.IsNullOrWhiteSpace(c.CreatedAt)
+                    ? DateTime.UtcNow.ToString("o")
+                    : c.CreatedAt,
+            };
+        }
+
+        if (originalVersion != c.Version)
+            warnings.Add($"Migration summary: schema v{originalVersion} -> v{c.Version}.");
 
         return (c, warnings);
     }
@@ -407,6 +531,8 @@ public static class CanvasSerializer
         // Rebuild connections
         int malformedConnections = 0;
         int unresolvedConnections = 0;
+        int incompatibleConnections = 0;
+        int migratedLegacyProjectionPins = 0;
 
         foreach (SavedConnection sc in saved.Connections)
         {
@@ -437,10 +563,17 @@ public static class CanvasSerializer
                 toNode.InputPins.FirstOrDefault(p => p.Name == sc.ToPinName)
                 ?? toNode.OutputPins.FirstOrDefault(p => p.Name == sc.ToPinName);
 
-            // ColumnList: redirect old dynamic pins (col_N) to the new fixed "columns" pin
-            if (toPin is null && toNode.IsColumnList && sc.ToPinName.StartsWith("col_"))
+            // ColumnList/ColumnSetBuilder: redirect old dynamic pins (col_N)
+            // to the canonical fixed "columns" pin.
+            if (
+                toPin is null
+                && (toNode.IsColumnList || toNode.Type == NodeType.ColumnSetBuilder)
+                && sc.ToPinName.StartsWith("col_", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 toPin = toNode.InputPins.FirstOrDefault(p => p.Name == "columns");
+                if (toPin is not null)
+                    migratedLegacyProjectionPins++;
             }
 
             // AND/OR dynamic pins: create cond_N on-the-fly if not yet present.
@@ -460,9 +593,39 @@ public static class CanvasSerializer
                 toPin = dynPin;
             }
 
+            // WindowFunction dynamic pins: create partition_N/order_N on-the-fly if missing.
+            if (
+                toPin is null
+                && toNode.IsWindowFunction
+                && (
+                    sc.ToPinName.StartsWith("partition_", StringComparison.OrdinalIgnoreCase)
+                    || sc.ToPinName.StartsWith("order_", StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            {
+                var dynPin = new PinViewModel(
+                    new PinDescriptor(
+                        sc.ToPinName,
+                        PinDirection.Input,
+                        PinDataType.ColumnRef,
+                        IsRequired: false,
+                        Description: "Connect a column or expression"
+                    ),
+                    toNode
+                );
+                toNode.InputPins.Add(dynPin);
+                toPin = dynPin;
+            }
+
             if (fromPin is null || toPin is null)
             {
                 unresolvedConnections++;
+                continue;
+            }
+
+            if (!IsConnectionCompatible(fromPin, toPin))
+            {
+                incompatibleConnections++;
                 continue;
             }
 
@@ -480,6 +643,16 @@ public static class CanvasSerializer
         if (unresolvedConnections > 0)
             warnings.Add(
                 $"Skipped {unresolvedConnections} connection(s) that reference missing nodes or pins."
+            );
+
+        if (incompatibleConnections > 0)
+            warnings.Add(
+                $"Skipped {incompatibleConnections} incompatible connection(s) due to type mismatch."
+            );
+
+        if (migratedLegacyProjectionPins > 0)
+            warnings.Add(
+                $"Migrated {migratedLegacyProjectionPins} legacy projection connection(s) from dynamic 'col_*' pins to canonical 'columns' pin."
             );
 
         // Restore ResultOutput column order after all connections exist
@@ -503,6 +676,103 @@ public static class CanvasSerializer
         return CanvasLoadResult.Ok(warnings.Count > 0 ? warnings : null);
     }
 
+    private static void MaterializeCteSubgraphs(
+        SavedCanvas saved,
+        CanvasViewModel vm,
+        Dictionary<string, NodeViewModel> nodeMap,
+        List<string> warnings,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup
+    )
+    {
+        foreach (SavedNode cteNode in saved.Nodes.Where(n => n.CteSubgraph is not null))
+        {
+            if (!nodeMap.TryGetValue(cteNode.NodeId, out NodeViewModel? cteVm))
+                continue;
+
+            if (cteVm.Type != NodeType.CteDefinition)
+                continue;
+
+            bool hasQueryWire = vm.Connections.Any(c =>
+                c.ToPin?.Owner == cteVm
+                && c.ToPin.Name == "query"
+                && c.FromPin.Owner.Type == NodeType.ResultOutput
+            );
+            if (hasQueryWire)
+                continue;
+
+            SavedCteSubgraph subgraph = cteNode.CteSubgraph!;
+            if (subgraph.Nodes.Count == 0)
+                continue;
+
+            var localIdMap = new Dictionary<string, NodeViewModel>(StringComparer.Ordinal);
+            foreach (SavedNode subNode in subgraph.Nodes)
+            {
+                (NodeViewModel? subVm, string? skipReason) = BuildNodeVm(subNode, columnLookup);
+                if (subVm is null)
+                {
+                    warnings.Add($"Skipped CTE subgraph node '{subNode.NodeType}' for '{cteNode.NodeId}': {skipReason ?? "Unknown error"}.");
+                    continue;
+                }
+
+                while (nodeMap.ContainsKey(subVm.Id))
+                    subVm.Id = Guid.NewGuid().ToString("N")[..8];
+
+                nodeMap[subVm.Id] = subVm;
+                localIdMap[subNode.NodeId] = subVm;
+                vm.Nodes.Add(subVm);
+            }
+
+            foreach (SavedConnection sc in subgraph.Connections)
+            {
+                if (!localIdMap.TryGetValue(sc.FromNodeId, out NodeViewModel? fromNode))
+                    continue;
+                if (!localIdMap.TryGetValue(sc.ToNodeId, out NodeViewModel? toNode))
+                    continue;
+
+                PinViewModel? fromPin =
+                    fromNode.OutputPins.FirstOrDefault(p => p.Name == sc.FromPinName)
+                    ?? fromNode.InputPins.FirstOrDefault(p => p.Name == sc.FromPinName);
+                PinViewModel? toPin =
+                    toNode.InputPins.FirstOrDefault(p => p.Name == sc.ToPinName)
+                    ?? toNode.OutputPins.FirstOrDefault(p => p.Name == sc.ToPinName);
+
+                if (fromPin is null || toPin is null)
+                    continue;
+
+                if (!IsConnectionCompatible(fromPin, toPin))
+                    continue;
+
+                var conn = new ConnectionViewModel(fromPin, default, default) { ToPin = toPin };
+                fromPin.IsConnected = true;
+                toPin.IsConnected = true;
+                vm.Connections.Add(conn);
+            }
+
+            NodeViewModel? resultVm = null;
+            if (!string.IsNullOrWhiteSpace(subgraph.ResultOutputNodeId))
+                localIdMap.TryGetValue(subgraph.ResultOutputNodeId, out resultVm);
+
+            resultVm ??= localIdMap.Values.FirstOrDefault(n => n.Type == NodeType.ResultOutput);
+            if (resultVm is null)
+                continue;
+
+            PinViewModel? resultPin = resultVm.OutputPins.FirstOrDefault(p => p.Name == "result");
+            PinViewModel? queryPin = cteVm.InputPins.FirstOrDefault(p => p.Name == "query");
+            if (resultPin is null || queryPin is null)
+                continue;
+
+            if (!IsConnectionCompatible(resultPin, queryPin))
+                continue;
+
+            var queryConn = new ConnectionViewModel(resultPin, default, default) { ToPin = queryPin };
+            resultPin.IsConnected = true;
+            queryPin.IsConnected = true;
+            vm.Connections.Add(queryConn);
+
+            warnings.Add($"Materialized persisted CTE subgraph for node '{cteVm.Id}'.");
+        }
+    }
+
     private static (NodeViewModel?, string? SkipReason) BuildNodeVm(
         SavedNode sn,
         IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup
@@ -518,13 +788,29 @@ public static class CanvasSerializer
             // Restore columns — prefer persisted columns, fall back to lookup catalog
             IEnumerable<(string, PinDataType)> cols = [];
 
+            IReadOnlyDictionary<string, PinDataType>? lookupColumnTypes = null;
+            if (
+                columnLookup is not null
+                && columnLookup.TryGetValue(
+                    sn.TableFullName,
+                    out IReadOnlyList<(string Name, PinDataType Type)>? foundLookup
+                )
+            )
+            {
+                lookupColumnTypes = foundLookup.ToDictionary(
+                    c => c.Name,
+                    c => c.Type,
+                    StringComparer.OrdinalIgnoreCase
+                );
+            }
+
             // First: use persisted columns if available
             if (sn.Columns is { Count: > 0 })
             {
                 cols = sn.Columns
                     .Select(c => (
                         c.Name,
-                        Enum.TryParse<PinDataType>(c.Type, out var dt) ? dt : PinDataType.Any
+                        ResolveSavedColumnType(c, lookupColumnTypes)
                     ))
                     .ToList();
             }
@@ -583,7 +869,40 @@ public static class CanvasSerializer
         foreach (KeyValuePair<string, string> kv in sn.PinLiterals)
             vm.PinLiterals[kv.Key] = kv.Value;
 
+        if (sn.CteSubgraph is not null)
+            vm.Parameters[CteSubgraphParameterKey] = JsonSerializer.Serialize(sn.CteSubgraph);
+
         return (vm, null);
+    }
+
+    private static PinDataType ResolveSavedColumnType(
+        SavedColumn column,
+        IReadOnlyDictionary<string, PinDataType>? lookupColumnTypes
+    )
+    {
+        if (Enum.TryParse<PinDataType>(column.Type, out PinDataType parsedType))
+        {
+            if (
+                parsedType != PinDataType.ColumnRef
+                || lookupColumnTypes is null
+                || !lookupColumnTypes.TryGetValue(column.Name, out PinDataType resolved)
+            )
+            {
+                return parsedType;
+            }
+
+            return resolved;
+        }
+
+        if (
+            lookupColumnTypes is not null
+            && lookupColumnTypes.TryGetValue(column.Name, out PinDataType fromLookup)
+        )
+        {
+            return fromLookup;
+        }
+
+        return PinDataType.ColumnRef;
     }
 
     private static void ApplySavedColumnOrder(NodeViewModel nodeVm, IReadOnlyList<string> savedOrder)
@@ -765,6 +1084,9 @@ public static class CanvasSerializer
 
         await File.WriteAllBytesAsync(targetFilePath, bytes);
     }
+
+    private static bool IsConnectionCompatible(PinViewModel fromPin, PinViewModel toPin) =>
+        toPin.CanAccept(fromPin);
 
     private static bool IsGZipPayload(ReadOnlySpan<byte> bytes) =>
         bytes.Length >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B;

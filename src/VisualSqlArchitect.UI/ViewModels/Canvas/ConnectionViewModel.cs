@@ -10,6 +10,14 @@ namespace VisualSqlArchitect.UI.ViewModels;
 /// </summary>
 public sealed class ConnectionViewModel : ViewModelBase
 {
+    public enum WireDashKind
+    {
+        Solid,
+        LongDash,
+        WideDash,
+        Dotted,
+    }
+
     private Point _fromPoint;
     private Point _toPoint;
     private bool _isHighlighted;
@@ -65,8 +73,32 @@ public sealed class ConnectionViewModel : ViewModelBase
     /// <summary>Opacity increases when highlighted.</summary>
     public double WireOpacity => IsHighlighted ? 1.0 : 0.75;
 
-    /// <summary>Thickness increases when highlighted.</summary>
-    public double WireThickness => IsHighlighted ? 2.5 : 1.8;
+    public WireDashKind DashKind =>
+        FromPin.EffectiveDataType switch
+        {
+            PinDataType.ColumnSet => WireDashKind.LongDash,
+            PinDataType.RowSet => WireDashKind.WideDash,
+            PinDataType.Expression => WireDashKind.Dotted,
+            _ => WireDashKind.Solid,
+        };
+
+    /// <summary>Thickness varies by pin family and increases when highlighted.</summary>
+    public double WireThickness
+    {
+        get
+        {
+            double baseThickness = FromPin.EffectiveDataType switch
+            {
+                PinDataType.ColumnRef => 2.0,
+                PinDataType.ColumnSet => 2.2,
+                PinDataType.RowSet => 2.5,
+                PinDataType.Expression => 1.5,
+                _ => 1.8,
+            };
+
+            return IsHighlighted ? baseThickness + 0.7 : baseThickness;
+        }
+    }
 
     /// <summary>
     /// Generates a smooth cubic Bezier curve from FromPoint to ToPoint.

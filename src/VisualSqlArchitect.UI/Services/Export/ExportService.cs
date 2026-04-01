@@ -38,11 +38,9 @@ public class ExportService(Window window, CanvasViewModel vm)
 
         string? written = await FlowDocumentExporter.WriteAsync(_vm, path);
         if (written is not null)
-            _vm.DataPreview.ShowError($"Documentation exported → {written}");
+            _vm.NotifySuccess("Documentation exported successfully.", written);
         else
-            _vm.DataPreview.ShowError(
-                "Documentation export failed — check file path and permissions."
-            );
+            _vm.NotifyError("Documentation export failed.", "Check file path and permissions.");
     }
 
     public async Task RunExportWithDialogAsync(
@@ -56,7 +54,7 @@ public class ExportService(Window window, CanvasViewModel vm)
         {
             string msg =
                 $"No {fileTypeName.Replace(" Files", "")} Export node found on the canvas. Add one via the node search menu.";
-            _vm.DataPreview.ShowError(msg);
+            _vm.NotifyError(msg);
             return;
         }
 
@@ -80,8 +78,8 @@ public class ExportService(Window window, CanvasViewModel vm)
 
         string? written = await _vm.TriggerExportAsync(exportType, path);
         if (written is not null)
-            _vm.DataPreview.ShowError($"Export successful → {written}");
+            _vm.NotifySuccess("Export completed successfully.", written);
         else
-            _vm.DataPreview.ShowError($"Export failed — check file path and permissions.");
+            _vm.NotifyError("Export failed.", "Check file path and permissions.");
     }
 }

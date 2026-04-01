@@ -123,9 +123,10 @@
           <!-- ── ALIAS ──────────────────────────────────────────────────────── -->
           <Border Padding="12,12,12,8"
                   BorderBrush="#1A1D26"
-                  BorderThickness="0,0,0,1">
+              BorderThickness="0,0,0,1"
+              IsVisible="{Binding ShowAliasEditor}">
             <StackPanel Spacing="4">
-              <TextBlock Classes="section-label" Text="{Binding [property.outputAlias], Source={x:Static loc:LocalizationService.Instance}}"/>
+              <TextBlock Classes="section-label" Text="{Binding NodeAliasLabel}"/>
               <TextBox Classes="param-input"
                        Text="{Binding NodeAlias, Mode=TwoWay}"
                        Watermark="{Binding [property.aliasWatermark], Source={x:Static loc:LocalizationService.Instance}}"

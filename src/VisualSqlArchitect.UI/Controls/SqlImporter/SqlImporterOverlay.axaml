@@ -35,6 +35,18 @@
     <Style Selector="Button.import-btn:pointerover">
       <Setter Property="Background" Value="#0F3A22"/>
     </Style>
+    <Style Selector="Button.report-link-btn">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.report-link-btn:pointerover">
+      <Setter Property="Opacity" Value="0.85"/>
+    </Style>
   </UserControl.Styles>
 
   <!-- ══ Card ═══════════════════════════════════════════════════════════════ -->
@@ -181,6 +193,28 @@
                      Foreground="#4A5568"
                      LetterSpacing="1.5"
                      Margin="0,6,0,2"/>
+
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+            <Border Background="#12301D" CornerRadius="4" Padding="6,2">
+              <TextBlock Text="{Binding ReportImportedCount, StringFormat=Imported: {0}}"
+                         FontSize="10"
+                         Foreground="#34D399"
+                         FontFamily="Consolas,monospace"/>
+            </Border>
+            <Border Background="#33260F" CornerRadius="4" Padding="6,2">
+              <TextBlock Text="{Binding ReportPartialCount, StringFormat=Partial: {0}}"
+                         FontSize="10"
+                         Foreground="#FBBF24"
+                         FontFamily="Consolas,monospace"/>
+            </Border>
+            <Border Background="#321818" CornerRadius="4" Padding="6,2">
+              <TextBlock Text="{Binding ReportSkippedCount, StringFormat=Skipped: {0}}"
+                         FontSize="10"
+                         Foreground="#F87171"
+                         FontFamily="Consolas,monospace"/>
+            </Border>
+          </StackPanel>
+
           <ItemsControl ItemsSource="{Binding Report}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:ImportReportItem">
@@ -194,13 +228,18 @@
                              VerticalAlignment="Center"
                              Width="16"/>
                   <!-- Label -->
-                  <TextBlock Grid.Column="1"
-                             Text="{Binding Label}"
-                             FontSize="11"
-                             FontFamily="Consolas,monospace"
-                             Foreground="#8B95A8"
-                             VerticalAlignment="Center"
-                             Margin="4,0"/>
+                  <Button Grid.Column="1"
+                      Classes="report-link-btn"
+                      Click="OnReportItemClick"
+                      Tag="{Binding}"
+                      IsEnabled="{Binding CanFocusNode}"
+                      Margin="4,0">
+                    <TextBlock Text="{Binding Label}"
+                       FontSize="11"
+                       FontFamily="Consolas,monospace"
+                       Foreground="#8B95A8"
+                       VerticalAlignment="Center"/>
+                  </Button>
                   <!-- Note -->
                   <TextBlock Grid.Column="2"
                              Text="{Binding Note}"

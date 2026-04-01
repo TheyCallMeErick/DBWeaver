@@ -41,7 +41,7 @@ public static class AggregateDefinitions
         NodeCategory.Aggregate,
         "MIN",
         "Minimum value",
-        [In("value", PinDataType.Any), Out("minimum", PinDataType.Any)],
+        [In("value", PinDataType.ColumnRef), Out("minimum", PinDataType.ColumnRef)],
         []
     );
 
@@ -50,7 +50,7 @@ public static class AggregateDefinitions
         NodeCategory.Aggregate,
         "MAX",
         "Maximum value",
-        [In("value", PinDataType.Any), Out("maximum", PinDataType.Any)],
+        [In("value", PinDataType.ColumnRef), Out("maximum", PinDataType.ColumnRef)],
         []
     );
 }

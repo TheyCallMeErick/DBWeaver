@@ -51,18 +51,27 @@ public sealed class SqlKataQueryBuilder : IQueryBuilder
 
         foreach (var j in joins)
         {
+            string joinType = j.Type.ToUpperInvariant() switch
+            {
+                "LEFT" => "left join",
+                "RIGHT" => "right join",
+                "FULL" => "full join",
+                "CROSS" => "cross join",
+                _ => "join",
+            };
+
+            if (!string.IsNullOrWhiteSpace(j.OnRaw))
+            {
+                _query.Join(j.TargetTable, x => x.WhereRaw(j.OnRaw), joinType);
+                continue;
+            }
+
             _query.Join(
                 j.TargetTable,
                 j.LeftColumn,
                 j.RightColumn,
-                "=",
-                j.Type.ToUpperInvariant() switch
-                {
-                    "LEFT" => "left join",
-                    "RIGHT" => "right join",
-                    "CROSS" => "cross join",
-                    _ => "join",
-                }
+                string.IsNullOrWhiteSpace(j.Operator) ? "=" : j.Operator,
+                joinType
             );
         }
 

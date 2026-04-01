@@ -443,6 +443,28 @@ public partial class MainWindow : Window
             BeginMoveDrag(e);
     }
 
+    private void ToastDetailsBackdrop_PointerPressed(object? s, PointerPressedEventArgs e)
+    {
+        CurrentVm.Toasts.CloseDetailsCommand.Execute(null);
+        e.Handled = true;
+    }
+
+    private void ToastDetailsDialog_PointerPressed(object? s, PointerPressedEventArgs e)
+    {
+        e.Handled = true;
+    }
+
+    private void ClearCanvasPromptBackdrop_PointerPressed(object? s, PointerPressedEventArgs e)
+    {
+        CurrentVm.ConnectionManager.CloseClearCanvasPromptCommand.Execute(null);
+        e.Handled = true;
+    }
+
+    private void ClearCanvasPromptDialog_PointerPressed(object? s, PointerPressedEventArgs e)
+    {
+        e.Handled = true;
+    }
+
     private void WireMenuButtons()
     {
         void B(string name, Action a)
@@ -509,8 +531,31 @@ public partial class MainWindow : Window
         CurrentVm.SearchMenu.Open(ctr);
     }
 
+    private bool TryCloseTopModalOnEscape()
+    {
+        if (CurrentVm.ConnectionManager.IsClearCanvasPromptVisible)
+        {
+            CurrentVm.ConnectionManager.CloseClearCanvasPromptCommand.Execute(null);
+            return true;
+        }
+
+        if (CurrentVm.Toasts.IsDetailsOpen)
+        {
+            CurrentVm.Toasts.CloseDetailsCommand.Execute(null);
+            return true;
+        }
+
+        return false;
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && TryCloseTopModalOnEscape())
+        {
+            e.Handled = true;
+            return;
+        }
+
         base.OnKeyDown(e);
         _keyboardHandler?.OnKeyDown(this, e);
     }

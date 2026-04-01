@@ -10,6 +10,9 @@
   "main.language": "Language",
   "main.restore.prompt": "Previous session found — restore the last canvas?",
   "main.restore.button": "Restore session",
+  "main.cteEditor.editingPrefix": "Editing CTE: ",
+  "main.cteEditor.backToCanvas": "Back to Canvas",
+  "main.cteEditor.exitA11y": "Exit CTE editor",
 
   "connection.title": "Connection Manager",
   "connection.none": "No connection",
@@ -98,6 +101,7 @@
 
   "commandPalette.empty": "No commands match your search",
   "commandPalette.execute": "Execute",
+  "context.editCte": "Edit Selected CTE",
 
   "explain.title": "Explain Plan",
   "explain.sql": "SQL",
@@ -170,6 +174,7 @@
   "autoJoin.allHandled": "All suggestions handled",
 
   "property.outputAlias": "OUTPUT ALIAS",
+  "property.sourceAlias": "SOURCE ALIAS",
   "property.aliasWatermark": "e.g. MyColumn (optional)",
   "property.parameters": "PARAMETERS",
   "property.enabled": "Enabled",

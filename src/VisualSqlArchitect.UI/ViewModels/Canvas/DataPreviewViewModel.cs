@@ -25,6 +25,8 @@ public enum PreviewExecutionState
 /// </summary>
 public sealed class DataPreviewViewModel : ViewModelBase
 {
+    public event Action<string, string?>? ErrorNotified;
+
     private bool _isVisible;
     private string? _errorMsg;
     private string _queryText = "";
@@ -280,6 +282,7 @@ public sealed class DataPreviewViewModel : ViewModelBase
         Diagnostic = ErrorDiagnostics.Classify(msg, ex);
         ErrorMessage = Diagnostic.FriendlyMessage;
         CurrentState = PreviewExecutionState.Failed;
+        ErrorNotified?.Invoke(ErrorMessage ?? msg, DiagnosticTechnical ?? ex?.ToString());
     }
 
     /// <summary>Transitions to Cancelled state; keeps previous result data visible.</summary>

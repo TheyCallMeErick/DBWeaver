@@ -155,7 +155,7 @@ docs/refactoring/
 
 - [QUICK_START_SETUP.md](./QUICK_START_SETUP.md) — 5 min setup
 - [SETUP_PRECOMMIT_HOOKS.md](./SETUP_PRECOMMIT_HOOKS.md) — Guia completo
-- [STATUS_AND_TRACKING.md](./STATUS_AND_TRACKING.md) — Sprint planning com setup
+- [PROJECT_BACKLOG.md](../../PROJECT_BACKLOG.md) — Sprint planning com setup
 - [README.md](./README.md) — Índice com setup como first step
 - [00-SUMMARY.md](./00-SUMMARY.md) — Overview com warning
 

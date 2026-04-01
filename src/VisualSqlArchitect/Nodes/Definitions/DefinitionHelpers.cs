@@ -33,7 +33,7 @@ public static class NodeDefinitionHelpers
 {
     public static PinDescriptor In(
         string name,
-        PinDataType type = PinDataType.Any,
+        PinDataType type = PinDataType.Expression,
         bool required = true,
         bool multi = false,
         string? desc = null
@@ -41,7 +41,7 @@ public static class NodeDefinitionHelpers
 
     public static PinDescriptor Out(
         string name,
-        PinDataType type = PinDataType.Any,
+        PinDataType type = PinDataType.Expression,
         string? desc = null
     ) => new(name, PinDirection.Output, type, Description: desc);
 

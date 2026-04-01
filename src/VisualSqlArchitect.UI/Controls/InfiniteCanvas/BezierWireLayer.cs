@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Rendering.Composition;
+using Avalonia.Threading;
 using System.Linq;
 using VisualSqlArchitect.UI.ViewModels;
 
@@ -19,6 +20,18 @@ namespace VisualSqlArchitect.UI.Controls;
 /// </summary>
 public sealed class BezierWireLayer : Control
 {
+    private sealed record RemovalFlash(
+        Point From,
+        Point To,
+        Color Color,
+        double Thickness,
+        ConnectionViewModel.WireDashKind DashKind,
+        long StartedAtMs
+    );
+
+    private readonly List<RemovalFlash> _removalFlashes = [];
+    private const long RemovalFlashDurationMs = 180;
+
     // ── Avalonia Properties ───────────────────────────────────────────────────
 
     public static readonly StyledProperty<IReadOnlyList<ConnectionViewModel>> ConnectionsProperty =
@@ -66,38 +79,77 @@ public sealed class BezierWireLayer : Control
     /// <summary>
     /// Removes geometry cache entries for connections that are no longer in the list.
     /// Called whenever the Connections property changes to prevent unbounded cache growth.
+    /// Avoids intermediate allocations when the cache is already fully valid.
     /// </summary>
     private void PruneGeomCache()
     {
         if (_geomCache.Count == 0)
             return;
+
         var current = new HashSet<ConnectionViewModel>(Connections);
-        foreach (ConnectionViewModel stale in _geomCache.Keys.Where(k => !current.Contains(k)).ToList())
-            _geomCache.Remove(stale);
+
+        // Collect stale keys in a separate pass to avoid "modified during enumeration".
+        // Only allocates when there are actually stale entries.
+        List<ConnectionViewModel>? stale = null;
+        foreach (ConnectionViewModel key in _geomCache.Keys)
+        {
+            if (!current.Contains(key))
+                (stale ??= []).Add(key);
+        }
+
+        if (stale is not null)
+            foreach (ConnectionViewModel key in stale)
+                _geomCache.Remove(key);
     }
 
     // ── Brush / Pen cache ─────────────────────────────────────────────────────
 
-    private readonly record struct PenKey(Color Color, double Thickness, bool IsGlow);
+    private readonly record struct PenKey(
+        Color Color,
+        double Thickness,
+        bool IsGlow,
+        ConnectionViewModel.WireDashKind DashKind
+    );
 
     private readonly Dictionary<PenKey, Pen> _penCache = new();
     private readonly Dictionary<Color, SolidColorBrush> _brushCache = new();
     private readonly Dictionary<Color, Pen> _dragPenCache = new();
     private static readonly DashStyle DragDashStyle = new([6, 4], 0);
+    private static readonly DashStyle ColumnSetDashStyle = new([8, 3], 0);
+    private static readonly DashStyle RowSetDashStyle = new([12, 4], 0);
+    private static readonly DashStyle ExpressionDashStyle = new([2, 4], 0);
 
     /// <summary>Static background brush for endpoint dots (#171B26) — shared across all wires.</summary>
     private static readonly SolidColorBrush DotBgBrush =
         new(Color.Parse("#171B26")) { Opacity = 1 };
 
-    private Pen GetPen(Color color, double thickness, bool isGlow = false)
+    private Pen GetPen(
+        Color color,
+        double thickness,
+        ConnectionViewModel.WireDashKind dashKind = ConnectionViewModel.WireDashKind.Solid,
+        bool isGlow = false
+    )
     {
-        var key = new PenKey(color, thickness, isGlow);
+        var cacheDashKind = isGlow ? ConnectionViewModel.WireDashKind.Solid : dashKind;
+        var key = new PenKey(color, thickness, isGlow, cacheDashKind);
         if (!_penCache.TryGetValue(key, out Pen? pen))
         {
             SolidColorBrush brush = GetSolidBrush(color);
             pen = isGlow
                 ? new Pen(brush, thickness)
                 : new Pen(brush, thickness) { LineCap = PenLineCap.Round };
+
+            if (!isGlow)
+            {
+                pen.DashStyle = dashKind switch
+                {
+                    ConnectionViewModel.WireDashKind.LongDash => ColumnSetDashStyle,
+                    ConnectionViewModel.WireDashKind.WideDash => RowSetDashStyle,
+                    ConnectionViewModel.WireDashKind.Dotted => ExpressionDashStyle,
+                    _ => null,
+                };
+            }
+
             _penCache[key] = pen;
         }
         return pen;
@@ -133,15 +185,75 @@ public sealed class BezierWireLayer : Control
 
     public override void Render(DrawingContext dc)
     {
-        Rect viewport = new(Bounds.Size);
+        // Bounds can be transiently zero right after topology/materialization updates.
+        // In that case, disable aggressive culling by using a safe virtual viewport.
+        Rect viewport = Bounds.Width > 1 && Bounds.Height > 1
+            ? new Rect(Bounds.Size)
+            : new Rect(0, 0, 20000, 20000);
 
         foreach (ConnectionViewModel conn in Connections
+                     .Where(c => c.ToPin is not null)
                      .OrderBy(GetConnectionDepth)
                      .ThenBy(GetEmphasisLevel))
             DrawWire(dc, conn, viewport);
 
-        if (PendingConnection is not null)
+        DrawRemovalFlashes(dc, viewport);
+
+        if (PendingConnection is not null && PendingConnection.ToPin is null)
             DrawWireDragging(dc, PendingConnection);
+    }
+
+    /// <summary>
+    /// Adds a short-lived visual flash for a connection being removed,
+    /// providing immediate deletion feedback to the user.
+    /// </summary>
+    public void AddRemovalFlash(ConnectionViewModel conn)
+    {
+        if (conn.ToPin is null)
+            return;
+
+        _removalFlashes.Add(
+            new RemovalFlash(
+                conn.FromPoint,
+                conn.ToPoint,
+                conn.WireColor,
+                conn.WireThickness,
+                conn.DashKind,
+                Environment.TickCount64
+            )
+        );
+
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Returns the top-most wire near <paramref name="point"/>, or null when none is within tolerance.
+    /// Mirrors the same depth/emphasis ordering used in render so hover feels consistent.
+    /// </summary>
+    public ConnectionViewModel? HitTestWire(Point point, double tolerance = 8)
+    {
+        ConnectionViewModel? best = null;
+        int bestDepth = int.MinValue;
+        int bestEmphasis = int.MinValue;
+
+        foreach (ConnectionViewModel conn in Connections.Where(c => c.ToPin is not null))
+        {
+            if (!IsPointNearBezier(point, conn.FromPoint, conn.ToPoint, tolerance))
+                continue;
+
+            int depth = GetConnectionDepth(conn);
+            int emphasis = GetEmphasisLevel(conn);
+            if (best is null
+                || depth > bestDepth
+                || (depth == bestDepth && emphasis > bestEmphasis))
+            {
+                best = conn;
+                bestDepth = depth;
+                bestEmphasis = emphasis;
+            }
+        }
+
+        return best;
     }
 
     private static int GetConnectionDepth(ConnectionViewModel conn)
@@ -218,7 +330,7 @@ public sealed class BezierWireLayer : Control
         Color boosted = BoostForEmphasis(color, emphasisLevel);
         byte mainAlpha = (byte)(emphasisLevel >= 3 ? 255 : emphasisLevel == 2 ? 240 : emphasized ? 230 : 190);
         var mainColor  = Color.FromArgb(mainAlpha, boosted.R, boosted.G, boosted.B);
-        Pen mainPen    = GetPen(mainColor, mainThickness);
+        Pen mainPen    = GetPen(mainColor, mainThickness, conn.DashKind);
         dc.DrawGeometry(null, mainPen, geometry);
 
         // Endpoint dots
@@ -256,6 +368,51 @@ public sealed class BezierWireLayer : Control
         DrawEndpointDot(dc, from, color, radius: 4);
     }
 
+    private void DrawRemovalFlashes(DrawingContext dc, Rect viewport)
+    {
+        if (_removalFlashes.Count == 0)
+            return;
+
+        long now = Environment.TickCount64;
+        bool hasActive = false;
+
+        for (int i = _removalFlashes.Count - 1; i >= 0; i--)
+        {
+            RemovalFlash flash = _removalFlashes[i];
+            double t = (now - flash.StartedAtMs) / (double)RemovalFlashDurationMs;
+            if (t >= 1)
+            {
+                _removalFlashes.RemoveAt(i);
+                continue;
+            }
+
+            hasActive = true;
+
+            Point from = flash.From;
+            Point to = flash.To;
+            (Point c1, Point c2) = BezierControlPoints(from, to);
+
+            double minX = Math.Min(Math.Min(from.X, to.X), Math.Min(c1.X, c2.X));
+            double minY = Math.Min(Math.Min(from.Y, to.Y), Math.Min(c1.Y, c2.Y));
+            double maxX = Math.Max(Math.Max(from.X, to.X), Math.Max(c1.X, c2.X));
+            double maxY = Math.Max(Math.Max(from.Y, to.Y), Math.Max(c1.Y, c2.Y));
+            if (maxX < 0 || minX > viewport.Width || maxY < 0 || minY > viewport.Height)
+                continue;
+
+            PathGeometry geometry = BuildBezier(from, c1, c2, to);
+            double ease = (1 - t) * (1 - t);
+            byte alpha = (byte)(220 * ease);
+            Color color = Color.FromArgb(alpha, flash.Color.R, flash.Color.G, flash.Color.B);
+            Pen pen = GetPen(color, flash.Thickness + 2.2, flash.DashKind);
+
+            using (dc.PushOpacity(0.95))
+                dc.DrawGeometry(null, pen, geometry);
+        }
+
+        if (hasActive)
+            Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render);
+    }
+
     // ── Geometry helpers ──────────────────────────────────────────────────────
 
     private static (Point c1, Point c2) BezierControlPoints(Point from, Point to)
@@ -283,6 +440,59 @@ public sealed class BezierWireLayer : Control
         };
 
         return new PathGeometry { Figures = [figure] };
+    }
+
+    private static bool IsPointNearBezier(Point p, Point from, Point to, double tolerance)
+    {
+        (Point c1, Point c2) = BezierControlPoints(from, to);
+        double tolSq = tolerance * tolerance;
+
+        Point prev = from;
+        const int segments = 24;
+        for (int i = 1; i <= segments; i++)
+        {
+            double t = i / (double)segments;
+            Point cur = EvaluateCubicBezier(from, c1, c2, to, t);
+            if (DistanceSqPointToSegment(p, prev, cur) <= tolSq)
+                return true;
+            prev = cur;
+        }
+
+        return false;
+    }
+
+    private static Point EvaluateCubicBezier(Point p0, Point p1, Point p2, Point p3, double t)
+    {
+        double u = 1 - t;
+        double tt = t * t;
+        double uu = u * u;
+        double uuu = uu * u;
+        double ttt = tt * t;
+
+        double x = (uuu * p0.X) + (3 * uu * t * p1.X) + (3 * u * tt * p2.X) + (ttt * p3.X);
+        double y = (uuu * p0.Y) + (3 * uu * t * p1.Y) + (3 * u * tt * p2.Y) + (ttt * p3.Y);
+        return new Point(x, y);
+    }
+
+    private static double DistanceSqPointToSegment(Point p, Point a, Point b)
+    {
+        double vx = b.X - a.X;
+        double vy = b.Y - a.Y;
+        double wx = p.X - a.X;
+        double wy = p.Y - a.Y;
+
+        double lenSq = (vx * vx) + (vy * vy);
+        if (lenSq <= double.Epsilon)
+            return (wx * wx) + (wy * wy);
+
+        double t = ((wx * vx) + (wy * vy)) / lenSq;
+        t = Math.Clamp(t, 0, 1);
+
+        double px = a.X + (t * vx);
+        double py = a.Y + (t * vy);
+        double dx = p.X - px;
+        double dy = p.Y - py;
+        return (dx * dx) + (dy * dy);
     }
 
     private void DrawEndpointDot(DrawingContext dc, Point center, Color color, double radius)
@@ -333,17 +543,22 @@ public sealed class DotGridBackground : Control
         AffectsRender<DotGridBackground>(ZoomProperty, PanOffsetProperty);
     }
 
-    // ── Cached static resources (no allocations per render) ───────────────────
+    // ── Cached instance resources (no allocations per render) ─────────────────
 
-    private static readonly SolidColorBrush BgBrush   = new(Color.Parse("#0D0F14"));
-    private static readonly SolidColorBrush DotBrush  = new(Color.Parse("#1E2330"));
-    private static readonly SolidColorBrush MajBrush  = new(Color.Parse("#161A22"));
-    private static readonly Pen             MajorPen  = new(MajBrush, 0.5);
+    private readonly SolidColorBrush _bgBrush = new(Color.Parse("#0D0F14"));
+    private readonly SolidColorBrush _dotBrush = new(Color.Parse("#1E2330"));
+    private readonly SolidColorBrush _majorBrush = new(Color.Parse("#161A22"));
+    private readonly Pen _majorPen;
+
+    public DotGridBackground()
+    {
+        _majorPen = new Pen(_majorBrush, 0.5);
+    }
 
     public override void Render(DrawingContext dc)
     {
         // Base background fill
-        dc.FillRectangle(BgBrush, new Rect(Bounds.Size));
+        dc.FillRectangle(_bgBrush, new Rect(Bounds.Size));
 
         const double baseSpacing = 28;
         double spacing = baseSpacing * Zoom;
@@ -362,7 +577,7 @@ public sealed class DotGridBackground : Control
         for (double x = offsetX; x < Bounds.Width + effectiveSpacing; x += effectiveSpacing)
         for (double y = offsetY; y < Bounds.Height + effectiveSpacing; y += effectiveSpacing)
             dc.FillRectangle(
-                DotBrush,
+                _dotBrush,
                 new Rect(x - dotRadius, y - dotRadius, dotRadius * 2, dotRadius * 2)
             );
 
@@ -373,9 +588,9 @@ public sealed class DotGridBackground : Control
         double majorOffY = PanOffset.Y % majorSpacing;
 
         for (double x = majorOffX; x < Bounds.Width + majorSpacing; x += majorSpacing)
-            dc.DrawLine(MajorPen, new Point(x, 0), new Point(x, Bounds.Height));
+            dc.DrawLine(_majorPen, new Point(x, 0), new Point(x, Bounds.Height));
         for (double y = majorOffY; y < Bounds.Height + majorSpacing; y += majorSpacing)
-            dc.DrawLine(MajorPen, new Point(0, y), new Point(Bounds.Width, y));
+            dc.DrawLine(_majorPen, new Point(0, y), new Point(Bounds.Width, y));
     }
 
     private static int ComputeDotStride(double width, double height, double spacing, int maxDots)

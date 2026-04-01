@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Collections.Specialized;
+using System.Text.Json;
 using Avalonia;
 using VisualSqlArchitect.Core;
 using VisualSqlArchitect.Metadata;
 using VisualSqlArchitect.Nodes;
+using VisualSqlArchitect.UI.Services.Localization;
 using VisualSqlArchitect.UI.Serialization;
 using VisualSqlArchitect.UI.ViewModels.Canvas;
 using VisualSqlArchitect.UI.ViewModels.UndoRedo;
@@ -23,6 +25,13 @@ namespace VisualSqlArchitect.UI.ViewModels;
 /// </summary>
 public sealed class CanvasViewModel : ViewModelBase, IDisposable
 {
+    private sealed record CteEditorSession(
+        string ParentCanvasJson,
+        string ParentCteNodeId,
+        bool ParentWasDirty,
+        string CteDisplayName
+    );
+
     // ── Core collections ─────────────────────────────────────────────────────
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
@@ -33,6 +42,7 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
     public SearchMenuViewModel SearchMenu { get; }
     public CommandPaletteViewModel CommandPalette { get; } = new();
     public DataPreviewViewModel DataPreview { get; } = new();
+    public ToastCenterViewModel Toasts { get; } = new();
     public AppDiagnosticsViewModel Diagnostics { get; }
     public PropertyPanelViewModel PropertyPanel { get; }
     public LiveSqlBarViewModel LiveSql { get; set; }
@@ -62,6 +72,7 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
     private PropertyChangedEventHandler? _liveSqlPropertyChangedHandler;
     private PropertyChangedEventHandler? _selfPropertyChangedHandler;
     private PropertyChangedEventHandler? _layoutManagerPropertyChangedHandler;
+    private PropertyChangedEventHandler? _localizationPropertyChangedHandler;
     private NotifyCollectionChangedEventHandler? _nodesCollectionChangedHandler;
     private NotifyCollectionChangedEventHandler? _connectionsCollectionChangedHandler;
 
@@ -72,6 +83,7 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
     private string? _filePath;
     private DbMetadata? _databaseMetadata;
     private ConnectionConfig? _activeConnectionConfig;
+    private CteEditorSession? _cteEditorSession;
 
     public string QueryText
     {
@@ -112,7 +124,14 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
     public ConnectionConfig? ActiveConnectionConfig
     {
         get => _activeConnectionConfig;
-        set => Set(ref _activeConnectionConfig, value);
+        set
+        {
+            if (!Set(ref _activeConnectionConfig, value))
+                return;
+
+            if (LiveSql is not null)
+                LiveSql.Provider = value?.Provider ?? DatabaseProvider.Postgres;
+        }
     }
 
     public string WindowTitle =>
@@ -130,6 +149,11 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
     /// True when canvas should be disabled (e.g., during database connection).
     /// </summary>
     public bool IsCanvasDisabled => ConnectionManager.IsConnecting;
+    public bool IsInCteEditor => _cteEditorSession is not null;
+    public string CteEditorBreadcrumb =>
+        _cteEditorSession is null
+            ? string.Empty
+            : $"{LocalizationService.Instance["main.cteEditor.editingPrefix"]}{_cteEditorSession.CteDisplayName}";
 
     // ── Layout properties (delegated to NodeLayoutManager) ────────────────────
 
@@ -180,6 +204,8 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
     public RelayCommand BringSelectionForwardCommand { get; }
     public RelayCommand SendSelectionBackwardCommand { get; }
     public RelayCommand NormalizeLayersCommand { get; }
+    public RelayCommand EnterCteEditorCommand { get; }
+    public RelayCommand ExitCteEditorCommand { get; }
 
     // ─ Delegated from SelectionManager
     public RelayCommand SelectAllCommand => _selectionManager.SelectAllCommand;
@@ -247,6 +273,13 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
         };
         _layoutManager.PropertyChanged += _layoutManagerPropertyChangedHandler;
 
+        _localizationPropertyChangedHandler = (_, e) =>
+        {
+            if (e.PropertyName is "" or "Item[]" or nameof(LocalizationService.CurrentCulture))
+                RaisePropertyChanged(nameof(CteEditorBreadcrumb));
+        };
+        LocalizationService.Instance.PropertyChanged += _localizationPropertyChangedHandler;
+
         // Build commands
         UndoCommand = new RelayCommand(UndoRedo.Undo, () => UndoRedo.CanUndo);
         RedoCommand = new RelayCommand(UndoRedo.Redo, () => UndoRedo.CanRedo);
@@ -278,6 +311,14 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
         NormalizeLayersCommand = new RelayCommand(
             () => NormalizeLayers(),
             () => Nodes.Count > 0
+        );
+        EnterCteEditorCommand = new RelayCommand(
+            () => EnterSelectedCteEditor(),
+            CanEnterSelectedCteEditor
+        );
+        ExitCteEditorCommand = new RelayCommand(
+            () => ExitCteEditor(),
+            () => IsInCteEditor
         );
 
         // Link commands into validation manager for CanExecute refresh
@@ -314,6 +355,7 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
                 PropertyPanel.UpdateSqlTrace(LiveSql.RawSql);
         };
         LiveSql.PropertyChanged += _liveSqlPropertyChangedHandler;
+        DataPreview.ErrorNotified += OnDataPreviewErrorNotified;
 
         SearchMenu.LoadTables(NodeManager.DemoCatalog);
 
@@ -345,7 +387,10 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
                     {
                         _validationManager.ScheduleValidation();
                         if (e.PropertyName == nameof(NodeViewModel.IsSelected))
+                        {
                             NotifyLayerCommandsCanExecuteChanged();
+                            NotifyCteEditorCommandsCanExecuteChanged();
+                        }
                     };
                     n.PropertyChanged += h;
                     _nodeValidationHandlers[n] = h;
@@ -363,17 +408,22 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
         };
         Nodes.CollectionChanged += _nodesCollectionChangedHandler;
 
-        _connectionsCollectionChangedHandler = (_, _) =>
+        _connectionsCollectionChangedHandler = (_, e) =>
         {
+            if (IsTransientConnectionDragChange(e))
+                return;
+
             IsDirty = true;
             _validationManager.ScheduleValidation();
             NotifyLayerCommandsCanExecuteChanged();
+            NotifyCteEditorCommandsCanExecuteChanged();
             // Single pass — check each node type once instead of three Where iterations
             foreach (NodeViewModel n in Nodes)
             {
                 if (n.IsResultOutput) n.SyncOutputColumns(Connections);
                 else if (n.IsColumnList) n.SyncColumnListPins(Connections);
                 else if (n.IsLogicGate) n.SyncLogicGatePins(Connections);
+                else if (n.IsWindowFunction) n.SyncWindowFunctionPins(Connections);
             }
         };
         Connections.CollectionChanged += _connectionsCollectionChangedHandler;
@@ -383,6 +433,20 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
         IsDirty = false;
     }
 
+    private static bool IsTransientConnectionDragChange(NotifyCollectionChangedEventArgs e)
+    {
+        static bool HasStructuralEndpoint(NotifyCollectionChangedEventArgs args)
+        {
+            bool NewHasStructured = args.NewItems is not null
+                && args.NewItems.Cast<object>().OfType<ConnectionViewModel>().Any(c => c.ToPin is not null);
+            bool OldHasStructured = args.OldItems is not null
+                && args.OldItems.Cast<object>().OfType<ConnectionViewModel>().Any(c => c.ToPin is not null);
+            return NewHasStructured || OldHasStructured;
+        }
+
+        return !HasStructuralEndpoint(e);
+    }
+
     private void NotifyLayerCommandsCanExecuteChanged()
     {
         BringSelectionToFrontCommand.NotifyCanExecuteChanged();
@@ -390,6 +454,281 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
         BringSelectionForwardCommand.NotifyCanExecuteChanged();
         SendSelectionBackwardCommand.NotifyCanExecuteChanged();
         NormalizeLayersCommand.NotifyCanExecuteChanged();
+    }
+
+    private void NotifyCteEditorCommandsCanExecuteChanged()
+    {
+        EnterCteEditorCommand.NotifyCanExecuteChanged();
+        ExitCteEditorCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanEnterSelectedCteEditor()
+    {
+        if (IsInCteEditor)
+            return false;
+
+        return Nodes.Count(n => n.IsSelected && n.Type == NodeType.CteDefinition) == 1;
+    }
+
+    public bool EnterSelectedCteEditor()
+    {
+        if (!CanEnterSelectedCteEditor())
+            return false;
+
+        NodeViewModel cteNode = Nodes.Single(n => n.IsSelected && n.Type == NodeType.CteDefinition);
+        string cteName = ResolveCteDisplayName(cteNode);
+
+        string parentJson = CanvasSerializer.Serialize(this);
+        bool parentWasDirty = IsDirty;
+
+        (List<SavedNode> nodes, List<SavedConnection> conns) = ExtractCteEditableSubgraph(cteNode);
+        if (nodes.Count == 0)
+        {
+            var seedResult = new NodeViewModel(NodeDefinitionRegistry.Get(NodeType.ResultOutput), new Point(260, 140));
+            (nodes, conns) = CanvasSerializer.SerialiseSubgraph([seedResult], []);
+        }
+
+        string subCanvasJson = BuildTemporaryCanvasJson(nodes, conns, description: $"CTE editor: {cteName}");
+
+        CanvasLoadResult load = CanvasSerializer.Deserialize(subCanvasJson, this);
+        if (!load.Success)
+            return false;
+
+        _cteEditorSession = new CteEditorSession(parentJson, cteNode.Id, parentWasDirty, cteName);
+        IsDirty = false;
+        RaisePropertyChanged(nameof(IsInCteEditor));
+        RaisePropertyChanged(nameof(CteEditorBreadcrumb));
+        NotifyCteEditorCommandsCanExecuteChanged();
+        return true;
+    }
+
+    public bool EnterCteEditor(NodeViewModel cteNode)
+    {
+        if (IsInCteEditor)
+            return false;
+        if (cteNode.Type != NodeType.CteDefinition)
+            return false;
+        if (!Nodes.Contains(cteNode))
+            return false;
+
+        _selectionManager.DeselectAll();
+        cteNode.IsSelected = true;
+        return EnterSelectedCteEditor();
+    }
+
+    public bool ExitCteEditor()
+    {
+        if (_cteEditorSession is null)
+            return false;
+
+        CteEditorSession session = _cteEditorSession;
+        (List<SavedNode> editedNodes, List<SavedConnection> editedConnections) =
+            CanvasSerializer.SerialiseSubgraph(Nodes, Connections);
+
+        CanvasLoadResult restore = CanvasSerializer.Deserialize(session.ParentCanvasJson, this);
+        if (!restore.Success)
+            return false;
+
+        NodeViewModel? cteNode = Nodes.FirstOrDefault(n =>
+            n.Id == session.ParentCteNodeId && n.Type == NodeType.CteDefinition
+        );
+        if (cteNode is null)
+        {
+            _cteEditorSession = null;
+            RaisePropertyChanged(nameof(IsInCteEditor));
+            RaisePropertyChanged(nameof(CteEditorBreadcrumb));
+            NotifyCteEditorCommandsCanExecuteChanged();
+            return false;
+        }
+
+        RemoveExistingCteQuerySubgraph(cteNode);
+
+        PersistCteSubgraph(cteNode, editedNodes, editedConnections);
+
+        _cteEditorSession = null;
+        IsDirty = true;
+        RaisePropertyChanged(nameof(IsInCteEditor));
+        RaisePropertyChanged(nameof(CteEditorBreadcrumb));
+        NotifyCteEditorCommandsCanExecuteChanged();
+        return true;
+    }
+
+    private static string ResolveCteDisplayName(NodeViewModel cteNode)
+    {
+        if (cteNode.Parameters.TryGetValue("name", out string? name) && !string.IsNullOrWhiteSpace(name))
+            return name.Trim();
+
+        if (cteNode.Parameters.TryGetValue("cte_name", out string? legacy) && !string.IsNullOrWhiteSpace(legacy))
+            return legacy.Trim();
+
+        return cteNode.Title;
+    }
+
+    private (List<SavedNode> Nodes, List<SavedConnection> Connections) ExtractCteEditableSubgraph(NodeViewModel cteNode)
+    {
+        if (TryReadPersistedCteSubgraph(cteNode, out SavedCteSubgraph? persisted) && persisted is not null)
+            return (persisted.Nodes, persisted.Connections);
+
+        ConnectionViewModel? queryWire = Connections.FirstOrDefault(c =>
+            c.ToPin?.Owner == cteNode
+            && c.ToPin.Name == "query"
+            && c.FromPin.Owner.Type == NodeType.ResultOutput
+        );
+
+        if (queryWire?.FromPin.Owner is not NodeViewModel resultOutput)
+            return ([], []);
+
+        HashSet<string> upstreamIds = CollectUpstreamNodeIds(resultOutput, includeCteDefinitions: false);
+        List<NodeViewModel> subgraphNodes = Nodes
+            .Where(n => upstreamIds.Contains(n.Id) && n.Type != NodeType.CteDefinition)
+            .ToList();
+
+        List<ConnectionViewModel> subgraphConnections = Connections
+            .Where(c => c.ToPin is not null
+                && upstreamIds.Contains(c.FromPin.Owner.Id)
+                && upstreamIds.Contains(c.ToPin.Owner.Id))
+            .ToList();
+
+        return CanvasSerializer.SerialiseSubgraph(subgraphNodes, subgraphConnections);
+    }
+
+    private static bool TryReadPersistedCteSubgraph(NodeViewModel cteNode, out SavedCteSubgraph? subgraph)
+    {
+        subgraph = null;
+
+        if (!cteNode.Parameters.TryGetValue(CanvasSerializer.CteSubgraphParameterKey, out string? payload)
+            || string.IsNullOrWhiteSpace(payload))
+            return false;
+
+        try
+        {
+            subgraph = JsonSerializer.Deserialize<SavedCteSubgraph>(payload);
+            return subgraph is not null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void PersistCteSubgraph(
+        NodeViewModel cteNode,
+        List<SavedNode> editedNodes,
+        List<SavedConnection> editedConnections)
+    {
+        string? resultOutputNodeId = editedNodes
+            .FirstOrDefault(n => string.Equals(n.NodeType, nameof(NodeType.ResultOutput), StringComparison.OrdinalIgnoreCase))
+            ?.NodeId;
+
+        var subgraph = new SavedCteSubgraph(
+            Nodes: editedNodes,
+            Connections: editedConnections,
+            ResultOutputNodeId: resultOutputNodeId
+        );
+
+        cteNode.Parameters[CanvasSerializer.CteSubgraphParameterKey] = JsonSerializer.Serialize(subgraph);
+    }
+
+    private HashSet<string> CollectUpstreamNodeIds(NodeViewModel sinkNode, bool includeCteDefinitions)
+    {
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { sinkNode.Id };
+        var queue = new Queue<string>();
+        queue.Enqueue(sinkNode.Id);
+
+        while (queue.Count > 0)
+        {
+            string current = queue.Dequeue();
+            foreach (ConnectionViewModel conn in Connections.Where(c => c.ToPin?.Owner.Id == current))
+            {
+                NodeViewModel fromOwner = conn.FromPin.Owner;
+                if (!includeCteDefinitions && fromOwner.Type == NodeType.CteDefinition)
+                    continue;
+
+                if (visited.Add(fromOwner.Id))
+                    queue.Enqueue(fromOwner.Id);
+            }
+        }
+
+        return visited;
+    }
+
+    private void RemoveExistingCteQuerySubgraph(NodeViewModel cteNode)
+    {
+        ConnectionViewModel? queryWire = Connections.FirstOrDefault(c =>
+            c.ToPin?.Owner == cteNode
+            && c.ToPin.Name == "query"
+            && c.FromPin.Owner.Type == NodeType.ResultOutput
+        );
+
+        if (queryWire?.FromPin.Owner is not NodeViewModel resultOutput)
+            return;
+
+        HashSet<string> removeNodeIds = CollectUpstreamNodeIds(resultOutput, includeCteDefinitions: false);
+
+        foreach (ConnectionViewModel conn in Connections
+                     .Where(c =>
+                         c.ToPin is not null
+                         && (removeNodeIds.Contains(c.FromPin.Owner.Id)
+                             || removeNodeIds.Contains(c.ToPin.Owner.Id)
+                             || (c.FromPin.Owner == resultOutput && c.ToPin.Owner == cteNode && c.ToPin.Name == "query")))
+                     .ToList())
+        {
+            Connections.Remove(conn);
+        }
+
+        foreach (NodeViewModel node in Nodes.Where(n => removeNodeIds.Contains(n.Id)).ToList())
+            Nodes.Remove(node);
+    }
+
+    private void ConnectResultOutputToCte(NodeViewModel resultOutput, NodeViewModel cteNode)
+    {
+        PinViewModel? from = resultOutput.OutputPins.FirstOrDefault(p => p.Name == "result");
+        PinViewModel? to = cteNode.InputPins.FirstOrDefault(p => p.Name == "query");
+        if (from is null || to is null)
+            return;
+
+        bool alreadyConnected = Connections.Any(c =>
+            c.FromPin.Owner == resultOutput
+            && c.FromPin.Name == "result"
+            && c.ToPin?.Owner == cteNode
+            && c.ToPin.Name == "query"
+        );
+        if (alreadyConnected)
+            return;
+
+        var conn = new ConnectionViewModel(from, from.AbsolutePosition, to.AbsolutePosition)
+        {
+            ToPin = to,
+        };
+
+        from.IsConnected = true;
+        to.IsConnected = true;
+        Connections.Add(conn);
+    }
+
+    private static string BuildTemporaryCanvasJson(
+        List<SavedNode> nodes,
+        List<SavedConnection> connections,
+        string description
+    )
+    {
+        var saved = new SavedCanvas(
+            Version: CanvasSerializer.CurrentSchemaVersion,
+            DatabaseProvider: "Postgres",
+            ConnectionName: "cte-editor",
+            Zoom: 1.0,
+            PanX: 0,
+            PanY: 0,
+            Nodes: nodes,
+            Connections: connections,
+            SelectBindings: [],
+            WhereBindings: [],
+            AppVersion: CanvasSerializer.AppVersion,
+            CreatedAt: DateTime.UtcNow.ToString("o"),
+            Description: description
+        );
+
+        return JsonSerializer.Serialize(saved);
     }
 
     // ── Node operations (delegated to NodeManager) ────────────────────────────
@@ -476,6 +815,15 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Updates the database metadata and connection configuration without clearing the canvas.
+    /// </summary>
+    public void SetDatabaseContext(DbMetadata? metadata, ConnectionConfig? config)
+    {
+        DatabaseMetadata = metadata;
+        ActiveConnectionConfig = config;
+    }
+
+    /// <summary>
     /// Resets the canvas to a clean state and sets the database metadata and connection config.
     /// Called when a user connects to a new database.
     /// </summary>
@@ -527,8 +875,11 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
         IsDirty = true;
     }
 
-    public void DeleteConnection(ConnectionViewModel conn) =>
+    public void DeleteConnection(ConnectionViewModel conn)
+    {
         _pinManager.DeleteConnection(conn);
+        IsDirty = true;
+    }
 
     internal void ClearNarrowingIfNeeded(IEnumerable<NodeViewModel> nodes) =>
         _pinManager.ClearNarrowingIfNeeded(nodes);
@@ -880,6 +1231,18 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
             ConnectPins(fromPin, toPin);
     }
 
+    public void NotifySuccess(string message, string? details = null) =>
+        Toasts.ShowSuccess(message, details);
+
+    public void NotifyWarning(string message, string? details = null) =>
+        Toasts.ShowWarning(message, details);
+
+    public void NotifyError(string message, string? details = null) =>
+        Toasts.ShowError(message, details);
+
+    private void OnDataPreviewErrorNotified(string message, string? details) =>
+        NotifyError(message, details);
+
     /// <summary>
     /// Disposes all resources and unsubscribes from all event handlers.
     /// Called when the CanvasViewModel is being replaced (e.g., Ctrl+N to create new canvas).
@@ -894,6 +1257,8 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
         if (_liveSqlPropertyChangedHandler is not null)
             LiveSql.PropertyChanged -= _liveSqlPropertyChangedHandler;
 
+        DataPreview.ErrorNotified -= OnDataPreviewErrorNotified;
+
         // Unsubscribe from self PropertyChanged
         if (_selfPropertyChangedHandler is not null)
             this.PropertyChanged -= _selfPropertyChangedHandler;
@@ -901,6 +1266,9 @@ public sealed class CanvasViewModel : ViewModelBase, IDisposable
         // Unsubscribe from layout manager PropertyChanged forwarding
         if (_layoutManagerPropertyChangedHandler is not null)
             _layoutManager.PropertyChanged -= _layoutManagerPropertyChangedHandler;
+
+        if (_localizationPropertyChangedHandler is not null)
+            LocalizationService.Instance.PropertyChanged -= _localizationPropertyChangedHandler;
 
         // Unsubscribe from AutoJoin events
         if (AutoJoin is not null)

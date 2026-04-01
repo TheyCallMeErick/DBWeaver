@@ -45,6 +45,7 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
     private readonly object _debounceLock = new();  // Synchronization for _debounce
 
     private string _rawSql = string.Empty;
+    private string _displaySql = string.Empty;
     private bool _isValid = true;
     private bool _isCompiling;
     private string? _compileError;
@@ -67,6 +68,12 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
             Set(ref _rawSql, value);
             _canvas.UpdateQueryText(value);
         }
+    }
+
+    public string DisplaySql
+    {
+        get => _displaySql;
+        private set => Set(ref _displaySql, value);
     }
 
     public bool IsValid
@@ -212,6 +219,9 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
 
         try
         {
+            // Apply in-flight edits from the property panel before reading node parameters.
+            _canvas.PropertyPanel.CommitDirty();
+
             _graphBuilder = new QueryGraphBuilder(_canvas, _provider);
 
             // ── Portability pre-check ─────────────────────────────────────────
@@ -225,6 +235,7 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
             (string sql, List<string> errors) = _graphBuilder.BuildSql();
 
             RawSql = sql;
+            DisplaySql = FormatSqlText(sql);
             IsValid = errors.Count == 0;
             CompileError = errors.Count > 0 ? errors[0] : null;
 
@@ -243,11 +254,12 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
             foreach (string err in errors)
                 ErrorHints.Add(err);
 
-            SqlSyntaxHighlighter.Tokenize(sql, Tokens);
+            SqlSyntaxHighlighter.Tokenize(DisplaySql, Tokens);
         }
         catch (Exception ex)
         {
             RawSql = string.Empty;
+            DisplaySql = string.Empty;
             IsValid = false;
             CompileError = ex.Message;
             IsMutatingCommand = false;
@@ -271,6 +283,18 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(RawSql))
             return;
 
+        string sql = FormatSqlText(RawSql);
+        RawSql = sql;
+        DisplaySql = sql;
+        SqlSyntaxHighlighter.Tokenize(sql, Tokens);
+        RaisePropertyChanged(nameof(HasSql));
+    }
+
+    private static string FormatSqlText(string sqlText)
+    {
+        if (string.IsNullOrWhiteSpace(sqlText))
+            return string.Empty;
+
         // Major clause keywords that get their own line
         string[] clauses = new[]
         {
@@ -290,7 +314,7 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
             "UNION",
         };
 
-        string sql = RawSql.Trim();
+        string sql = sqlText.Trim();
 
         // Replace each clause keyword with newline + keyword
         foreach (string? kw in clauses)
@@ -331,8 +355,6 @@ public sealed class LiveSqlBarViewModel : ViewModelBase
             }
         }
 
-        RawSql = sql;
-        SqlSyntaxHighlighter.Tokenize(RawSql, Tokens);
-        RaisePropertyChanged(nameof(HasSql));
+        return sql;
     }
 }

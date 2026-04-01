@@ -10,6 +10,9 @@
   "main.language": "Idioma",
   "main.restore.prompt": "Sessão anterior encontrada — deseja restaurar o último canvas?",
   "main.restore.button": "Restaurar sessão",
+  "main.cteEditor.editingPrefix": "Editando CTE: ",
+  "main.cteEditor.backToCanvas": "Voltar ao Canvas",
+  "main.cteEditor.exitA11y": "Sair do editor de CTE",
 
   "connection.title": "Gerenciador de Conexões",
   "connection.none": "Sem conexão",
@@ -98,6 +101,7 @@
 
   "commandPalette.empty": "Nenhum comando corresponde à sua busca",
   "commandPalette.execute": "Executar",
+  "context.editCte": "Editar CTE Selecionada",
 
   "explain.title": "Plano de Execução",
   "explain.sql": "SQL",
@@ -170,6 +174,7 @@
   "autoJoin.allHandled": "Todas as sugestões foram tratadas",
 
   "property.outputAlias": "ALIAS DE SAÍDA",
+  "property.sourceAlias": "ALIAS DE FONTE",
   "property.aliasWatermark": "ex.: MinhaColuna (opcional)",
   "property.parameters": "PARÂMETROS",
   "property.enabled": "Habilitado",

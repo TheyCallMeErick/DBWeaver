@@ -5,6 +5,7 @@ using Xunit;
 
 namespace VisualSqlArchitect.Tests.Unit.Serialization;
 
+[Collection("StoreSerialization")]
 public class StoreDiagnosticsTests
 {
     private static void WriteAllTextWithRetry(string path, string content, int maxAttempts = 5, int delayMs = 25)
@@ -43,6 +44,32 @@ public class StoreDiagnosticsTests
 
         if (File.Exists(path))
             File.Delete(path);
+    }
+
+    private static void EnsureDirectoryAtPath(string path, int maxAttempts = 5, int delayMs = 25)
+    {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    DeleteFileWithRetry(path, maxAttempts: 1, delayMs: delayMs);
+
+                if (!Directory.Exists(path))
+                    Directory.CreateDirectory(path);
+
+                return;
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                Thread.Sleep(delayMs);
+            }
+        }
+
+        if (File.Exists(path))
+            DeleteFileWithRetry(path);
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
     }
 
     [Fact]
@@ -91,8 +118,7 @@ public class StoreDiagnosticsTests
 
         try
         {
-            if (existedFile) DeleteFileWithRetry(path);
-            if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+            EnsureDirectoryAtPath(path);
 
             FlowVersionStore.WarningRaised += warnings.Add;
             FlowVersionStore.Save([]);
@@ -156,8 +182,7 @@ public class StoreDiagnosticsTests
 
         try
         {
-            if (existedFile) DeleteFileWithRetry(path);
-            if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+            EnsureDirectoryAtPath(path);
 
             SnippetStore.WarningRaised += warnings.Add;
             SnippetStore.Save([]);

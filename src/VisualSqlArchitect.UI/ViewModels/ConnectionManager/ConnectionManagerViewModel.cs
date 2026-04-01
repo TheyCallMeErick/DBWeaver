@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
+using VisualSqlArchitect.UI;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using VisualSqlArchitect.Core;
+using VisualSqlArchitect.Metadata;
 using VisualSqlArchitect.Providers;
 using VisualSqlArchitect.UI.Services;
 using VisualSqlArchitect.UI.Services.Localization;
@@ -18,7 +20,7 @@ public sealed class ConnectionProfile
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = "New Connection";
     public DatabaseProvider Provider { get; set; } = DatabaseProvider.Postgres;
-    public string Host { get; set; } = "localhost";
+    public string Host { get; set; } = AppConstants.DefaultHost;
     public int Port { get; set; } = 5432;
     public string Database { get; set; } = "";
     public string Username { get; set; } = "";
@@ -94,7 +96,7 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
     // Latency above this threshold is considered "Degraded" rather than "Online"
     private const double DegradedLatencyThresholdMs = 500.0;
     // How often the background health monitor pings the active connection (seconds)
-    private const int HealthCheckIntervalSeconds = 60;
+    // Value is defined in AppConstants.HealthCheckIntervalSeconds
 
     // ── Services ───────────────────────────────────────────────────────────────
 
@@ -246,7 +248,7 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
         }
     }
 
-    private string _editHost = "localhost";
+    private string _editHost = AppConstants.DefaultHost;
     public string EditHost { get => _editHost; set => Set(ref _editHost, value); }
 
     private int _editPort = 5432;
@@ -290,6 +292,18 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
     private string _testStatusColor = "#4A5568";
     public string TestStatusColor { get => _testStatusColor; set => Set(ref _testStatusColor, value); }
 
+    // ── Post-connect canvas confirmation ────────────────────────────────────
+
+    private bool _isClearCanvasPromptVisible;
+    public bool IsClearCanvasPromptVisible
+    {
+        get => _isClearCanvasPromptVisible;
+        private set => Set(ref _isClearCanvasPromptVisible, value);
+    }
+
+    private DbMetadata? _pendingLoadedMetadata;
+    private ConnectionConfig? _pendingLoadedConfig;
+
     // ── Background health monitor ─────────────────────────────────────────────
 
     private CancellationTokenSource? _healthMonitorCts;
@@ -309,6 +323,9 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
     public RelayCommand DisconnectCommand { get; }
     public RelayCommand CloseCommand { get; }
     public RelayCommand RefreshHealthCommand { get; }
+    public RelayCommand ClearCanvasAfterConnectCommand { get; }
+    public RelayCommand KeepCanvasAfterConnectCommand { get; }
+    public RelayCommand CloseClearCanvasPromptCommand { get; }
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -333,6 +350,9 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
         DisconnectCommand     = new RelayCommand(Disconnect, () => _activeProfileId is not null);
         CloseCommand          = new RelayCommand(() => IsVisible = false);
         RefreshHealthCommand  = new RelayCommand(StartRefreshHealthSafe, () => _activeProfileId is not null);
+        ClearCanvasAfterConnectCommand = new RelayCommand(ClearCanvasAfterConnect);
+        KeepCanvasAfterConnectCommand = new RelayCommand(KeepCanvasAfterConnect);
+        CloseClearCanvasPromptCommand = new RelayCommand(CloseClearCanvasPrompt);
 
         LoadProfiles();
     }
@@ -349,7 +369,7 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
         _editId = Guid.NewGuid().ToString();
         EditName = _loc["connection.new"];
         EditProvider = DatabaseProvider.Postgres;
-        EditHost = "localhost";
+        EditHost = AppConstants.DefaultHost;
         EditPort = 5432;
         EditDatabase = "";
         EditUsername = "";
@@ -480,7 +500,14 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
             // Update canvas with the loaded metadata and connection config, and reset it
             if (Canvas is not null && _dbConnectionService.LoadedMetadata is not null)
             {
-                Canvas.SetDatabaseAndResetCanvas(_dbConnectionService.LoadedMetadata, config);
+                DbMetadata metadata = _dbConnectionService.LoadedMetadata;
+                Canvas.SetDatabaseContext(metadata, config);
+
+                if (Canvas.IsCanvasEmpty)
+                    CloseClearCanvasPrompt();
+                else
+                    OpenClearCanvasPrompt(metadata, config);
+
                 TestStatus = _loc["connection.status.connected"];
                 TestStatusColor = "#4ADE80";
                 IsVisible = false;
@@ -603,7 +630,7 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
         {
             while (!ct.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromSeconds(HealthCheckIntervalSeconds), ct);
+                await Task.Delay(TimeSpan.FromSeconds(AppConstants.HealthCheckIntervalSeconds), ct);
                 if (!ct.IsCancellationRequested)
                     await RunHealthCheckAsync(ct);
             }
@@ -711,6 +738,33 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
 
     private static bool ContainsAny(string source, params string[] tokens)
         => tokens.Any(t => source.Contains(t, StringComparison.OrdinalIgnoreCase));
+
+    private void OpenClearCanvasPrompt(DbMetadata metadata, ConnectionConfig config)
+    {
+        _pendingLoadedMetadata = metadata;
+        _pendingLoadedConfig = config;
+        IsClearCanvasPromptVisible = true;
+    }
+
+    private void CloseClearCanvasPrompt()
+    {
+        IsClearCanvasPromptVisible = false;
+        _pendingLoadedMetadata = null;
+        _pendingLoadedConfig = null;
+    }
+
+    private void ClearCanvasAfterConnect()
+    {
+        if (Canvas is not null && _pendingLoadedMetadata is not null)
+            Canvas.SetDatabaseAndResetCanvas(_pendingLoadedMetadata, _pendingLoadedConfig);
+
+        CloseClearCanvasPrompt();
+    }
+
+    private void KeepCanvasAfterConnect()
+    {
+        CloseClearCanvasPrompt();
+    }
 
     // ── Persistence ───────────────────────────────────────────────────────────
 

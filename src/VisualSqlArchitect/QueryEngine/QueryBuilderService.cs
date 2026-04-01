@@ -9,7 +9,14 @@ public record JoinDefinition(
     string TargetTable,
     string LeftColumn,
     string RightColumn,
-    string Type = "INNER"
+    string Type = "INNER",
+    string Operator = "=",
+    string? OnRaw = null
+);
+
+public record SetOperationDefinition(
+    string Operator,
+    string QuerySql
 );
 
 public record FilterDefinition(

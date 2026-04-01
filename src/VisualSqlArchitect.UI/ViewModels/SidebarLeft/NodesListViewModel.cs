@@ -149,6 +149,7 @@ public sealed class NodesListViewModel : ViewModelBase
         {
             if (Set(ref _searchQuery, value))
             {
+                InitializeGroups(_spawnNode);
                 RaisePropertyChanged(nameof(ShowIntro));
             }
         }
@@ -169,12 +170,15 @@ public sealed class NodesListViewModel : ViewModelBase
     /// </summary>
     public ObservableCollection<NodeTypeGroupViewModel> FilteredGroups { get; } = new();
 
+    private readonly Action<NodeDefinition, Point> _spawnNode;
+
     public NodesListViewModel(Action<NodeDefinition, Point> spawnNode)
     {
+        _spawnNode = spawnNode;
         ClearSearchCommand = new RelayCommand(() => SearchQuery = "");
 
         // Build initial groups
-        InitializeGroups(spawnNode);
+        InitializeGroups(_spawnNode);
     }
 
     private void InitializeGroups(Action<NodeDefinition, Point> spawnNode)

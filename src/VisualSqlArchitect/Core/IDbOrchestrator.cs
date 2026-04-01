@@ -64,7 +64,7 @@ public record ConnectionConfig(
         $"Host={Host};Port={Port};Database={Database};Username={Username};Password={Password};Timeout={TimeoutSeconds};";
 
     private string BuildSqliteCs() =>
-        $"Data Source={Database};Timeout={TimeoutSeconds};";
+        $"Data Source={Database};Default Timeout={TimeoutSeconds};";
 }
 
 public record ConnectionTestResult(

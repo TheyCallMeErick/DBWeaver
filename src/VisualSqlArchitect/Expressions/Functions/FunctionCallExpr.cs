@@ -11,7 +11,7 @@ namespace VisualSqlArchitect.Expressions.Functions;
 public sealed record FunctionCallExpr(
     string FunctionName,
     IReadOnlyList<ISqlExpression> Args,
-    PinDataType OutputType = PinDataType.Any
+    PinDataType OutputType = PinDataType.Expression
 ) : ISqlExpression
 {
     public string Emit(EmitContext ctx)

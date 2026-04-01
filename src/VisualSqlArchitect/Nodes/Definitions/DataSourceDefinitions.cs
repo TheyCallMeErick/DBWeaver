@@ -14,7 +14,7 @@ public static class DataSourceDefinitions
         NodeCategory.DataSource,
         "ALIAS (AS)",
         "Renames a column or expression with AS",
-        [In("expression", PinDataType.Any), Out("result", PinDataType.Any)],
+        [In("expression", PinDataType.Expression), Out("result", PinDataType.ColumnRef)],
         [
             new(
                 "alias",

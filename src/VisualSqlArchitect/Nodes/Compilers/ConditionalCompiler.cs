@@ -32,7 +32,7 @@ public sealed class ConditionalCompiler : INodeCompiler
         ISqlExpression fallback = ctx.ResolveInput(node.Id, "fallback");
 
         // COALESCE(value, fallback)
-        return new FunctionCallExpr(SqlFn.Coalesce, [value, fallback], PinDataType.Any);
+        return new FunctionCallExpr(SqlFn.Coalesce, [value, fallback], PinDataType.Expression);
     }
 
     private static ISqlExpression CompileEmptyFill(NodeInstance node, INodeCompilationContext ctx)

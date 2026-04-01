@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using VisualSqlArchitect.Core;
 using VisualSqlArchitect.UI.Controls;
 using VisualSqlArchitect.UI.ViewModels;
@@ -13,11 +15,12 @@ namespace VisualSqlArchitect.UI.Services;
 /// Supports real async cancellation via CancellationTokenSource,
 /// live elapsed-time feedback, and clean state transitions.
 /// </summary>
-public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
+public class PreviewService(Window window, CanvasViewModel vm, ILogger<PreviewService>? logger = null) : IDisposable
 {
     private readonly Window _window = window;
     private readonly CanvasViewModel _vm = vm;
     private readonly QueryExecutorService _queryExecutor = new();
+    private readonly ILogger<PreviewService> _logger = logger ?? NullLogger<PreviewService>.Instance;
 
     // Active run — cancelled when user clicks Cancel or a new run starts
     private CancellationTokenSource? _runCts;
@@ -34,7 +37,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         ThrowIfDisposed();
 
         Console.WriteLine("[PreviewService] Wire() called - scheduling control lookup with delay");
-        Debug.WriteLine("[PreviewService] Wire() called");
+        _logger.LogDebug("Wire() called");
 
         // Clean up previous subscriptions if Wire is called again
         UnsubscribeFromPropertyChangedEvents();
@@ -43,7 +46,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         _ = Dispatcher.UIThread.InvokeAsync(async () =>
         {
             // Wait for layout to complete
-            await Task.Delay(500);
+            await Task.Delay(AppConstants.PreviewDebounceMs);
 
             Console.WriteLine("[PreviewService] Looking for DataPreviewPanel first...");
             // First, find the PreviewPanel (UserControl)
@@ -72,7 +75,12 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
             }
 
             Console.WriteLine($"[PreviewService] Found buttons: run={run is not null}, cancel={cancel is not null}, close={cls is not null}");
-            Debug.WriteLine($"[PreviewService] Found buttons: run={run is not null}, cancel={cancel is not null}, close={cls is not null}");
+            _logger.LogDebug(
+                "Found buttons: run={RunFound}, cancel={CancelFound}, close={CloseFound}",
+                run is not null,
+                cancel is not null,
+                cls is not null
+            );
 
             if (run is not null)
             {
@@ -80,7 +88,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
                 run.Click += async (_, _) =>
                 {
                     Console.WriteLine("[PreviewService] >>> RunButton CLICKED! <<<");
-                    Debug.WriteLine("[PreviewService] RunButton clicked!");
+                    _logger.LogDebug("RunButton clicked");
                     try
                     {
                         Console.WriteLine("[PreviewService] Starting RunPreviewAsync...");
@@ -157,7 +165,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
     public async Task RunPreviewAsync()
     {
         Console.WriteLine("\n>>> [RunPreviewAsync] STARTED <<<");
-        Debug.WriteLine("[PreviewService] RunPreviewAsync called");
+        _logger.LogDebug("RunPreviewAsync called");
 
         // Check if there are canvas errors and warn about them
         Console.WriteLine($"[RunPreviewAsync] Canvas HasErrors={_vm.HasErrors}");
@@ -171,7 +179,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         if (_vm.LiveSql.IsMutatingCommand)
         {
             Console.WriteLine("[RunPreviewAsync] Query is mutating, showing error");
-            Debug.WriteLine("[PreviewService] Query is mutating, showing error");
+            _logger.LogInformation("Blocked mutating query in preview mode");
             _vm.DataPreview.ShowError(
                 "Safe Preview Mode: data-mutating commands (INSERT/UPDATE/DELETE/DROP/ALTER/TRUNCATE) cannot be executed in preview."
             );
@@ -183,7 +191,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         if (_vm.ActiveConnectionConfig == null)
         {
             Console.WriteLine("[RunPreviewAsync] No active connection config - showing error");
-            Debug.WriteLine("[PreviewService] No active connection config");
+            _logger.LogWarning("No active connection config");
             _vm.DataPreview.ShowError(
                 "No active database connection. Please connect to a database first."
             );
@@ -191,7 +199,13 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         }
 
         Console.WriteLine($"[RunPreviewAsync] Using connection: {_vm.ActiveConnectionConfig.Provider} @ {_vm.ActiveConnectionConfig.Host}:{_vm.ActiveConnectionConfig.Port}/{_vm.ActiveConnectionConfig.Database}");
-        Debug.WriteLine($"[PreviewService] Using connection: {_vm.ActiveConnectionConfig.Provider} @ {_vm.ActiveConnectionConfig.Host}:{_vm.ActiveConnectionConfig.Port}/{_vm.ActiveConnectionConfig.Database}");
+        _logger.LogInformation(
+            "Using connection {Provider} @ {Host}:{Port}/{Database}",
+            _vm.ActiveConnectionConfig.Provider,
+            _vm.ActiveConnectionConfig.Host,
+            _vm.ActiveConnectionConfig.Port,
+            _vm.ActiveConnectionConfig.Database
+        );
 
         // Cancel any in-flight run before starting a new one
         _runCts?.Cancel();
@@ -199,16 +213,16 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         _runCts = new CancellationTokenSource();
         var ct = _runCts.Token;
 
-        string sql = string.IsNullOrEmpty(_vm.LiveSql.RawSql)
-            ? (string.IsNullOrEmpty(_vm.QueryText) ? "SELECT 1 AS test" : _vm.QueryText)
+        string sql = string.IsNullOrWhiteSpace(_vm.LiveSql.RawSql)
+            ? (string.IsNullOrWhiteSpace(_vm.QueryText) ? "SELECT 1 AS test" : _vm.QueryText)
             : _vm.LiveSql.RawSql;
 
         Console.WriteLine($"[RunPreviewAsync] SQL Query: {sql}");
-        Debug.WriteLine($"[PreviewService] SQL Query: {sql}");
+        _logger.LogDebug("SQL query for preview: {Query}", sql);
 
         // Log guardrail warnings (non-blocking)
         foreach (GuardIssue g in _vm.LiveSql.GuardIssues)
-            Debug.WriteLine($"[GUARDRAIL] {g.Code}: {g.Message}");
+            _logger.LogWarning("Guardrail {Code}: {Message}", g.Code, g.Message);
 
         Console.WriteLine("[RunPreviewAsync] Calling ShowLoading...");
         _vm.DataPreview.ShowLoading(sql);
@@ -221,7 +235,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         try
         {
             Console.WriteLine($"[RunPreviewAsync] Calling ExecuteQueryAsync with SQL length={sql.Length}");
-            Debug.WriteLine("[PreviewService] Starting query execution");
+            _logger.LogDebug("Starting query execution");
 
             // Execute query against the connected database
             var dt = await _queryExecutor.ExecuteQueryAsync(
@@ -235,7 +249,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
             ct.ThrowIfCancellationRequested();
 
             Console.WriteLine($"[RunPreviewAsync] Query SUCCESS! Got {dt.Rows.Count} rows in {sw.ElapsedMilliseconds}ms");
-            Debug.WriteLine($"[PreviewService] Query completed successfully. Rows: {dt.Rows.Count}");
+            _logger.LogInformation("Query completed successfully. Rows: {RowCount}", dt.Rows.Count);
 
             Console.WriteLine("[RunPreviewAsync] Calling ShowResults...");
             _vm.DataPreview.ShowResults(dt, sw.ElapsedMilliseconds);
@@ -244,7 +258,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         catch (OperationCanceledException)
         {
             Console.WriteLine("[RunPreviewAsync] Query was cancelled");
-            Debug.WriteLine("[PreviewService] Query was cancelled");
+            _logger.LogInformation("Query was cancelled");
             sw.Stop();
             _vm.DataPreview.ShowCancelled();
         }
@@ -252,8 +266,7 @@ public class PreviewService(Window window, CanvasViewModel vm) : IDisposable
         {
             Console.WriteLine($"[RunPreviewAsync] EXCEPTION: {ex.GetType().Name}: {ex.Message}");
             Console.WriteLine($"[RunPreviewAsync] Stack: {ex.StackTrace}");
-            Debug.WriteLine($"[PreviewService] Error executing query: {ex.GetType().Name}: {ex.Message}");
-            Debug.WriteLine($"[PreviewService] Stack trace: {ex.StackTrace}");
+            _logger.LogError(ex, "Error executing query: {Message}", ex.Message);
             sw.Stop();
             _vm.DataPreview.ShowError(ex.Message, ex);
         }

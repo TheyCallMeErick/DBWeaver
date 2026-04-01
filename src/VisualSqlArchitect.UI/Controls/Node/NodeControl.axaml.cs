@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using VisualSqlArchitect.UI.ViewModels;
 
 namespace VisualSqlArchitect.UI.Controls;
@@ -9,6 +10,7 @@ namespace VisualSqlArchitect.UI.Controls;
 public sealed partial class NodeControl : UserControl
 {
     public event EventHandler<(NodeViewModel Node, bool ShiftHeld)>? NodeClicked;
+    public event EventHandler<NodeViewModel>? NodeDoubleClicked;
     public event EventHandler<(NodeViewModel Node, Point ScreenPos)>? NodeDragStarted;
     public event EventHandler<(NodeViewModel Node, Point ScreenPos)>? NodeDragDelta;
     public event EventHandler<(NodeViewModel Node, Point ScreenPos)>? NodeDragCompleted;
@@ -17,6 +19,7 @@ public sealed partial class NodeControl : UserControl
     private bool _dragging;
     private Point _pressPos;
     private bool _didDrag;
+    private bool _isDoubleClick;
 
     public NodeControl()
     {
@@ -31,6 +34,11 @@ public sealed partial class NodeControl : UserControl
                 if (DataContext is NodeViewModel vm)
                     await vm.ToggleInlinePreviewAsync();
             };
+
+            HookWindowSlotButton("AddPartitionBtn", vm => vm.AddWindowPartitionSlot());
+            HookWindowSlotButton("RemovePartitionBtn", vm => vm.RemoveWindowPartitionSlot());
+            HookWindowSlotButton("AddOrderBtn", vm => vm.AddWindowOrderSlot());
+            HookWindowSlotButton("RemoveOrderBtn", vm => vm.RemoveWindowOrderSlot());
 
         PointerPressed += OnPressed;
         PointerMoved += OnMoved;
@@ -47,12 +55,33 @@ public sealed partial class NodeControl : UserControl
         };
     }
 
+    private void HookWindowSlotButton(string buttonName, Action<NodeViewModel> action)
+    {
+        Button? button = this.FindControl<Button>(buttonName);
+        if (button is null)
+            return;
+
+        button.Click += (_, e) =>
+        {
+            e.Handled = true;
+            if (DataContext is NodeViewModel vm)
+                action(vm);
+        };
+    }
+
     private void OnPressed(object? s, PointerPressedEventArgs e)
     {
         if (DataContext is not NodeViewModel vm)
             return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
+
+        // Let embedded editors (ComboBox/TextBox/Button/CheckBox) handle interaction.
+        // Without this guard, node drag capture can block in-node selectors like JOIN type.
+        if (IsInteractiveTarget(e.Source))
+            return;
+
+        _isDoubleClick = e.ClickCount >= 2;
 
         // Let canvas handle space+drag panning (do not start node/pin drag here).
         InfiniteCanvas? canvas = this.FindLogicalAncestorOfType<InfiniteCanvas>();
@@ -95,7 +124,24 @@ public sealed partial class NodeControl : UserControl
         NodeDragCompleted?.Invoke(this, (vm, e.GetPosition(Parent as Visual)));
         e.Pointer.Capture(null);
         if (!_didDrag)
+        {
             NodeClicked?.Invoke(this, (vm, e.KeyModifiers.HasFlag(KeyModifiers.Shift)));
+            if (_isDoubleClick)
+                NodeDoubleClicked?.Invoke(this, vm);
+        }
+
+        _isDoubleClick = false;
+    }
+
+    private static bool IsInteractiveTarget(object? source)
+    {
+        if (source is not Visual visual)
+            return false;
+
+        return visual.FindAncestorOfType<ComboBox>() is not null
+            || visual.FindAncestorOfType<TextBox>() is not null
+            || visual.FindAncestorOfType<Button>() is not null
+            || visual.FindAncestorOfType<CheckBox>() is not null;
     }
 
     private PinViewModel? HitTestPin(Point local)
@@ -103,24 +149,46 @@ public sealed partial class NodeControl : UserControl
         if (DataContext is not NodeViewModel)
             return null;
         const double tol = 10;
-        foreach (Border b in this.GetLogicalDescendants().OfType<Border>())
+
+        foreach (PinShapeControl psc in this.GetLogicalDescendants().OfType<PinShapeControl>())
         {
-            if (b.DataContext is not PinViewModel pvm)
+            if (psc.DataContext is not PinViewModel pvm)
                 continue;
-            // TranslatePoint converts from the Border's own coordinate space to the
-            // NodeControl's coordinate space, correctly handling nested DataTemplate
-            // Grids and negative margins (e.g. the -5px on pin dots).
-            Point? translated = b.TranslatePoint(
-                new Point(b.Bounds.Width / 2, b.Bounds.Height / 2),
+
+            Point? translated = psc.TranslatePoint(
+                new Point(psc.Bounds.Width / 2, psc.Bounds.Height / 2),
                 this
             );
+
             if (translated is null)
                 continue;
+
             double dx = local.X - translated.Value.X;
             double dy = local.Y - translated.Value.Y;
             if (Math.Sqrt(dx * dx + dy * dy) < tol)
                 return pvm;
         }
+
+        // Backward-compatible fallback for legacy templates still using Border dots.
+        foreach (Border b in this.GetLogicalDescendants().OfType<Border>())
+        {
+            if (b.DataContext is not PinViewModel pvm)
+                continue;
+
+            Point? translated = b.TranslatePoint(
+                new Point(b.Bounds.Width / 2, b.Bounds.Height / 2),
+                this
+            );
+
+            if (translated is null)
+                continue;
+
+            double dx = local.X - translated.Value.X;
+            double dy = local.Y - translated.Value.Y;
+            if (Math.Sqrt(dx * dx + dy * dy) < tol)
+                return pvm;
+        }
+
         return null;
     }
 

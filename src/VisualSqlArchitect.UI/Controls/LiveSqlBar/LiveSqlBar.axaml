@@ -221,37 +221,38 @@
                      IsVisible="{Binding IsCompiling}"/>
       </Grid>
 
-      <!-- ── SQL token display ──────────────────────────────────────────────── -->
-      <ScrollViewer Grid.Row="2"
-                    HorizontalScrollBarVisibility="Auto"
-                    VerticalScrollBarVisibility="Disabled"
-                    Margin="0,0,0,4">
-
-        <ItemsControl ItemsSource="{Binding Tokens}"
-                      Margin="12,0">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <!-- WrapPanel so multi-line SQL wraps nicely -->
-              <WrapPanel Orientation="Horizontal"/>
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:SqlToken">
-              <TextBlock Text="{Binding Text}"
-                         FontFamily="Consolas,Cascadia Code,monospace"
-                         FontSize="12"
-                         Classes.tok-Keyword="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Keyword}"
-                         Classes.tok-Identifier="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Identifier}"
-                         Classes.tok-Literal="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Literal}"
-                         Classes.tok-Operator="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Operator}"
-                         Classes.tok-Punctuation="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Punctuation}"
-                         Classes.tok-Function="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Function}"
-                         Classes.tok-Comment="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Comment}"
-                         Classes.tok-Plain="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Plain}"/>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </ScrollViewer>
+      <!-- ── SQL text display ───────────────────────────────────────────────── -->
+      <Border Grid.Row="2" Margin="12,0,12,4" Background="#070B10" BorderBrush="#252C3F" BorderThickness="1" CornerRadius="8">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      MinHeight="90"
+                      MaxHeight="220"
+                      Margin="10,8">
+          <ItemsControl ItemsSource="{Binding Tokens}"
+                        HorizontalAlignment="Stretch">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SqlToken">
+                <TextBlock Text="{Binding Text}"
+                           FontFamily="Consolas,Cascadia Code,monospace"
+                           FontSize="12"
+                           Classes.tok-Keyword="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Keyword}"
+                           Classes.tok-Identifier="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Identifier}"
+                           Classes.tok-Literal="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Literal}"
+                           Classes.tok-Operator="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Operator}"
+                           Classes.tok-Punctuation="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Punctuation}"
+                           Classes.tok-Function="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Function}"
+                           Classes.tok-Comment="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Comment}"
+                           Classes.tok-Plain="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Plain}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
 
       <!-- ── Guardrail warnings strip ──────────────────────────────────────── -->
       <ItemsControl Grid.Row="3"

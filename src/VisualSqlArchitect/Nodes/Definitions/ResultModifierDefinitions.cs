@@ -21,7 +21,7 @@ public static class ResultModifierDefinitions
                 required: false,
                 desc: "Connect a Number node or set manually"
             ),
-            Out("result", PinDataType.Any),
+            Out("result", PinDataType.ColumnSet),
         ],
         [
             new(

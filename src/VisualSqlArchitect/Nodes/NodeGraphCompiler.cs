@@ -44,6 +44,12 @@ public sealed class NodeGraphCompiler(NodeGraph graph, EmitContext ctx)
         // ── WHERE expressions ─────────────────────────────────────────────────
         IReadOnlyList<ISqlExpression> wheres = BuildWhereExpressions();
 
+        // ── HAVING expressions ────────────────────────────────────────────────
+        IReadOnlyList<ISqlExpression> havings = BuildHavingExpressions();
+
+        // ── QUALIFY expressions (post-window filter) ────────────────────────
+        IReadOnlyList<ISqlExpression> qualifies = BuildQualifyExpressions();
+
         // ── ORDER BY ──────────────────────────────────────────────────────────
         var orders = _graph
             .OrderBys.Select(b => (Resolve(b.NodeId, b.PinName), b.Descending))
@@ -52,7 +58,17 @@ public sealed class NodeGraphCompiler(NodeGraph graph, EmitContext ctx)
         // ── GROUP BY ──────────────────────────────────────────────────────────
         var groups = _graph.GroupBys.Select(b => Resolve(b.NodeId, b.PinName)).ToList();
 
-        return new CompiledNodeGraph(selects, wheres, orders, groups, _graph.Limit, _graph.Offset);
+        return new CompiledNodeGraph(
+            selects,
+            wheres,
+            havings,
+            qualifies,
+            orders,
+            groups,
+            _graph.Distinct,
+            _graph.Limit,
+            _graph.Offset
+        );
     }
 
     // ── Node resolution (memo + dispatch) ────────────────────────────────────
@@ -78,7 +94,7 @@ public sealed class NodeGraphCompiler(NodeGraph graph, EmitContext ctx)
     private ISqlExpression ResolveInput(
         string nodeId,
         string pinName,
-        PinDataType expectedType = PinDataType.Any
+        PinDataType expectedType = PinDataType.Expression
     )
     {
         Connection? wire = _graph.GetSingleInputConnection(nodeId, pinName);
@@ -123,7 +139,7 @@ public sealed class NodeGraphCompiler(NodeGraph graph, EmitContext ctx)
         public ISqlExpression ResolveInput(
             string nodeId,
             string pinName,
-            PinDataType expectedType = PinDataType.Any
+            PinDataType expectedType = PinDataType.Expression
         ) => _compiler.ResolveInput(nodeId, pinName, expectedType);
 
         public IReadOnlyList<ISqlExpression> ResolveInputs(string nodeId, string pinName) =>
@@ -156,6 +172,22 @@ public sealed class NodeGraphCompiler(NodeGraph graph, EmitContext ctx)
         }
 
         return result;
+    }
+
+    private IReadOnlyList<ISqlExpression> BuildHavingExpressions()
+    {
+        if (_graph.Havings.Count == 0)
+            return [];
+
+        return _graph.Havings.Select(b => Resolve(b.NodeId, b.PinName)).ToList();
+    }
+
+    private IReadOnlyList<ISqlExpression> BuildQualifyExpressions()
+    {
+        if (_graph.Qualifies.Count == 0)
+            return [];
+
+        return _graph.Qualifies.Select(b => Resolve(b.NodeId, b.PinName)).ToList();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -241,7 +241,11 @@
       </Border>
 
       <!-- ── Content area ───────────────────────────────────────────────────── -->
-      <Grid Grid.Row="2" IsVisible="{Binding ShowDataPreview}">
+            <Border Grid.Row="2"
+              IsVisible="{Binding ShowDataPreview}"
+              CornerRadius="0,0,10,10"
+              ClipToBounds="True">
+            <Grid>
 
         <!-- Running state -->
         <StackPanel IsVisible="{Binding IsLoading}"
@@ -389,9 +393,13 @@
                   HorizontalAlignment="Stretch"
                   Margin="0"/>
       </Grid>
+      </Border>
 
       <!-- ── Live SQL view ──────────────────────────────────────────────────── -->
-      <Border Grid.Row="2" IsVisible="{Binding ShowLiveSql}">
+      <Border Grid.Row="2"
+              IsVisible="{Binding ShowLiveSql}"
+              CornerRadius="0,0,10,10"
+              ClipToBounds="True">
         <ctrl:LiveSqlBar DataContext="{Binding #Root.LiveSqlViewModel}"/>
       </Border>
 

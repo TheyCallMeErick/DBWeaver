@@ -4,7 +4,7 @@ namespace VisualSqlArchitect.Expressions.Literals;
 public sealed record NullExpr : ISqlExpression
 {
     public static readonly NullExpr Instance = new();
-    public PinDataType OutputType => PinDataType.Any;
+    public PinDataType OutputType => PinDataType.Expression;
 
     public string Emit(EmitContext ctx) => "NULL";
 }

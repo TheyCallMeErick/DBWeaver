@@ -34,7 +34,7 @@ public sealed record CastExpr(ISqlExpression Input, CastTargetType TargetType) :
             CastTargetType.Boolean => PinDataType.Boolean,
             CastTargetType.Date or CastTargetType.DateTime or CastTargetType.Timestamp =>
                 PinDataType.DateTime,
-            _ => PinDataType.Any,
+            _ => PinDataType.Expression,
         };
 
     public string Emit(EmitContext ctx)

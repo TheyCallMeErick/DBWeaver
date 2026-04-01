@@ -117,6 +117,21 @@ public class KeyboardInputHandler
                 _vm.FileHistory.Close();
                 return true;
             }
+            if (_vm.IsInCteEditor)
+            {
+                _vm.ExitCteEditorCommand.Execute(null);
+                return true;
+            }
+        }
+
+        if (key == Key.Enter && modifiers.HasFlag(KeyModifiers.Control) && modifiers.HasFlag(KeyModifiers.Alt))
+        {
+            if (_vm.IsInCteEditor)
+                _vm.ExitCteEditorCommand.Execute(null);
+            else
+                _vm.EnterCteEditorCommand.Execute(null);
+
+            return true;
         }
 
         // Shortcuts requiring overlay checks
@@ -266,6 +281,13 @@ public class KeyboardInputHandler
         {
             return true;
         } // Handled by command palette
+
+        // Delete selected nodes
+        if ((key == Key.Delete || key == Key.Back) && modifiers == KeyModifiers.None)
+        {
+            _vm.DeleteSelected();
+            return true;
+        }
 
         // Zoom
         if (

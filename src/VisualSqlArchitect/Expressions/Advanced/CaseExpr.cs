@@ -9,7 +9,7 @@ public sealed record WhenClause(ISqlExpression Condition, ISqlExpression Result)
 public sealed record CaseExpr(IReadOnlyList<WhenClause> Whens, ISqlExpression? Else = null)
     : ISqlExpression
 {
-    public PinDataType OutputType => Else?.OutputType ?? PinDataType.Any;
+    public PinDataType OutputType => Else?.OutputType ?? PinDataType.Expression;
 
     public string Emit(EmitContext ctx)
     {

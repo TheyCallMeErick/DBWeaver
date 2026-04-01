@@ -138,6 +138,13 @@ public class SessionManagementService(Window window, CanvasViewModel vm)
 
             _vm.IsDirty = false;
             _window.FindControl<InfiniteCanvas>("TheCanvas")?.InvalidateWires();
+            if (result.Warnings is { Count: > 0 })
+                _vm.NotifyWarning(
+                    "Session restored with warnings.",
+                    $"{SessionFile}{Environment.NewLine}{Environment.NewLine}{string.Join(Environment.NewLine, result.Warnings)}"
+                );
+            else
+                _vm.NotifySuccess("Session restored successfully.", SessionFile);
 
             // Surface migration warnings as diagnostics
             if (result.Warnings is { Count: > 0 })

@@ -45,7 +45,7 @@ public interface INodeCompilationContext
     ISqlExpression ResolveInput(
         string nodeId,
         string pinName,
-        PinDataType expectedType = PinDataType.Any
+        PinDataType expectedType = PinDataType.Expression
     );
 
     /// <summary>

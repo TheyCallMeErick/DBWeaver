@@ -77,7 +77,7 @@ public sealed class ValidationManager(CanvasViewModel canvasViewModel) : ViewMod
             _validationCts = new CancellationTokenSource();
             CancellationToken token = _validationCts.Token;
 
-            Task.Delay(200, token)
+            Task.Delay(AppConstants.ValidationDebounceMs, token)
                 .ContinueWith(
                     _ =>
                     {

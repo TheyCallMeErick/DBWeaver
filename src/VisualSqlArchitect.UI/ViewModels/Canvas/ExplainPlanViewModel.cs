@@ -186,7 +186,7 @@ public sealed class ExplainPlanViewModel : ViewModelBase
         try
         {
             // Simulate network/DB round-trip
-            await Task.Delay(600);
+            await Task.Delay(AppConstants.ExplainPlanRefreshMs);
 
             var steps = _provider switch
             {

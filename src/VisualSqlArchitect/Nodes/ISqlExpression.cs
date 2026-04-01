@@ -65,12 +65,16 @@ public interface ISqlExpression
 
 public enum PinDataType
 {
-    Any,
     Text,
+    Integer,
+    Decimal,
     Number,
     Boolean,
     DateTime,
     Json,
+    ColumnRef,
+    ColumnSet,
+    RowSet,
     Expression, // untyped SQL fragment — accepted by any slot
 }
 
@@ -79,7 +83,7 @@ public enum PinDataType
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// <summary>A raw string literal: 'hello', 42, true, NULL</summary>
-public sealed record LiteralExpr(string RawValue, PinDataType OutputType = PinDataType.Any)
+public sealed record LiteralExpr(string RawValue, PinDataType OutputType = PinDataType.Expression)
     : ISqlExpression
 {
     public string Emit(EmitContext ctx) => RawValue;
@@ -106,7 +110,7 @@ public sealed record NumberLiteralExpr(double Value) : ISqlExpression
 public sealed record NullExpr : ISqlExpression
 {
     public static readonly NullExpr Instance = new();
-    public PinDataType OutputType => PinDataType.Any;
+    public PinDataType OutputType => PinDataType.Expression;
 
     public string Emit(EmitContext ctx) => "NULL";
 }
@@ -118,13 +122,35 @@ public sealed record NullExpr : ISqlExpression
 public sealed record ColumnExpr(
     string TableAlias,
     string ColumnName,
-    PinDataType OutputType = PinDataType.Any
+    PinDataType OutputType = PinDataType.ColumnRef
 ) : ISqlExpression
 {
-    public string Emit(EmitContext ctx) =>
-        string.IsNullOrEmpty(TableAlias)
+    public string Emit(EmitContext ctx)
+    {
+        if (ColumnName == "*")
+            return string.IsNullOrEmpty(TableAlias) ? "*" : $"{ctx.QuoteIdentifier(TableAlias)}.*";
+
+        return string.IsNullOrEmpty(TableAlias)
             ? ctx.QuoteIdentifier(ColumnName)
             : $"{ctx.QuoteIdentifier(TableAlias)}.{ctx.QuoteIdentifier(ColumnName)}";
+    }
+}
+
+/// <summary>
+/// A CTE source reference used in FROM/JOIN clauses: cte_name [alias].
+/// </summary>
+public sealed record CteReferenceExpr(string CteName, string? Alias = null) : ISqlExpression
+{
+    public PinDataType OutputType => PinDataType.RowSet;
+
+    public string Emit(EmitContext ctx)
+    {
+        string cte = CteName.Trim();
+        if (string.IsNullOrWhiteSpace(Alias))
+            return cte;
+
+        return $"{cte} {Alias.Trim()}";
+    }
 }
 
 /// <summary>
@@ -151,7 +177,7 @@ public sealed record RawSqlExpr(string Sql, PinDataType OutputType = PinDataType
 public sealed record FunctionCallExpr(
     string FunctionName,
     IReadOnlyList<ISqlExpression> Args,
-    PinDataType OutputType = PinDataType.Any
+    PinDataType OutputType = PinDataType.Expression
 ) : ISqlExpression
 {
     public string Emit(EmitContext ctx)
@@ -182,7 +208,7 @@ public sealed record CastExpr(ISqlExpression Input, CastTargetType TargetType) :
             CastTargetType.Boolean => PinDataType.Boolean,
             CastTargetType.Date or CastTargetType.DateTime or CastTargetType.Timestamp =>
                 PinDataType.DateTime,
-            _ => PinDataType.Any,
+            _ => PinDataType.Expression,
         };
 
     public string Emit(EmitContext ctx)
@@ -304,6 +330,53 @@ public sealed record IsNullExpr(ISqlExpression Input, bool Negate = false) : ISq
     }
 }
 
+/// <summary>EXISTS (subquery) / NOT EXISTS (subquery).</summary>
+public sealed record ExistsExpr(string SubquerySql, bool Negate = false) : ISqlExpression
+{
+    public PinDataType OutputType => PinDataType.Boolean;
+
+    public string Emit(EmitContext ctx)
+    {
+        string body = (SubquerySql ?? string.Empty).Trim().TrimEnd(';');
+        if (string.IsNullOrWhiteSpace(body))
+            body = "SELECT 1";
+
+        string keyword = Negate ? "NOT EXISTS" : "EXISTS";
+        return $"{keyword} ({body})";
+    }
+}
+
+/// <summary>value IN (subquery) / value NOT IN (subquery).</summary>
+public sealed record InSubqueryExpr(ISqlExpression Value, string SubquerySql, bool Negate = false)
+    : ISqlExpression
+{
+    public PinDataType OutputType => PinDataType.Boolean;
+
+    public string Emit(EmitContext ctx)
+    {
+        string body = (SubquerySql ?? string.Empty).Trim().TrimEnd(';');
+        if (string.IsNullOrWhiteSpace(body))
+            body = "SELECT NULL";
+
+        string keyword = Negate ? "NOT IN" : "IN";
+        return $"({Value.Emit(ctx)} {keyword} ({body}))";
+    }
+}
+
+/// <summary>Scalar subquery used as an expression: (SELECT ...).</summary>
+public sealed record ScalarSubqueryExpr(string SubquerySql) : ISqlExpression
+{
+    public PinDataType OutputType => PinDataType.Expression;
+
+    public string Emit(EmitContext ctx)
+    {
+        string body = (SubquerySql ?? string.Empty).Trim().TrimEnd(';');
+        if (string.IsNullOrWhiteSpace(body))
+            body = "SELECT NULL";
+        return $"({body})";
+    }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // LOGICAL GATE EXPRESSIONS
 // ═════════════════════════════════════════════════════════════════════════════
@@ -387,6 +460,182 @@ public enum AggregateFunction
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// WINDOW FUNCTION EXPRESSIONS
+// ═════════════════════════════════════════════════════════════════════════════
+
+public enum WindowFunctionKind
+{
+    RowNumber,
+    Rank,
+    DenseRank,
+    Ntile,
+    Lag,
+    Lead,
+    FirstValue,
+    LastValue,
+    SumOver,
+    AvgOver,
+    MinOver,
+    MaxOver,
+    CountOver,
+}
+
+public enum WindowFrameSpec
+{
+    None,
+    RowsUnboundedPrecedingToCurrentRow,
+    RowsCurrentRowToUnboundedFollowing,
+    RowsCustomBetween,
+}
+
+public enum WindowFrameBoundKind
+{
+    UnboundedPreceding,
+    Preceding,
+    CurrentRow,
+    Following,
+    UnboundedFollowing,
+}
+
+public sealed record WindowFrameBound(WindowFrameBoundKind Kind, int? Offset = null)
+{
+    public string Emit()
+    {
+        return Kind switch
+        {
+            WindowFrameBoundKind.UnboundedPreceding => "UNBOUNDED PRECEDING",
+            WindowFrameBoundKind.Preceding => $"{Math.Max(0, Offset ?? 0)} PRECEDING",
+            WindowFrameBoundKind.CurrentRow => "CURRENT ROW",
+            WindowFrameBoundKind.Following => $"{Math.Max(0, Offset ?? 0)} FOLLOWING",
+            WindowFrameBoundKind.UnboundedFollowing => "UNBOUNDED FOLLOWING",
+            _ => "CURRENT ROW",
+        };
+    }
+}
+
+public sealed record WindowOrderByExpr(ISqlExpression Expr, bool Desc = false);
+
+public sealed record WindowOverExpr(
+    IReadOnlyList<ISqlExpression> PartitionBy,
+    IReadOnlyList<WindowOrderByExpr> OrderBy,
+    WindowFrameSpec Frame = WindowFrameSpec.None,
+    WindowFrameBound? CustomFrameStart = null,
+    WindowFrameBound? CustomFrameEnd = null,
+    bool ForceSqlServerDummyOrderBy = false
+)
+{
+    public string Emit(EmitContext ctx)
+    {
+        var parts = new List<string>();
+
+        if (PartitionBy.Count > 0)
+            parts.Add($"PARTITION BY {string.Join(", ", PartitionBy.Select(p => p.Emit(ctx)))}");
+
+        bool hasOrderBy = OrderBy.Count > 0;
+        if (hasOrderBy)
+        {
+            parts.Add(
+                $"ORDER BY {string.Join(", ", OrderBy.Select(o => o.Desc ? $"{o.Expr.Emit(ctx)} DESC" : o.Expr.Emit(ctx)))}"
+            );
+        }
+        else if (ForceSqlServerDummyOrderBy && ctx.Provider == DatabaseProvider.SqlServer)
+        {
+            parts.Add("ORDER BY (SELECT 1)");
+            hasOrderBy = true;
+        }
+
+        string? frameSql = Frame switch
+        {
+            WindowFrameSpec.RowsUnboundedPrecedingToCurrentRow =>
+                "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW",
+            WindowFrameSpec.RowsCurrentRowToUnboundedFollowing =>
+                "ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING",
+            WindowFrameSpec.RowsCustomBetween when CustomFrameStart is not null && CustomFrameEnd is not null =>
+                $"ROWS BETWEEN {CustomFrameStart.Emit()} AND {CustomFrameEnd.Emit()}",
+            _ => null,
+        };
+
+        if (!string.IsNullOrWhiteSpace(frameSql) && hasOrderBy)
+            parts.Add(frameSql);
+
+        return string.Join(" ", parts);
+    }
+}
+
+public sealed record WindowFunctionExpr(
+    WindowFunctionKind Kind,
+    WindowOverExpr Over,
+    ISqlExpression? Value = null,
+    int? Offset = null,
+    ISqlExpression? DefaultValue = null,
+    int? NtileGroups = null
+) : ISqlExpression
+{
+    public PinDataType OutputType => Kind switch
+    {
+        WindowFunctionKind.RowNumber
+        or WindowFunctionKind.Rank
+        or WindowFunctionKind.DenseRank
+        or WindowFunctionKind.Ntile
+        or WindowFunctionKind.SumOver
+        or WindowFunctionKind.AvgOver
+        or WindowFunctionKind.CountOver => PinDataType.Number,
+
+        WindowFunctionKind.Lag
+        or WindowFunctionKind.Lead
+        or WindowFunctionKind.FirstValue
+        or WindowFunctionKind.LastValue
+        or WindowFunctionKind.MinOver
+        or WindowFunctionKind.MaxOver => Value?.OutputType ?? PinDataType.Expression,
+
+        _ => PinDataType.Expression,
+    };
+
+    public string Emit(EmitContext ctx)
+    {
+        string inner = Kind switch
+        {
+            WindowFunctionKind.RowNumber => "ROW_NUMBER()",
+            WindowFunctionKind.Rank => "RANK()",
+            WindowFunctionKind.DenseRank => "DENSE_RANK()",
+            WindowFunctionKind.Ntile => $"NTILE({Math.Max(1, NtileGroups ?? 4)})",
+            WindowFunctionKind.Lag => BuildLagLead("LAG", ctx),
+            WindowFunctionKind.Lead => BuildLagLead("LEAD", ctx),
+            WindowFunctionKind.FirstValue =>
+                $"FIRST_VALUE({(Value ?? throw new NotSupportedException("FirstValue requires 'value' input.")).Emit(ctx)})",
+            WindowFunctionKind.LastValue =>
+                $"LAST_VALUE({(Value ?? throw new NotSupportedException("LastValue requires 'value' input.")).Emit(ctx)})",
+            WindowFunctionKind.SumOver =>
+                $"SUM({(Value ?? throw new NotSupportedException("SumOver requires 'value' input.")).Emit(ctx)})",
+            WindowFunctionKind.AvgOver =>
+                $"AVG({(Value ?? throw new NotSupportedException("AvgOver requires 'value' input.")).Emit(ctx)})",
+            WindowFunctionKind.MinOver =>
+                $"MIN({(Value ?? throw new NotSupportedException("MinOver requires 'value' input.")).Emit(ctx)})",
+            WindowFunctionKind.MaxOver =>
+                $"MAX({(Value ?? throw new NotSupportedException("MaxOver requires 'value' input.")).Emit(ctx)})",
+            WindowFunctionKind.CountOver =>
+                Value is null ? "COUNT(*)" : $"COUNT({Value.Emit(ctx)})",
+            _ => throw new NotSupportedException($"Unsupported window function kind: {Kind}"),
+        };
+
+        return $"{inner} OVER ({Over.Emit(ctx)})";
+    }
+
+    private string BuildLagLead(string fn, EmitContext ctx)
+    {
+        ISqlExpression value = Value
+            ?? throw new NotSupportedException($"{fn} requires 'value' input.");
+
+        int offset = Offset.HasValue && Offset.Value > 0 ? Offset.Value : 1;
+        string valueSql = value.Emit(ctx);
+
+        return DefaultValue is null
+            ? $"{fn}({valueSql}, {offset})"
+            : $"{fn}({valueSql}, {offset}, {DefaultValue.Emit(ctx)})";
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // CASE / WHEN EXPRESSION
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -395,7 +644,7 @@ public sealed record WhenClause(ISqlExpression Condition, ISqlExpression Result)
 public sealed record CaseExpr(IReadOnlyList<WhenClause> Whens, ISqlExpression? Else = null)
     : ISqlExpression
 {
-    public PinDataType OutputType => Else?.OutputType ?? PinDataType.Any;
+    public PinDataType OutputType => Else?.OutputType ?? PinDataType.Expression;
 
     public string Emit(EmitContext ctx)
     {

@@ -104,6 +104,24 @@ public class CommandPaletteFactory(
                     _vm.SaveSelectionAsSnippet(name);
                 },
             },
+            new()
+            {
+                Name = "Edit Selected CTE",
+                Description = "Open isolated sub-canvas editor for the selected CTE Definition node",
+                Shortcut = "Ctrl+Alt+Enter",
+                Icon = MaterialIconKind.FileTree,
+                Tags = "cte with recursive editor subgraph subcanvas isolate",
+                Execute = () => _vm.EnterCteEditorCommand.Execute(null),
+            },
+            new()
+            {
+                Name = "Exit CTE Editor",
+                Description = "Apply CTE sub-canvas edits and return to the parent canvas",
+                Shortcut = "Esc",
+                Icon = MaterialIconKind.ExitToApp,
+                Tags = "cte subcanvas exit apply back",
+                Execute = () => _vm.ExitCteEditorCommand.Execute(null),
+            },
             // ── Explain Plan ──────────────────────────────────────────────────
             new()
             {

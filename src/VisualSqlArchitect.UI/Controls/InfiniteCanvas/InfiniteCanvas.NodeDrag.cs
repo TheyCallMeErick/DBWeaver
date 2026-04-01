@@ -13,113 +13,107 @@ public sealed partial class InfiniteCanvas
     private void OnNodeClicked(object? s, (NodeViewModel Node, bool Shift) a) =>
         ViewModel?.SelectNode(a.Node, a.Shift);
 
+    private void OnNodeDoubleClicked(object? s, NodeViewModel node)
+    {
+        if (ViewModel is null)
+            return;
+
+        _ = ViewModel.EnterCteEditor(node);
+    }
+
     private void OnNodeDragStarted(object? s, (NodeViewModel Node, Point Pos) a)
     {
-        try
-        {
-            Log($">>> NODE DRAG STARTED: Node='{a.Node.Title}', NodePos={a.Node.Position}, DragPos={a.Pos}, PanOffset={_panOffset}, Zoom={_zoom}");
-            _dragNode = a.Node;
-            _nodeDragStart = a.Pos;
-            _nodePosStart = a.Node.Position;
+        Log($">>> NODE DRAG STARTED: Node='{a.Node.Title}', NodePos={a.Node.Position}, DragPos={a.Pos}, PanOffset={_panOffset}, Zoom={_zoom}");
+        _dragNode = a.Node;
+        _nodeDragStart = a.Pos;
+        _nodePosStart = a.Node.Position;
 
-            // CRITICAL NodifyM pattern: Capture pan offset at start for compensation during drag
-            _startPanOffset = _panOffset;
-            _startNodeDragCanvasPos = ScreenToCanvas(a.Pos);
-            Log($"    Captured start pan offset: {_startPanOffset}, canvas pos: {_startNodeDragCanvasPos}");
+        // CRITICAL NodifyM pattern: Capture pan offset at start for compensation during drag
+        _startPanOffset = _panOffset;
+        _startNodeDragCanvasPos = ScreenToCanvas(a.Pos);
+        Log($"    Captured start pan offset: {_startPanOffset}, canvas pos: {_startNodeDragCanvasPos}");
 
-            // Capture other selected nodes so they move together as a group
-            if (ViewModel is not null && a.Node.IsSelected)
-            {
-                _groupDragStarts = ViewModel.Nodes
-                    .Where(n => n.IsSelected && n != a.Node)
-                    .Select(n => (n, n.Position))
-                    .ToList();
-                Log($"    Multi-node drag: {_groupDragStarts.Count} additional nodes selected");
-            }
-            else
-            {
-                _groupDragStarts = null;
-                Log($"    Single-node drag");
-            }
-        }
-        catch (Exception ex)
+        // Capture other selected nodes so they move together as a group
+        if (ViewModel is not null && a.Node.IsSelected)
         {
-            Log($"!!! ERROR in OnNodeDragStarted: {ex.GetType().Name}: {ex.Message}");
-            throw;
+            _groupDragStarts = ViewModel.Nodes
+                .Where(n => n.IsSelected && n != a.Node)
+                .Select(n => (n, n.Position))
+                .ToList();
+            Log($"    Multi-node drag: {_groupDragStarts.Count} additional nodes selected");
         }
+        else
+        {
+            _groupDragStarts = null;
+            Log($"    Single-node drag");
+        }
+
+        EnsureWiresOnTop();
+        _wires.InvalidateVisual();
     }
 
     private void OnNodeDragDelta(object? s, (NodeViewModel Node, Point Pos) a)
     {
-        try
+        if (_dragNode is null)
         {
-            if (_dragNode is null)
-            {
-                Log("!!! OnNodeDragDelta called but _dragNode is null!");
-                return;
-            }
-
-            Point d = a.Pos - _nodeDragStart;
-
-            // NodifyM pattern: Apply pan offset compensation
-            // If canvas pan offset changed during drag, we need to compensate
-            Point panCompensation = _startPanOffset - _panOffset;
-            Log($"    Pan compensation: Start={_startPanOffset}, Current={_panOffset}, Delta={panCompensation}");
-
-            double rawX = _nodePosStart.X + (d.X + panCompensation.X) / _zoom;
-            double rawY = _nodePosStart.Y + (d.Y + panCompensation.Y) / _zoom;
-
-            double newX = rawX,
-                newY = rawY;
-            if (ViewModel?.SnapToGrid == true)
-            {
-                newX = CanvasViewModel.Snap(rawX);
-                newY = CanvasViewModel.Snap(rawY);
-            }
-
-            Log($"    DRAG DELTA: Delta Screen={d}, PanComp={panCompensation}, RawPos=({rawX:F2}, {rawY:F2}), SnappedPos=({newX:F2}, {newY:F2}), Zoom={_zoom}");
-
-            _dragNode.Position = new Point(newX, newY);
-
-            // Force immediate layout update for the dragged node so wires sync with current position
-            if (_nodeControlCache.TryGetValue(_dragNode, out NodeControl? nc))
-            {
-                nc.Measure(Size.Infinity);
-                nc.Arrange(new Rect(new Point(newX, newY), nc.DesiredSize));
-                Log($"    NodeControl layout updated: {nc.DesiredSize}");
-            }
-            else
-            {
-                Log($"    WARNING: NodeControl not found in cache for node '{_dragNode.Title}'");
-            }
-
-            // Move other selected nodes with the same delta
-            if (_groupDragStarts is not null)
-            {
-                double dx = newX - _nodePosStart.X;
-                double dy = newY - _nodePosStart.Y;
-                foreach ((NodeViewModel groupNode, Point startPos) in _groupDragStarts)
-                    groupNode.Position = new Point(startPos.X + dx, startPos.Y + dy);
-                Log($"    Moved {_groupDragStarts.Count} group nodes with delta ({dx:F2}, {dy:F2})");
-            }
-
-            SyncWires();
-
-            // Only recalculate guides when the node has moved enough (avoids O(n) every frame)
-            double gdx = newX - _lastGuideCheckPosition.X;
-            double gdy = newY - _lastGuideCheckPosition.Y;
-            if (gdx * gdx + gdy * gdy >= GuideRecheckThresholdSq)
-            {
-                _lastGuideCheckPosition = _dragNode.Position;
-                UpdateAlignGuides(_dragNode);
-                Log("    Guides updated");
-            }
+            Log("!!! OnNodeDragDelta called but _dragNode is null!");
+            return;
         }
-        catch (Exception ex)
+
+        Point d = a.Pos - _nodeDragStart;
+
+        // NodifyM pattern: Apply pan offset compensation
+        // If canvas pan offset changed during drag, we need to compensate
+        Point panCompensation = _startPanOffset - _panOffset;
+        Log($"    Pan compensation: Start={_startPanOffset}, Current={_panOffset}, Delta={panCompensation}");
+
+        double rawX = _nodePosStart.X + (d.X + panCompensation.X) / _zoom;
+        double rawY = _nodePosStart.Y + (d.Y + panCompensation.Y) / _zoom;
+
+        double newX = rawX,
+            newY = rawY;
+        if (ViewModel?.SnapToGrid == true)
         {
-            Log($"!!! ERROR in OnNodeDragDelta: {ex.GetType().Name}: {ex.Message}");
-            Log($"    StackTrace: {ex.StackTrace}");
-            throw;
+            newX = CanvasViewModel.Snap(rawX);
+            newY = CanvasViewModel.Snap(rawY);
+        }
+
+        Log($"    DRAG DELTA: Delta Screen={d}, PanComp={panCompensation}, RawPos=({rawX:F2}, {rawY:F2}), SnappedPos=({newX:F2}, {newY:F2}), Zoom={_zoom}");
+
+        _dragNode.Position = new Point(newX, newY);
+
+        // Force immediate layout update for the dragged node so wires sync with current position
+        if (_nodeControlCache.TryGetValue(_dragNode, out NodeControl? nc))
+        {
+            nc.Measure(Size.Infinity);
+            nc.Arrange(new Rect(new Point(newX, newY), nc.DesiredSize));
+            Log($"    NodeControl layout updated: {nc.DesiredSize}");
+        }
+        else
+        {
+            Log($"    WARNING: NodeControl not found in cache for node '{_dragNode.Title}'");
+        }
+
+        // Move other selected nodes with the same delta
+        if (_groupDragStarts is not null)
+        {
+            double dx = newX - _nodePosStart.X;
+            double dy = newY - _nodePosStart.Y;
+            foreach ((NodeViewModel groupNode, Point startPos) in _groupDragStarts)
+                groupNode.Position = new Point(startPos.X + dx, startPos.Y + dy);
+            Log($"    Moved {_groupDragStarts.Count} group nodes with delta ({dx:F2}, {dy:F2})");
+        }
+
+        SyncWires();
+
+        // Only recalculate guides when the node has moved enough (avoids O(n) every frame)
+        double gdx = newX - _lastGuideCheckPosition.X;
+        double gdy = newY - _lastGuideCheckPosition.Y;
+        if (gdx * gdx + gdy * gdy >= GuideRecheckThresholdSq)
+        {
+            _lastGuideCheckPosition = _dragNode.Position;
+            UpdateAlignGuides(_dragNode);
+            Log("    Guides updated");
         }
     }
 
@@ -178,23 +172,14 @@ public sealed partial class InfiniteCanvas
 
                     Log($"    BEFORE Execute: PanOffset={_panOffset}, Zoom={_zoom}");
                     Log($"    Executing composite command: {label}");
-                    try
+                    ViewModel.UndoRedo.Execute(
+                        movedCount == 1 ? moves[0] : new CompositeCommand(label, moves)
+                    );
+                    Log($"    AFTER Execute: PanOffset={_panOffset}, Zoom={_zoom}");
+                    Log($"    ViewModel.PanOffset={ViewModel.PanOffset}, ViewModel.Zoom={ViewModel.Zoom}");
+                    if (_panOffset.X == 0 && _panOffset.Y == 0)
                     {
-                        ViewModel.UndoRedo.Execute(
-                            movedCount == 1 ? moves[0] : new CompositeCommand(label, moves)
-                        );
-                        Log($"    AFTER Execute: PanOffset={_panOffset}, Zoom={_zoom}");
-                        Log($"    ViewModel.PanOffset={ViewModel.PanOffset}, ViewModel.Zoom={ViewModel.Zoom}");
-                        if (_panOffset.X == 0 && _panOffset.Y == 0)
-                        {
-                            Log("    !!! WARNING: PanOffset reset to 0,0!!!!");
-                        }
-                    }
-                    catch (Exception exCmd)
-                    {
-                        Log($"!!! ERROR during UndoRedo.Execute (multi): {exCmd.GetType().Name}: {exCmd.Message}");
-                        Log($"    StackTrace: {exCmd.StackTrace}");
-                        throw;
+                        Log("    !!! WARNING: PanOffset reset to 0,0!!!!");
                     }
                 }
                 else
@@ -212,21 +197,12 @@ public sealed partial class InfiniteCanvas
                         _dragNode.PropertyChanged += dragNodeHandler;
 
                     Log($"    BEFORE Execute: PanOffset={_panOffset}, Zoom={_zoom}");
-                    try
+                    ViewModel.UndoRedo.Execute(new MoveNodeCommand(_dragNode, _nodePosStart, primaryFinal));
+                    Log($"    AFTER Execute: PanOffset={_panOffset}, Zoom={_zoom}");
+                    Log($"    ViewModel.PanOffset={ViewModel.PanOffset}, ViewModel.Zoom={ViewModel.Zoom}");
+                    if (_panOffset.X == 0 && _panOffset.Y == 0)
                     {
-                        ViewModel.UndoRedo.Execute(new MoveNodeCommand(_dragNode, _nodePosStart, primaryFinal));
-                        Log($"    AFTER Execute: PanOffset={_panOffset}, Zoom={_zoom}");
-                        Log($"    ViewModel.PanOffset={ViewModel.PanOffset}, ViewModel.Zoom={ViewModel.Zoom}");
-                        if (_panOffset.X == 0 && _panOffset.Y == 0)
-                        {
-                            Log("    !!! WARNING: PanOffset reset to 0,0!!!!");
-                        }
-                    }
-                    catch (Exception exCmd)
-                    {
-                        Log($"!!! ERROR during UndoRedo.Execute (single): {exCmd.GetType().Name}: {exCmd.Message}");
-                        Log($"    StackTrace: {exCmd.StackTrace}");
-                        throw;
+                        Log("    !!! WARNING: PanOffset reset to 0,0!!!!");
                     }
                 }
             }
@@ -235,18 +211,15 @@ public sealed partial class InfiniteCanvas
                 Log("    No position change or _dragNode/ViewModel is null");
             }
 
-            _dragNode = null;
-            _groupDragStarts = null;
             _guides.ClearGuides();
             Log("    Drag state cleared");
         }
-        catch (Exception ex)
+        finally
         {
-            Log($"!!! ERROR in OnNodeDragCompleted: {ex.GetType().Name}: {ex.Message}");
-            Log($"    StackTrace: {ex.StackTrace}");
             _dragNode = null;
             _groupDragStarts = null;
-            throw;
+            EnsureWiresOnTop();
+            _wires.InvalidateVisual();
         }
     }
 }

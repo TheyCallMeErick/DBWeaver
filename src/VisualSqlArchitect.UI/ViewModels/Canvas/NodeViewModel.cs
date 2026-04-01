@@ -14,6 +14,14 @@ namespace VisualSqlArchitect.UI.ViewModels;
 /// </summary>
 public sealed class NodeViewModel : ViewModelBase
 {
+    private static readonly IReadOnlyList<string> JoinTypeOptionValues = [
+        "INNER",
+        "LEFT",
+        "RIGHT",
+        "FULL",
+        "CROSS",
+    ];
+
     private static readonly Dictionary<NodeCategory, Color> _headerColors = BuildHeaderColors();
     private static readonly Dictionary<NodeCategory, Color> _headerLightColors = BuildHeaderLightColors();
     private static readonly Dictionary<NodeCategory, LinearGradientBrush> _headerGradients = BuildHeaderGradients();
@@ -75,7 +83,7 @@ public sealed class NodeViewModel : ViewModelBase
     // ── Type predicates ──────────────────────────────────────────────────────
 
     /// <summary>True if this node is the final result output.</summary>
-    public bool IsResultOutput => Type == NodeType.ResultOutput;
+    public bool IsResultOutput => Type is NodeType.ResultOutput or NodeType.SelectOutput;
 
     /// <summary>True if this node is a ColumnList (multiple column selector).</summary>
     public bool IsColumnList => Type == NodeType.ColumnList;
@@ -83,16 +91,65 @@ public sealed class NodeViewModel : ViewModelBase
     /// <summary>True if this is a logic gate (AND or OR).</summary>
     public bool IsLogicGate => Type is NodeType.And or NodeType.Or;
 
+    /// <summary>True if this is a window function node.</summary>
+    public bool IsWindowFunction => Type == NodeType.WindowFunction;
+
+    /// <summary>True when this node is an explicit JOIN node.</summary>
+    public bool IsJoin => Type == NodeType.Join;
+
+    /// <summary>Available JOIN type options for inline node selector.</summary>
+    public IReadOnlyList<string> JoinTypeOptions => JoinTypeOptionValues;
+
+    /// <summary>Selected JOIN type in node UI.</summary>
+    public string JoinTypeSelection
+    {
+        get
+        {
+            if (Parameters.TryGetValue("join_type", out string? jt) && !string.IsNullOrWhiteSpace(jt))
+                return jt;
+            return "INNER";
+        }
+        set
+        {
+            string normalized = string.IsNullOrWhiteSpace(value)
+                ? "INNER"
+                : value.Trim().ToUpperInvariant();
+            if (!JoinTypeOptionValues.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+                normalized = "INNER";
+
+            Parameters["join_type"] = normalized;
+            RaisePropertyChanged(nameof(JoinTypeSelection));
+        }
+    }
+
+    /// <summary>True when a PARTITION slot can be removed safely.</summary>
+    public bool CanRemoveWindowPartitionSlot =>
+        IsWindowFunction && HasRemovableDynamicInputSlot("partition_");
+
+    /// <summary>True when an ORDER slot can be removed safely.</summary>
+    public bool CanRemoveWindowOrderSlot =>
+        IsWindowFunction && HasRemovableDynamicInputSlot("order_");
+
     /// <summary>True if this is a value literal node (Number, String, DateTime, Boolean).</summary>
     public bool IsValueNode =>
         Type
             is NodeType.ValueNumber
                 or NodeType.ValueString
                 or NodeType.ValueDateTime
-                or NodeType.ValueBoolean;
+                or NodeType.ValueBoolean
+                or NodeType.SystemDate
+                or NodeType.SystemDateTime
+                or NodeType.CurrentDate
+                or NodeType.CurrentTime;
 
     /// <summary>True when the standard left/right pin columns should be shown.</summary>
     public bool ShowStandardPins => !IsValueNode && !IsColumnList && !IsResultOutput;
+
+    /// <summary>
+    /// True when the standard input band should be rendered.
+    /// Hides the empty input area for source-like nodes that have no inputs.
+    /// </summary>
+    public bool ShowStandardInputBand => ShowStandardPins && InputPins.Count > 0;
 
     public bool IsValueNumber => Type == NodeType.ValueNumber;
     public bool IsValueString => Type == NodeType.ValueString;
@@ -581,6 +638,9 @@ public sealed class NodeViewModel : ViewModelBase
                 OutputPins.Add(vm);
         }
 
+        if (def.Type == NodeType.WindowFunction)
+            EnsureWindowFunctionMinimumPins();
+
         // ColumnList: add the "columns" input pin ready for connection
         if (def.Type == NodeType.ColumnList)
             InputPins.Add(
@@ -588,7 +648,7 @@ public sealed class NodeViewModel : ViewModelBase
                     new PinDescriptor(
                         "columns",
                         PinDirection.Input,
-                        PinDataType.Any,
+                        PinDataType.ColumnRef,
                         IsRequired: false,
                         AllowMultiple: true,
                         Description: "Connect columns or expressions to include in the list"
@@ -612,6 +672,12 @@ public sealed class NodeViewModel : ViewModelBase
                     this
                 )
             );
+
+        InputPins.CollectionChanged += (_, _) =>
+        {
+            RaisePropertyChanged(nameof(ShowStandardInputBand));
+            RaisePropertyChanged(nameof(ShouldShowNoInputsPlaceholder));
+        };
     }
 
     /// <summary>
@@ -626,7 +692,47 @@ public sealed class NodeViewModel : ViewModelBase
         Subtitle = tableName;
         Position = pos;
         foreach ((string n, PinDataType t) in cols)
-            OutputPins.Add(new PinViewModel(new PinDescriptor(n, PinDirection.Output, t), this));
+        {
+            var pin = new PinViewModel(
+                new PinDescriptor(
+                    n,
+                    PinDirection.Output,
+                    PinDataType.ColumnRef,
+                    ColumnRefMeta: new ColumnRefMeta(
+                        ColumnName: n,
+                        TableAlias: Title,
+                        ScalarType: t,
+                        IsNullable: true
+                    )
+                ),
+                this
+            );
+
+            if (t is not PinDataType.Expression and not PinDataType.ColumnRef)
+                pin.NarrowedDataType = t;
+
+            OutputPins.Add(pin);
+        }
+
+        // Structural projection pin for SELECT * from this source.
+        OutputPins.Add(
+            new PinViewModel(
+                new PinDescriptor(
+                    "*",
+                    PinDirection.Output,
+                    PinDataType.ColumnSet,
+                    IsRequired: false,
+                    Description: "All columns from this source"
+                ),
+                this
+            )
+        );
+
+        InputPins.CollectionChanged += (_, _) =>
+        {
+            RaisePropertyChanged(nameof(ShowStandardInputBand));
+            RaisePropertyChanged(nameof(ShouldShowNoInputsPlaceholder));
+        };
     }
 
     // ── Pin management ───────────────────────────────────────────────────────
@@ -636,7 +742,16 @@ public sealed class NodeViewModel : ViewModelBase
         AllPins.FirstOrDefault(p => p.Name == name && (dir is null || p.Direction == dir));
 
     /// <summary>Notify when a parameter changes (for binding).</summary>
-    public void RaiseParameterChanged(string p) => RaisePropertyChanged($"Param_{p}");
+    public void RaiseParameterChanged(string p)
+    {
+        RaisePropertyChanged($"Param_{p}");
+
+        if (Type == NodeType.Join
+            && p.Equals("join_type", StringComparison.OrdinalIgnoreCase))
+        {
+            RaisePropertyChanged(nameof(JoinTypeSelection));
+        }
+    }
 
     // ── Dynamic pin synchronization ──────────────────────────────────────────
 
@@ -656,7 +771,7 @@ public sealed class NodeViewModel : ViewModelBase
                     new PinDescriptor(
                         "columns",
                         PinDirection.Input,
-                        PinDataType.Any,
+                        PinDataType.ColumnRef,
                         IsRequired: false,
                         AllowMultiple: true,
                         Description: "Connect columns or expressions to include in the list"
@@ -674,6 +789,71 @@ public sealed class NodeViewModel : ViewModelBase
     {
         if (IsLogicGate)
             SyncDynamicInputPins("cond_", PinDataType.Boolean, c);
+    }
+
+    /// <summary>
+    /// Sync WindowFunction pins: manages variadic PARTITION/ORDER inputs.
+    /// Keeps connected pins, removes disconnected slots, and leaves one empty slot.
+    /// </summary>
+    internal void SyncWindowFunctionPins(IEnumerable<ConnectionViewModel> c)
+    {
+        if (!IsWindowFunction)
+            return;
+
+        SyncWindowDynamicInputPins(
+            "partition_",
+            PinDataType.ColumnRef,
+            "Connect a partition expression",
+            c
+        );
+        SyncWindowDynamicInputPins(
+            "order_",
+            PinDataType.ColumnRef,
+            "Connect an order expression",
+            c
+        );
+        ReorderWindowFunctionInputPins();
+        RaiseWindowSlotStateChanged();
+    }
+
+    /// <summary>Adds an explicit PARTITION BY input slot to WindowFunction.</summary>
+    public void AddWindowPartitionSlot()
+    {
+        if (!IsWindowFunction)
+            return;
+        AddDynamicInputSlot("partition_", PinDataType.ColumnRef, "Connect a partition expression");
+        ReorderWindowFunctionInputPins();
+        RaiseWindowSlotStateChanged();
+    }
+
+    /// <summary>Removes the last unconnected PARTITION BY slot from WindowFunction.</summary>
+    public void RemoveWindowPartitionSlot()
+    {
+        if (!IsWindowFunction)
+            return;
+        RemoveLastEmptyDynamicInputSlot("partition_");
+        ReorderWindowFunctionInputPins();
+        RaiseWindowSlotStateChanged();
+    }
+
+    /// <summary>Adds an explicit ORDER BY input slot to WindowFunction.</summary>
+    public void AddWindowOrderSlot()
+    {
+        if (!IsWindowFunction)
+            return;
+        AddDynamicInputSlot("order_", PinDataType.ColumnRef, "Connect an order expression");
+        ReorderWindowFunctionInputPins();
+        RaiseWindowSlotStateChanged();
+    }
+
+    /// <summary>Removes the last unconnected ORDER BY slot from WindowFunction.</summary>
+    public void RemoveWindowOrderSlot()
+    {
+        if (!IsWindowFunction)
+            return;
+        RemoveLastEmptyDynamicInputSlot("order_");
+        ReorderWindowFunctionInputPins();
+        RaiseWindowSlotStateChanged();
     }
 
     /// <summary>
@@ -727,5 +907,187 @@ public sealed class NodeViewModel : ViewModelBase
                 this
             )
         );
+    }
+
+    private void AddDynamicInputSlot(string prefix, PinDataType slotType, string description)
+    {
+        var used = InputPins
+            .Where(p => p.Name.StartsWith(prefix) && int.TryParse(p.Name[prefix.Length..], out _))
+            .Select(p => int.Parse(p.Name[prefix.Length..]))
+            .ToHashSet();
+
+        int next = 1;
+        while (used.Contains(next))
+            next++;
+
+        InputPins.Add(
+            new PinViewModel(
+                new PinDescriptor(
+                    $"{prefix}{next}",
+                    PinDirection.Input,
+                    slotType,
+                    IsRequired: false,
+                    Description: description
+                ),
+                this
+            )
+        );
+    }
+
+    private void RemoveLastEmptyDynamicInputSlot(string prefix)
+    {
+        var candidates = InputPins
+            .Where(p => p.Name.StartsWith(prefix) && int.TryParse(p.Name[prefix.Length..], out _))
+            .OrderByDescending(p => int.Parse(p.Name[prefix.Length..]))
+            .ToList();
+
+        if (candidates.Count <= 1)
+            return; // keep at least one slot
+
+        PinViewModel? removable = candidates.FirstOrDefault(p => !p.IsConnected);
+        if (removable is not null)
+            InputPins.Remove(removable);
+    }
+
+    private bool HasRemovableDynamicInputSlot(string prefix)
+    {
+        var candidates = InputPins
+            .Where(p => p.Name.StartsWith(prefix) && int.TryParse(p.Name[prefix.Length..], out _))
+            .ToList();
+
+        return candidates.Count > 1 && candidates.Any(p => !p.IsConnected);
+    }
+
+    private void RaiseWindowSlotStateChanged()
+    {
+        RaisePropertyChanged(nameof(CanRemoveWindowPartitionSlot));
+        RaisePropertyChanged(nameof(CanRemoveWindowOrderSlot));
+    }
+
+    private void SyncWindowDynamicInputPins(
+        string prefix,
+        PinDataType slotType,
+        string description,
+        IEnumerable<ConnectionViewModel> allConnections
+    )
+    {
+        var connectedPinNames = allConnections
+            .Where(c => c.ToPin?.Owner == this && (c.ToPin?.Name.StartsWith(prefix) ?? false))
+            .Select(c => c.ToPin!.Name)
+            .ToHashSet();
+
+        var slots = InputPins
+            .Where(p => p.Name.StartsWith(prefix) && int.TryParse(p.Name[prefix.Length..], out _))
+            .OrderBy(p => int.Parse(p.Name[prefix.Length..]))
+            .ToList();
+
+        if (slots.Count == 0)
+        {
+            AddDynamicInputSlot(prefix, slotType, description);
+            slots = InputPins
+                .Where(p => p.Name.StartsWith(prefix) && int.TryParse(p.Name[prefix.Length..], out _))
+                .OrderBy(p => int.Parse(p.Name[prefix.Length..]))
+                .ToList();
+        }
+
+        foreach (PinViewModel slot in slots)
+            slot.IsConnected = connectedPinNames.Contains(slot.Name);
+
+        if (!slots.Any(s => !s.IsConnected))
+            AddDynamicInputSlot(prefix, slotType, description);
+    }
+
+    private void EnsureWindowFunctionMinimumPins()
+    {
+        // Keep the node in minimum usable state by default: one partition slot and one order slot.
+        while (InputPins.Any(p => p.Name.StartsWith("partition_") && p.Name != "partition_1"))
+        {
+            PinViewModel? extra = InputPins.FirstOrDefault(
+                p => p.Name.StartsWith("partition_") && p.Name != "partition_1"
+            );
+            if (extra is null)
+                break;
+            InputPins.Remove(extra);
+        }
+
+        while (InputPins.Any(p => p.Name.StartsWith("order_") && p.Name != "order_1"))
+        {
+            PinViewModel? extra = InputPins.FirstOrDefault(
+                p => p.Name.StartsWith("order_") && p.Name != "order_1"
+            );
+            if (extra is null)
+                break;
+            InputPins.Remove(extra);
+        }
+
+        if (!InputPins.Any(p => p.Name == "partition_1"))
+        {
+            InputPins.Add(
+                new PinViewModel(
+                    new PinDescriptor(
+                        "partition_1",
+                        PinDirection.Input,
+                        PinDataType.ColumnRef,
+                        IsRequired: false,
+                        Description: "Connect a partition expression"
+                    ),
+                    this
+                )
+            );
+        }
+
+        if (!InputPins.Any(p => p.Name == "order_1"))
+        {
+            InputPins.Add(
+                new PinViewModel(
+                    new PinDescriptor(
+                        "order_1",
+                        PinDirection.Input,
+                        PinDataType.ColumnRef,
+                        IsRequired: false,
+                        Description: "Connect an order expression"
+                    ),
+                    this
+                )
+            );
+        }
+
+        ReorderWindowFunctionInputPins();
+    }
+
+    private void ReorderWindowFunctionInputPins()
+    {
+        if (!IsWindowFunction)
+            return;
+
+        static int PinOrder(string name, string prefix)
+        {
+            if (!name.StartsWith(prefix, StringComparison.Ordinal))
+                return int.MaxValue;
+
+            return int.TryParse(name[prefix.Length..], out int n) ? n : int.MaxValue;
+        }
+
+        var fixedInputs = InputPins
+            .Where(p => p.Name is not null && !p.Name.StartsWith("partition_") && !p.Name.StartsWith("order_"))
+            .ToList();
+
+        var partitionInputs = InputPins
+            .Where(p => p.Name.StartsWith("partition_"))
+            .OrderBy(p => PinOrder(p.Name, "partition_"))
+            .ToList();
+
+        var orderInputs = InputPins
+            .Where(p => p.Name.StartsWith("order_"))
+            .OrderBy(p => PinOrder(p.Name, "order_"))
+            .ToList();
+
+        InputPins.Clear();
+        foreach (PinViewModel pin in fixedInputs)
+            InputPins.Add(pin);
+        foreach (PinViewModel pin in partitionInputs)
+            InputPins.Add(pin);
+        foreach (PinViewModel pin in orderInputs)
+            InputPins.Add(pin);
     }
 }

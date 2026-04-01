@@ -15,8 +15,8 @@ public static class ComparisonDefinitions
         "Equals (=)",
         "Tests equality",
         [
-            In("left", PinDataType.Any),
-            In("right", PinDataType.Any),
+            In("left", PinDataType.ColumnRef),
+            In("right", PinDataType.ColumnRef),
             Out("result", PinDataType.Boolean),
         ],
         []
@@ -28,8 +28,8 @@ public static class ComparisonDefinitions
         "Not Equals (<>)",
         "Tests inequality",
         [
-            In("left", PinDataType.Any),
-            In("right", PinDataType.Any),
+            In("left", PinDataType.ColumnRef),
+            In("right", PinDataType.ColumnRef),
             Out("result", PinDataType.Boolean),
         ],
         []
@@ -41,8 +41,8 @@ public static class ComparisonDefinitions
         "Greater Than (>)",
         "left > right",
         [
-            In("left", PinDataType.Any),
-            In("right", PinDataType.Any),
+            In("left", PinDataType.ColumnRef),
+            In("right", PinDataType.ColumnRef),
             Out("result", PinDataType.Boolean),
         ],
         []
@@ -54,8 +54,8 @@ public static class ComparisonDefinitions
         "Greater or Equal (>=)",
         "left >= right",
         [
-            In("left", PinDataType.Any),
-            In("right", PinDataType.Any),
+            In("left", PinDataType.ColumnRef),
+            In("right", PinDataType.ColumnRef),
             Out("result", PinDataType.Boolean),
         ],
         []
@@ -67,8 +67,8 @@ public static class ComparisonDefinitions
         "Less Than (<)",
         "left < right",
         [
-            In("left", PinDataType.Any),
-            In("right", PinDataType.Any),
+            In("left", PinDataType.ColumnRef),
+            In("right", PinDataType.ColumnRef),
             Out("result", PinDataType.Boolean),
         ],
         []
@@ -80,8 +80,8 @@ public static class ComparisonDefinitions
         "Less or Equal (<=)",
         "left <= right",
         [
-            In("left", PinDataType.Any),
-            In("right", PinDataType.Any),
+            In("left", PinDataType.ColumnRef),
+            In("right", PinDataType.ColumnRef),
             Out("result", PinDataType.Boolean),
         ],
         []
@@ -93,9 +93,9 @@ public static class ComparisonDefinitions
         "BETWEEN",
         "Tests if a value is within an inclusive range",
         [
-            In("value", PinDataType.Any),
-            In("low", PinDataType.Any),
-            In("high", PinDataType.Any),
+            In("value", PinDataType.ColumnRef),
+            In("low", PinDataType.ColumnRef),
+            In("high", PinDataType.ColumnRef),
             Out("result", PinDataType.Boolean),
         ],
         []
@@ -107,9 +107,9 @@ public static class ComparisonDefinitions
         "NOT BETWEEN",
         "Tests if a value is outside a range",
         [
-            In("value", PinDataType.Any),
-            In("low", PinDataType.Any),
-            In("high", PinDataType.Any),
+            In("value", PinDataType.ColumnRef),
+            In("low", PinDataType.ColumnRef),
+            In("high", PinDataType.ColumnRef),
             Out("result", PinDataType.Boolean),
         ],
         []
@@ -120,7 +120,7 @@ public static class ComparisonDefinitions
         NodeCategory.Comparison,
         "IS NULL",
         "Tests if a value is null",
-        [In("value", PinDataType.Any), Out("result", PinDataType.Boolean)],
+        [In("value", PinDataType.ColumnRef), Out("result", PinDataType.Boolean)],
         []
     );
 
@@ -129,7 +129,7 @@ public static class ComparisonDefinitions
         NodeCategory.Comparison,
         "IS NOT NULL",
         "Tests if a value is not null",
-        [In("value", PinDataType.Any), Out("result", PinDataType.Boolean)],
+        [In("value", PinDataType.ColumnRef), Out("result", PinDataType.Boolean)],
         []
     );
 

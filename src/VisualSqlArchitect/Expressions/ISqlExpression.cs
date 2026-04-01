@@ -6,14 +6,21 @@ namespace VisualSqlArchitect.Expressions;
 // PIN DATA TYPES  (for canvas-side type-checking)
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// <summary>
+/// Semantic data types used by pin compatibility checks and expression emission.
+/// </summary>
 public enum PinDataType
 {
-    Any,
     Text,
+    Integer,
+    Decimal,
     Number,
     Boolean,
     DateTime,
     Json,
+    ColumnRef,
+    ColumnSet,
+    RowSet,
     Expression, // untyped SQL fragment — accepted by any slot
 }
 

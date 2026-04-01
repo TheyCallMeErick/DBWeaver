@@ -7,11 +7,16 @@ namespace VisualSqlArchitect.Expressions.Columns;
 public sealed record ColumnExpr(
     string TableAlias,
     string ColumnName,
-    PinDataType OutputType = PinDataType.Any
+    PinDataType OutputType = PinDataType.ColumnRef
 ) : ISqlExpression
 {
-    public string Emit(EmitContext ctx) =>
-        string.IsNullOrEmpty(TableAlias)
+    public string Emit(EmitContext ctx)
+    {
+        if (ColumnName == "*")
+            return string.IsNullOrEmpty(TableAlias) ? "*" : $"{ctx.QuoteIdentifier(TableAlias)}.*";
+
+        return string.IsNullOrEmpty(TableAlias)
             ? ctx.QuoteIdentifier(ColumnName)
             : $"{ctx.QuoteIdentifier(TableAlias)}.{ctx.QuoteIdentifier(ColumnName)}";
+    }
 }

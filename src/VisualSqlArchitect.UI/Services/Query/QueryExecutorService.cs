@@ -1,6 +1,5 @@
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -36,11 +35,15 @@ public sealed partial class QueryExecutorService
         int maxRows = 1000,
         CancellationToken ct = default)
     {
-        Debug.WriteLine($"[QueryExecutor] ExecuteQueryAsync called with config={config}, query length={query?.Length}");
+        _logger.LogDebug(
+            "ExecuteQueryAsync called with config={Config}, query length={QueryLength}",
+            config,
+            query?.Length
+        );
 
         if (config == null)
         {
-            Debug.WriteLine("[QueryExecutor] ERROR: config is null, returning demo data");
+            _logger.LogWarning("Connection config is null, returning demo data");
             return BuildDemoDataTable();
         }
         if (string.IsNullOrWhiteSpace(query))
@@ -121,7 +124,7 @@ public sealed partial class QueryExecutorService
             .Value
             .ToUpperInvariant();
 
-        if (string.IsNullOrEmpty(firstToken))
+        if (string.IsNullOrWhiteSpace(firstToken))
             throw new ArgumentException("Query cannot be empty.", nameof(query));
 
         // Preview mode must remain read-only.
@@ -158,9 +161,9 @@ public sealed partial class QueryExecutorService
     /// <summary>
     /// Creates the appropriate orchestrator for the given provider.
     /// </summary>
-    private static IDbOrchestrator CreateOrchestrator(DatabaseProvider provider, ConnectionConfig config)
+    private IDbOrchestrator CreateOrchestrator(DatabaseProvider provider, ConnectionConfig config)
     {
-        Debug.WriteLine($"[QueryExecutor] Creating orchestrator for provider: {provider}");
+        _logger.LogDebug("Creating orchestrator for provider: {Provider}", provider);
         return provider switch
         {
             DatabaseProvider.SqlServer => new SqlServerOrchestrator(config),
@@ -174,7 +177,7 @@ public sealed partial class QueryExecutorService
     /// <summary>
     /// Returns demo data for testing when real connection is not available.
     /// </summary>
-    private static DataTable BuildDemoDataTable()
+    private DataTable BuildDemoDataTable()
     {
         var dt = new DataTable("demo_results");
         dt.Columns.Add("id", typeof(int));
@@ -193,7 +196,7 @@ public sealed partial class QueryExecutorService
             );
         }
 
-        Debug.WriteLine($"[QueryExecutor] Demo DataTable created with {dt.Rows.Count} rows");
+        _logger.LogDebug("Demo DataTable created with {RowCount} rows", dt.Rows.Count);
         return dt;
     }
 

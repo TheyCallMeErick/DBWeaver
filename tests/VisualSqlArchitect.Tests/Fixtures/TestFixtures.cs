@@ -33,7 +33,7 @@ internal static class TestFixtures
         public static ColumnExpr Column(
             string table,
             string column,
-            PinDataType type = PinDataType.Any
+            PinDataType type = PinDataType.Expression
         ) => new(table, column, type);
 
         public static ColumnExpr OrderTotal => Column("orders", "total", PinDataType.Number);

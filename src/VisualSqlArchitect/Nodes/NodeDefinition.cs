@@ -4,6 +4,9 @@ namespace VisualSqlArchitect.Nodes;
 // PIN DIRECTION
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// <summary>
+/// Direction of a pin on a node descriptor.
+/// </summary>
 public enum PinDirection
 {
     Input,
@@ -27,13 +30,18 @@ public sealed record PinDescriptor(
     PinDataType DataType,
     bool IsRequired = true,
     string? Description = null,
-    bool AllowMultiple = false // input pins that accept variadic connections (AND, OR)
+    bool AllowMultiple = false, // input pins that accept variadic connections (AND, OR)
+    ColumnRefMeta? ColumnRefMeta = null,
+    ColumnSetMeta? ColumnSetMeta = null
 );
 
 // ═════════════════════════════════════════════════════════════════════════════
 // NODE CATEGORY + TYPE
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// <summary>
+/// Logical grouping used for discovery, styling and organization of node types.
+/// </summary>
 public enum NodeCategory
 {
     DataSource,
@@ -50,11 +58,19 @@ public enum NodeCategory
     Literal,
 }
 
+/// <summary>
+/// Canonical node identifiers supported by the canvas and compiler.
+/// </summary>
 public enum NodeType
 {
     // ── Data Source ───────────────────────────────────────────────────────────
     TableSource,
+    Join,
+    RowSetJoin,
+    Subquery,
     Alias,
+    CteDefinition,
+    CteSource,
 
     // ── String Transforms ─────────────────────────────────────────────────────
     Upper,
@@ -78,6 +94,10 @@ public enum NodeType
     Multiply,
     Divide,
     Modulo,
+    DateAdd,
+    DateDiff,
+    DatePart,
+    DateFormat,
 
     // ── Aggregates ────────────────────────────────────────────────────────────
     CountStar,
@@ -86,9 +106,13 @@ public enum NodeType
     Avg,
     Min,
     Max,
+    StringAgg,
+    WindowFunction,
 
     // ── Type Cast ─────────────────────────────────────────────────────────────
     Cast,
+    ColumnRefCast,
+    ScalarFromColumn,
 
     // ── Comparison ────────────────────────────────────────────────────────────
     Equals,
@@ -103,6 +127,9 @@ public enum NodeType
     IsNotNull,
     Like,
     NotLike,
+    SubqueryExists,
+    SubqueryIn,
+    SubqueryScalar,
 
     // ── Logic Gates ───────────────────────────────────────────────────────────
     And,
@@ -125,13 +152,22 @@ public enum NodeType
     ValueString,
     ValueDateTime,
     ValueBoolean,
+    SystemDate,
+    SystemDateTime,
+    CurrentDate,
+    CurrentTime,
 
     // ── Result Modifiers ──────────────────────────────────────────────────────
     Top, // LIMIT/TOP - restricts the number of rows returned
     CompileWhere, // Compiles multiple boolean conditions into a WHERE clause
+    RowSetFilter, // Applies boolean predicates over a row set
+    RowSetAggregate, // Groups/aggregates a row set
+    SetOperation,
 
     // ── Output ────────────────────────────────────────────────────────────────
     ColumnList, // Aggregates multiple columns for SELECT
+    ColumnSetBuilder, // Explicit structural builder for ColumnSet from ColumnRef inputs
+    ColumnSetMerge, // Merges multiple ColumnSet inputs into one
     SelectOutput,
     WhereOutput,
     ResultOutput,
@@ -161,8 +197,15 @@ public sealed record NodeDefinition(
     IReadOnlyList<NodeParameter> Parameters
 )
 {
+    /// <summary>
+    /// Gets all input pins declared by this node definition.
+    /// </summary>
     public IEnumerable<PinDescriptor> InputPins =>
         Pins.Where(p => p.Direction == PinDirection.Input);
+
+    /// <summary>
+    /// Gets all output pins declared by this node definition.
+    /// </summary>
     public IEnumerable<PinDescriptor> OutputPins =>
         Pins.Where(p => p.Direction == PinDirection.Output);
 }
@@ -171,6 +214,9 @@ public sealed record NodeDefinition(
 // NODE PARAMETER  (canvas property panel value)
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// <summary>
+/// Supported editor kinds for node parameters in the property panel.
+/// </summary>
 public enum ParameterKind
 {
     Text,
@@ -221,7 +267,7 @@ public static class NodeDefinitionRegistry
 
     private static PinDescriptor In(
         string name,
-        PinDataType type = PinDataType.Any,
+        PinDataType type = PinDataType.Expression,
         bool required = true,
         bool multi = false,
         string? desc = null
@@ -229,7 +275,7 @@ public static class NodeDefinitionRegistry
 
     private static PinDescriptor Out(
         string name,
-        PinDataType type = PinDataType.Any,
+        PinDataType type = PinDataType.Expression,
         string? desc = null
     ) => new(name, PinDirection.Output, type, Description: desc);
 
@@ -255,8 +301,204 @@ public static class NodeDefinitionRegistry
                 NodeCategory.DataSource,
                 "ALIAS (AS)",
                 "Renames a column or expression with AS",
-                [In("expression", PinDataType.Any), Out("result", PinDataType.Any)],
+                [
+                    In("expression", PinDataType.Expression),
+                    In("alias_text", PinDataType.Text, required: false),
+                    Out("result", PinDataType.ColumnRef),
+                ],
                 [Param("alias", ParameterKind.Text, null, "New alias name (e.g. total_price)")]
+            ),
+
+            [NodeType.Join] = new(
+                NodeType.Join,
+                NodeCategory.DataSource,
+                "JOIN",
+                "Defines an explicit join between two sources",
+                [
+                    In("left", PinDataType.ColumnRef),
+                    In("right", PinDataType.ColumnRef),
+                    In("condition", PinDataType.Boolean, required: false),
+                    Out("result", PinDataType.Boolean),
+                ],
+                [
+                    Param(
+                        "join_type",
+                        ParameterKind.Enum,
+                        "INNER",
+                        "Join type",
+                        "INNER",
+                        "LEFT",
+                        "RIGHT",
+                        "FULL",
+                        "CROSS"
+                    ),
+                    Param(
+                        "operator",
+                        ParameterKind.Enum,
+                        "=",
+                        "Comparison operator for explicit expression mode",
+                        "=",
+                        "<>",
+                        ">",
+                        ">=",
+                        "<",
+                        "<="
+                    ),
+                    Param(
+                        "right_source",
+                        ParameterKind.Text,
+                        "",
+                        "Optional target source for JOIN (table/cte/subquery alias)"
+                    ),
+                    Param(
+                        "left_expr",
+                        ParameterKind.Text,
+                        "",
+                        "Optional left operand SQL expression (e.g. pe.id)"
+                    ),
+                    Param(
+                        "right_expr",
+                        ParameterKind.Text,
+                        "",
+                        "Optional right operand SQL expression (e.g. c.id)"
+                    ),
+                ]
+            ),
+
+            [NodeType.RowSetJoin] = new(
+                NodeType.RowSetJoin,
+                NodeCategory.DataSource,
+                "RowSet Join",
+                "JOIN visual com dois RowSet + condição booleana",
+                [
+                    In("left", PinDataType.RowSet),
+                    In("right", PinDataType.RowSet),
+                    In("condition", PinDataType.Boolean, required: false),
+                    Out("result", PinDataType.RowSet),
+                ],
+                [
+                    Param(
+                        "join_type",
+                        ParameterKind.Enum,
+                        "INNER",
+                        "Join type",
+                        "INNER",
+                        "LEFT",
+                        "RIGHT",
+                        "FULL",
+                        "CROSS"
+                    ),
+                ]
+            ),
+
+            [NodeType.Subquery] = new(
+                NodeType.Subquery,
+                NodeCategory.DataSource,
+                "Subquery",
+                "Uses a nested SELECT as a FROM source",
+                [
+                    In("query_text", PinDataType.Text, required: false),
+                    In("alias_text", PinDataType.Text, required: false),
+                    Out("result", PinDataType.RowSet),
+                ],
+                [
+                    Param("query", ParameterKind.Text, "", "Subquery SQL text (SELECT ... )"),
+                    Param("alias", ParameterKind.Text, "subq", "Alias for the subquery source"),
+                ]
+            ),
+
+            [NodeType.CteSource] = new(
+                NodeType.CteSource,
+                NodeCategory.DataSource,
+                "CTE Source",
+                "References a CTE as a table source",
+                [
+                    In("cte", PinDataType.RowSet, required: false),
+                    In("cte_name_text", PinDataType.Text, required: false),
+                    In("alias_text", PinDataType.Text, required: false),
+                    Out("result", PinDataType.RowSet),
+                ],
+                [
+                    Param("cte_name", ParameterKind.Text, "cte_name", "CTE name to reference"),
+                    Param("alias", ParameterKind.Text, "", "Optional alias for the CTE source"),
+                ]
+            ),
+
+            [NodeType.SubqueryExists] = new(
+                NodeType.SubqueryExists,
+                NodeCategory.Comparison,
+                "EXISTS",
+                "Checks if a subquery returns at least one row",
+                [
+                    In("query_text", PinDataType.Text, required: false),
+                    Out("result", PinDataType.Boolean),
+                ],
+                [
+                    Param("query", ParameterKind.Text, "", "Subquery SQL text (SELECT ... )"),
+                    Param("negate", ParameterKind.Boolean, "false", "Emit NOT EXISTS when true"),
+                ]
+            ),
+
+            [NodeType.SubqueryIn] = new(
+                NodeType.SubqueryIn,
+                NodeCategory.Comparison,
+                "IN (Subquery)",
+                "Checks if a value is present in a subquery result set",
+                [
+                    In("value", PinDataType.ColumnRef),
+                    In("query_text", PinDataType.Text, required: false),
+                    Out("result", PinDataType.Boolean),
+                ],
+                [
+                    Param("query", ParameterKind.Text, "", "Subquery SQL text (SELECT ... )"),
+                    Param("negate", ParameterKind.Boolean, "false", "Emit NOT IN when true"),
+                ]
+            ),
+
+            [NodeType.SubqueryScalar] = new(
+                NodeType.SubqueryScalar,
+                NodeCategory.Comparison,
+                "Scalar Subquery",
+                "Compares a value with a scalar subquery result",
+                [
+                    In("left", PinDataType.ColumnRef),
+                    In("query_text", PinDataType.Text, required: false),
+                    Out("result", PinDataType.Boolean),
+                ],
+                [
+                    Param(
+                        "operator",
+                        ParameterKind.Enum,
+                        "=",
+                        "Comparison operator",
+                        "=",
+                        "<>",
+                        ">",
+                        ">=",
+                        "<",
+                        "<="
+                    ),
+                    Param("query", ParameterKind.Text, "", "Subquery SQL text (SELECT ... )"),
+                ]
+            ),
+
+            [NodeType.CteDefinition] = new(
+                NodeType.CteDefinition,
+                NodeCategory.DataSource,
+                "CTE Definition",
+                "Defines a WITH entry (name AS subquery)",
+                [
+                    In("query", PinDataType.ColumnSet, required: false),
+                    In("name_text", PinDataType.Text, required: false),
+                    In("source_table_text", PinDataType.Text, required: false),
+                    Out("table", PinDataType.RowSet),
+                ],
+                [
+                    Param("name", ParameterKind.Text, "cte_name", "CTE name to define"),
+                    Param("cte_name", ParameterKind.Text, "cte_name", "CTE name to define"),
+                    Param("source_table", ParameterKind.Text, "", "Base FROM table for the CTE"),
+                    Param("recursive", ParameterKind.Boolean, "false", "Marks this CTE as recursive"),
+                ]
             ),
 
             // ── String transforms ─────────────────────────────────────────────────
@@ -388,8 +630,8 @@ public static class NodeDefinitionRegistry
                 "CONCAT",
                 "Concatenates two or more strings",
                 [
-                    In("a", PinDataType.Any),
-                    In("b", PinDataType.Any),
+                    In("a", PinDataType.Text),
+                    In("b", PinDataType.Text),
                     In("separator", PinDataType.Text, required: false),
                     Out("result", PinDataType.Text),
                 ],
@@ -490,6 +732,59 @@ public static class NodeDefinitionRegistry
                 []
             ),
 
+            [NodeType.DateAdd] = new(
+                NodeType.DateAdd,
+                NodeCategory.MathTransform,
+                "Date Add",
+                "Adds an interval to a date/time value",
+                [
+                    In("date", PinDataType.DateTime),
+                    In("amount", PinDataType.Number, required: false),
+                    Out("result", PinDataType.DateTime),
+                ],
+                [
+                    Param("amount", ParameterKind.Number, "1", "Amount of units to add"),
+                    Param("unit", ParameterKind.Enum, "day", "Interval unit", "day", "month", "year", "hour", "minute", "second"),
+                ]
+            ),
+
+            [NodeType.DateDiff] = new(
+                NodeType.DateDiff,
+                NodeCategory.MathTransform,
+                "Date Diff",
+                "Calculates the difference between two date/time values",
+                [
+                    In("start", PinDataType.DateTime),
+                    In("end", PinDataType.DateTime),
+                    Out("result", PinDataType.Number),
+                ],
+                [
+                    Param("unit", ParameterKind.Enum, "day", "Difference unit", "day", "month", "year", "hour", "minute", "second"),
+                ]
+            ),
+
+            [NodeType.DatePart] = new(
+                NodeType.DatePart,
+                NodeCategory.MathTransform,
+                "Date Part",
+                "Extracts a specific part from a date/time value",
+                [In("value", PinDataType.DateTime), Out("result", PinDataType.Number)],
+                [
+                    Param("part", ParameterKind.Enum, "year", "Date part to extract", "year", "month", "day", "hour", "minute", "second"),
+                ]
+            ),
+
+            [NodeType.DateFormat] = new(
+                NodeType.DateFormat,
+                NodeCategory.MathTransform,
+                "Date Format",
+                "Formats a date/time value as text",
+                [In("value", PinDataType.DateTime), Out("result", PinDataType.Text)],
+                [
+                    Param("format", ParameterKind.Text, "yyyy-MM-dd", "Output format pattern"),
+                ]
+            ),
+
             // ── Aggregates ────────────────────────────────────────────────────────
 
             [NodeType.CountStar] = new(
@@ -524,7 +819,7 @@ public static class NodeDefinitionRegistry
                 NodeCategory.Aggregate,
                 "MIN",
                 "Minimum value",
-                [In("value", PinDataType.Any), Out("minimum", PinDataType.Any)],
+                [In("value", PinDataType.ColumnRef), Out("minimum", PinDataType.ColumnRef)],
                 []
             ),
 
@@ -533,8 +828,108 @@ public static class NodeDefinitionRegistry
                 NodeCategory.Aggregate,
                 "MAX",
                 "Maximum value",
-                [In("value", PinDataType.Any), Out("maximum", PinDataType.Any)],
+                [In("value", PinDataType.ColumnRef), Out("maximum", PinDataType.ColumnRef)],
                 []
+            ),
+
+            [NodeType.StringAgg] = new(
+                NodeType.StringAgg,
+                NodeCategory.Aggregate,
+                "String Agg",
+                "Concatenates values within a group into a delimited string",
+                [
+                    In("value", PinDataType.Text),
+                    In("order_by", PinDataType.ColumnRef, required: false),
+                    Out("result", PinDataType.Text),
+                ],
+                [
+                    Param("separator", ParameterKind.Text, ", ", "Delimiter between values"),
+                    Param("distinct", ParameterKind.Boolean, "false", "Deduplicate values"),
+                ]
+            ),
+
+            [NodeType.WindowFunction] = new(
+                NodeType.WindowFunction,
+                NodeCategory.Aggregate,
+                "Window Function",
+                "Analytical function computed over an OVER clause",
+                [
+                    In("value", PinDataType.ColumnRef, required: false),
+                    In("default", PinDataType.Expression, required: false),
+                    In("partition_1", PinDataType.ColumnRef, required: false, multi: true),
+                    In("order_1", PinDataType.ColumnRef, required: false, multi: true),
+                    Out("result", PinDataType.Expression),
+                ],
+                [
+                    Param(
+                        "function",
+                        ParameterKind.Enum,
+                        "RowNumber",
+                        "Window function kind",
+                        "RowNumber",
+                        "Rank",
+                        "DenseRank",
+                        "Ntile",
+                        "Lag",
+                        "Lead",
+                        "FirstValue",
+                        "LastValue",
+                        "SumOver",
+                        "AvgOver",
+                        "MinOver",
+                        "MaxOver",
+                        "CountOver"
+                    ),
+                    Param("offset", ParameterKind.Number, "1", "Offset for LAG/LEAD"),
+                    Param("ntile_groups", ParameterKind.Number, "4", "Number of groups for NTILE"),
+                    Param("default_value", ParameterKind.Text, "", "Fallback value for LAG/LEAD when row is missing"),
+                    Param(
+                        "frame",
+                        ParameterKind.Enum,
+                        "None",
+                        "Window frame clause",
+                        "None",
+                        "UnboundedPreceding_CurrentRow",
+                        "CurrentRow_UnboundedFollowing",
+                        "Custom"
+                    ),
+                    Param(
+                        "frame_start",
+                        ParameterKind.Enum,
+                        "UnboundedPreceding",
+                        "Custom frame start bound",
+                        "UnboundedPreceding",
+                        "Preceding",
+                        "CurrentRow",
+                        "Following",
+                        "UnboundedFollowing"
+                    ),
+                    Param(
+                        "frame_start_offset",
+                        ParameterKind.Number,
+                        "1",
+                        "Offset for Preceding/Following start bound"
+                    ),
+                    Param(
+                        "frame_end",
+                        ParameterKind.Enum,
+                        "CurrentRow",
+                        "Custom frame end bound",
+                        "UnboundedPreceding",
+                        "Preceding",
+                        "CurrentRow",
+                        "Following",
+                        "UnboundedFollowing"
+                    ),
+                    Param(
+                        "frame_end_offset",
+                        ParameterKind.Number,
+                        "1",
+                        "Offset for Preceding/Following end bound"
+                    ),
+                    Param("order_1_desc", ParameterKind.Boolean, "false", "Descending ORDER BY for order_1"),
+                    Param("order_2_desc", ParameterKind.Boolean, "false", "Descending ORDER BY for order_2"),
+                ]
             ),
 
             // ── Cast ──────────────────────────────────────────────────────────────
@@ -544,7 +939,7 @@ public static class NodeDefinitionRegistry
                 NodeCategory.TypeCast,
                 "CAST",
                 "Converts a value to another data type",
-                [In("value", PinDataType.Any), Out("result", PinDataType.Any)],
+                [In("value", PinDataType.Expression), Out("result", PinDataType.Expression)],
                 [
                     Param(
                         "targetType",
@@ -565,6 +960,41 @@ public static class NodeDefinitionRegistry
                 ]
             ),
 
+            [NodeType.ColumnRefCast] = new(
+                NodeType.ColumnRefCast,
+                NodeCategory.TypeCast,
+                "ColumnRef Cast",
+                "CAST explícito de coluna",
+                [In("value", PinDataType.ColumnRef), Out("result", PinDataType.Expression)],
+                [
+                    Param(
+                        "targetType",
+                        ParameterKind.CastType,
+                        "Text",
+                        "Target SQL type",
+                        "Text",
+                        "Integer",
+                        "BigInt",
+                        "Decimal",
+                        "Float",
+                        "Boolean",
+                        "Date",
+                        "DateTime",
+                        "Timestamp",
+                        "Uuid"
+                    ),
+                ]
+            ),
+
+            [NodeType.ScalarFromColumn] = new(
+                NodeType.ScalarFromColumn,
+                NodeCategory.TypeCast,
+                "Scalar From Column",
+                "Desempacota ColumnRef para expressão escalar",
+                [In("value", PinDataType.ColumnRef), Out("result", PinDataType.Expression)],
+                []
+            ),
+
             // ── Comparisons ───────────────────────────────────────────────────────
 
             [NodeType.Equals] = new(
@@ -573,8 +1003,8 @@ public static class NodeDefinitionRegistry
                 "Equals (=)",
                 "Tests equality",
                 [
-                    In("left", PinDataType.Any),
-                    In("right", PinDataType.Any),
+                    In("left", PinDataType.ColumnRef),
+                    In("right", PinDataType.ColumnRef),
                     Out("result", PinDataType.Boolean),
                 ],
                 []
@@ -586,8 +1016,8 @@ public static class NodeDefinitionRegistry
                 "Not Equals (<>)",
                 "Tests inequality",
                 [
-                    In("left", PinDataType.Any),
-                    In("right", PinDataType.Any),
+                    In("left", PinDataType.ColumnRef),
+                    In("right", PinDataType.ColumnRef),
                     Out("result", PinDataType.Boolean),
                 ],
                 []
@@ -599,8 +1029,8 @@ public static class NodeDefinitionRegistry
                 "Greater Than (>)",
                 "left > right",
                 [
-                    In("left", PinDataType.Any),
-                    In("right", PinDataType.Any),
+                    In("left", PinDataType.ColumnRef),
+                    In("right", PinDataType.ColumnRef),
                     Out("result", PinDataType.Boolean),
                 ],
                 []
@@ -612,8 +1042,8 @@ public static class NodeDefinitionRegistry
                 "Greater or Equal (≥)",
                 "left >= right",
                 [
-                    In("left", PinDataType.Any),
-                    In("right", PinDataType.Any),
+                    In("left", PinDataType.ColumnRef),
+                    In("right", PinDataType.ColumnRef),
                     Out("result", PinDataType.Boolean),
                 ],
                 []
@@ -625,8 +1055,8 @@ public static class NodeDefinitionRegistry
                 "Less Than (<)",
                 "left < right",
                 [
-                    In("left", PinDataType.Any),
-                    In("right", PinDataType.Any),
+                    In("left", PinDataType.ColumnRef),
+                    In("right", PinDataType.ColumnRef),
                     Out("result", PinDataType.Boolean),
                 ],
                 []
@@ -638,8 +1068,8 @@ public static class NodeDefinitionRegistry
                 "Less or Equal (≤)",
                 "left <= right",
                 [
-                    In("left", PinDataType.Any),
-                    In("right", PinDataType.Any),
+                    In("left", PinDataType.ColumnRef),
+                    In("right", PinDataType.ColumnRef),
                     Out("result", PinDataType.Boolean),
                 ],
                 []
@@ -651,9 +1081,9 @@ public static class NodeDefinitionRegistry
                 "BETWEEN",
                 "Tests if a value is within an inclusive range",
                 [
-                    In("value", PinDataType.Any),
-                    In("low", PinDataType.Any),
-                    In("high", PinDataType.Any),
+                    In("value", PinDataType.ColumnRef),
+                    In("low", PinDataType.ColumnRef),
+                    In("high", PinDataType.ColumnRef),
                     Out("result", PinDataType.Boolean),
                 ],
                 []
@@ -665,9 +1095,9 @@ public static class NodeDefinitionRegistry
                 "NOT BETWEEN",
                 "Tests if a value is outside a range",
                 [
-                    In("value", PinDataType.Any),
-                    In("low", PinDataType.Any),
-                    In("high", PinDataType.Any),
+                    In("value", PinDataType.ColumnRef),
+                    In("low", PinDataType.ColumnRef),
+                    In("high", PinDataType.ColumnRef),
                     Out("result", PinDataType.Boolean),
                 ],
                 []
@@ -678,7 +1108,7 @@ public static class NodeDefinitionRegistry
                 NodeCategory.Comparison,
                 "IS NULL",
                 "Tests if a value is null",
-                [In("value", PinDataType.Any), Out("result", PinDataType.Boolean)],
+                [In("value", PinDataType.ColumnRef), Out("result", PinDataType.Boolean)],
                 []
             ),
 
@@ -687,7 +1117,7 @@ public static class NodeDefinitionRegistry
                 NodeCategory.Comparison,
                 "IS NOT NULL",
                 "Tests if a value is not null",
-                [In("value", PinDataType.Any), Out("result", PinDataType.Boolean)],
+                [In("value", PinDataType.ColumnRef), Out("result", PinDataType.Boolean)],
                 []
             ),
 
@@ -742,7 +1172,7 @@ public static class NodeDefinitionRegistry
                 NodeCategory.Json,
                 "JSON Extract",
                 "Extracts a value from a JSON column by path",
-                [In("json", PinDataType.Json), Out("value", PinDataType.Any)],
+                [In("json", PinDataType.Json), Out("value", PinDataType.Expression)],
                 [
                     Param("path", ParameterKind.JsonPath, desc: "JSON path (e.g. $.address.city)"),
                     Param(
@@ -774,7 +1204,7 @@ public static class NodeDefinitionRegistry
                 NodeCategory.Conditional,
                 "NULL Fill",
                 "Returns a fallback value when input is NULL — COALESCE(value, fallback)",
-                [In("value", PinDataType.Any), Out("result", PinDataType.Any)],
+                [In("value", PinDataType.Expression), Out("result", PinDataType.Expression)],
                 [Param("fallback", ParameterKind.Text, "", "Value returned when input is NULL")]
             ),
 
@@ -799,7 +1229,7 @@ public static class NodeDefinitionRegistry
                 NodeCategory.Conditional,
                 "Value Map",
                 "Maps a specific input value to a new output value — CASE WHEN value = src THEN dst ELSE passthrough",
-                [In("value", PinDataType.Any), Out("result", PinDataType.Any)],
+                [In("value", PinDataType.Expression), Out("result", PinDataType.Expression)],
                 [
                     Param("src", ParameterKind.Text, desc: "Input value to match"),
                     Param("dst", ParameterKind.Text, desc: "Output value when matched"),
@@ -850,6 +1280,42 @@ public static class NodeDefinitionRegistry
                 [Param("value", ParameterKind.Enum, "true", "Boolean value", "true", "false")]
             ),
 
+            [NodeType.SystemDate] = new(
+                NodeType.SystemDate,
+                NodeCategory.Literal,
+                "System DateTime",
+                "Current date and time from database server",
+                [Out("result", PinDataType.DateTime)],
+                []
+            ),
+
+            [NodeType.SystemDateTime] = new(
+                NodeType.SystemDateTime,
+                NodeCategory.Literal,
+                "System DateTime",
+                "Current date and time from database server",
+                [Out("result", PinDataType.DateTime)],
+                []
+            ),
+
+            [NodeType.CurrentDate] = new(
+                NodeType.CurrentDate,
+                NodeCategory.Literal,
+                "Current Date",
+                "Current date from database server",
+                [Out("result", PinDataType.DateTime)],
+                []
+            ),
+
+            [NodeType.CurrentTime] = new(
+                NodeType.CurrentTime,
+                NodeCategory.Literal,
+                "Current Time",
+                "Current time from database server",
+                [Out("result", PinDataType.DateTime)],
+                []
+            ),
+
             // ── Result Modifiers ──────────────────────────────────────────────────
 
             [NodeType.Top] = new(
@@ -864,7 +1330,7 @@ public static class NodeDefinitionRegistry
                         required: false,
                         desc: "Connect a Number node or set manually"
                     ),
-                    Out("result", PinDataType.Any),
+                    Out("result", PinDataType.ColumnSet),
                 ],
                 [Param("count", ParameterKind.Number, "100", "Maximum number of rows to return")]
             ),
@@ -891,6 +1357,33 @@ public static class NodeDefinitionRegistry
                 []
             ),
 
+            [NodeType.RowSetFilter] = new(
+                NodeType.RowSetFilter,
+                NodeCategory.ResultModifier,
+                "RowSet Filter",
+                "WHERE integrado ao RowSet",
+                [
+                    In("source", PinDataType.RowSet),
+                    In("conditions", PinDataType.Boolean, required: false, multi: true),
+                    Out("result", PinDataType.RowSet),
+                ],
+                []
+            ),
+
+            [NodeType.RowSetAggregate] = new(
+                NodeType.RowSetAggregate,
+                NodeCategory.ResultModifier,
+                "RowSet Aggregate",
+                "GROUP BY integrado ao RowSet",
+                [
+                    In("source", PinDataType.RowSet),
+                    In("group_by", PinDataType.ColumnRef, required: false, multi: true),
+                    In("metrics", PinDataType.ColumnRef, required: false, multi: true),
+                    Out("result", PinDataType.RowSet),
+                ],
+                []
+            ),
+
             // ── Output ────────────────────────────────────────────────────
 
             [NodeType.ColumnList] = new(
@@ -903,8 +1396,182 @@ public static class NodeDefinitionRegistry
                     // Only the output pin is declared statically.
                     Out(
                         "result",
-                        PinDataType.Any,
+                        PinDataType.ColumnSet,
                         desc: "Connect to ResultOutput to define columns for SELECT"
+                    ),
+                ],
+                []
+            ),
+
+            [NodeType.ColumnSetBuilder] = new(
+                NodeType.ColumnSetBuilder,
+                NodeCategory.Output,
+                "ColumnSet Builder",
+                "Builds a structural ColumnSet from individual column references",
+                [
+                    In(
+                        "columns",
+                        PinDataType.ColumnRef,
+                        required: false,
+                        multi: true,
+                        desc: "Connect columns or expressions to include in the set"
+                    ),
+                    Out(
+                        "result",
+                        PinDataType.ColumnSet,
+                        desc: "Connect to ResultOutput.columns to define SELECT columns"
+                    ),
+                ],
+                []
+            ),
+
+            [NodeType.ColumnSetMerge] = new(
+                NodeType.ColumnSetMerge,
+                NodeCategory.Output,
+                "ColumnSet Merge",
+                "Merges multiple ColumnSet inputs into a single output set",
+                [
+                    In(
+                        "sets",
+                        PinDataType.ColumnSet,
+                        required: false,
+                        multi: true,
+                        desc: "Connect one or more ColumnSet outputs"
+                    ),
+                    Out(
+                        "result",
+                        PinDataType.ColumnSet,
+                        desc: "Merged ColumnSet output"
+                    ),
+                ],
+                []
+            ),
+
+            [NodeType.SelectOutput] = new(
+                NodeType.SelectOutput,
+                NodeCategory.Output,
+                "Select Output",
+                "Legacy output sink for final SELECT projection",
+                [
+                    In(
+                        "top",
+                        PinDataType.ColumnSet,
+                        required: false,
+                        desc: "Connect a TOP / LIMIT node to restrict the number of rows"
+                    ),
+                    In(
+                        "where",
+                        PinDataType.Boolean,
+                        required: false,
+                        desc: "Connect a compiled WHERE condition"
+                    ),
+                    In(
+                        "having",
+                        PinDataType.Boolean,
+                        required: false,
+                        desc: "Connect a compiled HAVING condition (post-aggregation filter)"
+                    ),
+                    In(
+                        "qualify",
+                        PinDataType.Boolean,
+                        required: false,
+                        desc: "Connect a QUALIFY condition (post-window filter)"
+                    ),
+                    In(
+                        "columns",
+                        PinDataType.ColumnSet,
+                        required: false,
+                        desc: "Connect ColumnList/ColumnSetBuilder output to include columns in SELECT"
+                    ),
+                    In(
+                        "column",
+                        PinDataType.ColumnRef,
+                        required: false,
+                        multi: true,
+                        desc: "Connect individual columns directly (without ColumnList)"
+                    ),
+                    In(
+                        "set_operation",
+                        PinDataType.ColumnSet,
+                        required: false,
+                        desc: "Connect Set Operation node to combine this SELECT with another query"
+                    ),
+                    Out(
+                        "result",
+                        PinDataType.ColumnSet,
+                        desc: "Connect to an Export node to generate an output file"
+                    ),
+                ],
+                [
+                    Param(
+                        "distinct",
+                        ParameterKind.Boolean,
+                        "false",
+                        "Deduplicate rows in SELECT output"
+                    ),
+                    Param(
+                        "set_operator",
+                        ParameterKind.Enum,
+                        "NONE",
+                        "Optional set operation to combine with another SELECT",
+                        "NONE",
+                        "UNION",
+                        "UNION ALL",
+                        "INTERSECT",
+                        "EXCEPT"
+                    ),
+                    Param(
+                        "set_query",
+                        ParameterKind.Text,
+                        "",
+                        "Right-side SELECT SQL for set operation (UNION/INTERSECT/EXCEPT)"
+                    ),
+                    Param(
+                        "query_hints",
+                        ParameterKind.Text,
+                        "",
+                        "Optional query hints. SQL Server: RECOMPILE, MAXDOP 1, TABLE HINT(alias, NOLOCK)"
+                    ),
+                    Param(
+                        "pivot_mode",
+                        ParameterKind.Enum,
+                        "NONE",
+                        "Optional SQL Server pivot mode",
+                        "NONE",
+                        "PIVOT",
+                        "UNPIVOT"
+                    ),
+                    Param(
+                        "pivot_config",
+                        ParameterKind.Text,
+                        "",
+                        "Pivot body. PIVOT: SUM(val) FOR col IN ([A],[B]); UNPIVOT: val FOR col IN ([A],[B])"
+                    ),
+                    Param(
+                        "file_name",
+                        ParameterKind.Text,
+                        "export.html",
+                        "Destination file name or path (e.g. report.html)"
+                    ),
+                ]
+            ),
+
+            [NodeType.WhereOutput] = new(
+                NodeType.WhereOutput,
+                NodeCategory.Output,
+                "Where Output",
+                "Legacy WHERE sink for imported conditions",
+                [
+                    In(
+                        "condition",
+                        PinDataType.Boolean,
+                        required: false,
+                        desc: "Connect a boolean condition"
+                    ),
+                    Out(
+                        "result",
+                        PinDataType.Boolean,
+                        desc: "WHERE condition output"
                     ),
                 ],
                 []
@@ -918,7 +1585,7 @@ public static class NodeDefinitionRegistry
                 [
                     In(
                         "top",
-                        PinDataType.Any,
+                        PinDataType.ColumnSet,
                         required: false,
                         desc: "Connect a TOP / LIMIT node to restrict the number of rows"
                     ),
@@ -929,18 +1596,87 @@ public static class NodeDefinitionRegistry
                         desc: "Connect a compiled WHERE condition"
                     ),
                     In(
-                        "columns",
-                        PinDataType.Any,
+                        "having",
+                        PinDataType.Boolean,
                         required: false,
-                        desc: "Connect ColumnList output to include columns in SELECT"
+                        desc: "Connect a compiled HAVING condition (post-aggregation filter)"
+                    ),
+                    In(
+                        "qualify",
+                        PinDataType.Boolean,
+                        required: false,
+                        desc: "Connect a QUALIFY condition (post-window filter)"
+                    ),
+                    In(
+                        "columns",
+                        PinDataType.ColumnSet,
+                        required: false,
+                        desc: "Connect ColumnList/ColumnSetBuilder output to include columns in SELECT"
+                    ),
+                    In(
+                        "column",
+                        PinDataType.ColumnRef,
+                        required: false,
+                        multi: true,
+                        desc: "Connect individual columns directly (without ColumnList)"
+                    ),
+                    In(
+                        "set_operation",
+                        PinDataType.ColumnSet,
+                        required: false,
+                        desc: "Connect Set Operation node to combine this SELECT with another query"
                     ),
                     Out(
                         "result",
-                        PinDataType.Any,
+                        PinDataType.ColumnSet,
                         desc: "Connect to an Export node to generate an output file"
                     ),
                 ],
                 [
+                    Param(
+                        "distinct",
+                        ParameterKind.Boolean,
+                        "false",
+                        "Deduplicate rows in SELECT output"
+                    ),
+                    Param(
+                        "set_operator",
+                        ParameterKind.Enum,
+                        "NONE",
+                        "Optional set operation to combine with another SELECT",
+                        "NONE",
+                        "UNION",
+                        "UNION ALL",
+                        "INTERSECT",
+                        "EXCEPT"
+                    ),
+                    Param(
+                        "set_query",
+                        ParameterKind.Text,
+                        "",
+                        "Right-side SELECT SQL for set operation (UNION/INTERSECT/EXCEPT)"
+                    ),
+                    Param(
+                        "query_hints",
+                        ParameterKind.Text,
+                        "",
+                        "Optional query hints. SQL Server: RECOMPILE, MAXDOP 1, TABLE HINT(alias, NOLOCK)"
+                    ),
+                    Param(
+                        "pivot_mode",
+                        ParameterKind.Enum,
+                        "NONE",
+                        "Optional SQL Server pivot mode",
+                        "NONE",
+                        "PIVOT",
+                        "UNPIVOT"
+                    ),
+                    Param(
+                        "pivot_config",
+                        ParameterKind.Text,
+                        "",
+                        "Pivot body. PIVOT: SUM(val) FOR col IN ([A],[B]); UNPIVOT: val FOR col IN ([A],[B])"
+                    ),
                     Param(
                         "file_name",
                         ParameterKind.Text,
@@ -958,7 +1694,7 @@ public static class NodeDefinitionRegistry
                 [
                     In(
                         "query",
-                        PinDataType.Any,
+                        PinDataType.ColumnSet,
                         required: true,
                         desc: "Connect from a Result Output node"
                     ),
@@ -973,6 +1709,35 @@ public static class NodeDefinitionRegistry
                 ]
             ),
 
+            [NodeType.SetOperation] = new(
+                NodeType.SetOperation,
+                NodeCategory.Output,
+                "Set Operation",
+                "Combines the current SELECT with another query using UNION/INTERSECT/EXCEPT",
+                [
+                    In("query_text", PinDataType.Text, required: false),
+                    Out("result", PinDataType.ColumnSet),
+                ],
+                [
+                    Param(
+                        "operator",
+                        ParameterKind.Enum,
+                        "UNION",
+                        "Set operator",
+                        "UNION",
+                        "UNION ALL",
+                        "INTERSECT",
+                        "EXCEPT"
+                    ),
+                    Param(
+                        "query",
+                        ParameterKind.Text,
+                        "",
+                        "Right-side SELECT SQL for set operation"
+                    ),
+                ]
+            ),
+
             [NodeType.CsvExport] = new(
                 NodeType.CsvExport,
                 NodeCategory.Output,
@@ -981,7 +1746,7 @@ public static class NodeDefinitionRegistry
                 [
                     In(
                         "query",
-                        PinDataType.Any,
+                        PinDataType.ColumnSet,
                         required: true,
                         desc: "Connect from a Result Output node"
                     ),
@@ -1014,7 +1779,7 @@ public static class NodeDefinitionRegistry
                 [
                     In(
                         "query",
-                        PinDataType.Any,
+                        PinDataType.ColumnSet,
                         required: true,
                         desc: "Connect from a Result Output node"
                     ),

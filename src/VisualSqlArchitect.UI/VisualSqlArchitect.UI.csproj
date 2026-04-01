@@ -18,12 +18,12 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.4" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.4" />
     <!-- Diagnostics / hot-reload (dev only — exclude from release) -->
     <PackageReference Include="Avalonia.Diagnostics" Version="11.1.4" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="Material.Icons.Avalonia" Version="2.1.9" />
     <!-- Excel export -->
     <PackageReference Include="ClosedXML" Version="0.102.3" />
+    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.128.0" />
   </ItemGroup>
 
   <!-- ── Core engine reference ── -->
@@ -54,8 +54,8 @@
   Avalonia.Fonts.Inter — ships the Inter variable font as an embedded resource,
                          used in AppStyles.axaml via FontFamily.
 
-  Avalonia.ReactiveUI  — optional here (no ReactiveUI VMs yet) but included
-                         for future stream-based undo / live SQL update.
+  Avalonia.ReactiveUI  — removed because there is no current runtime usage.
+                         Add again only when ReactiveUI-based VMs are introduced.
 
   Avalonia.Diagnostics — enables the Ctrl+F12 visual inspector in Debug builds.
                          NEVER ship in Release.

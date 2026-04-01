@@ -20,7 +20,15 @@
       "Bash(git add:*)",
       "Bash(python3:*)",
       "Bash(git commit:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(xargs wc:*)",
+      "Bash(find /c/Users/azeve/Documents/VisualSqlArchtect/tests -type f -name *.cs)",
+      "Bash(grep -rn \"\\\\b[0-9]{3,}\\\\b\" /c/Users/azeve/Documents/VisualSqlArchtect/src --include=\"*.cs\")",
+      "Bash(grep -v \"///\")",
+      "Bash(rm \"c:/Users/azeve/Documents/VisualSqlArchtect/src/VisualSqlArchitect.UI/Controls/BezierWireLayer.cs\")",
+      "Bash(rm \"c:/Users/azeve/Documents/VisualSqlArchtect/src/VisualSqlArchitect.UI/Controls/PinDragInteraction.cs\")",
+      "Bash(grep -v \"private\\\\|//\")",
+      "Bash(grep -v \"//\")"
     ]
   }
 }

@@ -80,6 +80,9 @@ public sealed partial class InfiniteCanvas : Panel
     private Point _lastGuideCheckPosition;
     private const double GuideRecheckThresholdSq = 4.0; // 2px²
     private bool _wireSyncQueued;
+    private int _wireSyncRetryCount;
+    private PinViewModel? _hoveredPin;
+    private ConnectionViewModel? _hoveredWire;
 
     public InfiniteCanvas()
     {
@@ -95,6 +98,7 @@ public sealed partial class InfiniteCanvas : Panel
         PointerPressed += OnPressed;
         PointerMoved += OnMoved;
         PointerReleased += OnReleased;
+        PointerExited += (_, _) => ClearHoverHighlights();
         KeyDown += OnKey;
         KeyUp += OnKeyUp;
         Focusable = true;
@@ -125,6 +129,39 @@ public sealed partial class InfiniteCanvas : Panel
         );
     }
 
+    private void ClearHoverHighlights()
+    {
+        if (ViewModel is null)
+            return;
+
+        if (_hoveredPin is null && _hoveredWire is null)
+            return;
+
+        CanvasHoverHighlighter.ClearHover(ViewModel);
+
+        _hoveredPin = null;
+        _hoveredWire = null;
+        _wires.InvalidateVisual();
+    }
+
+    private void UpdateHoverHighlights(Point canvasPoint)
+    {
+        if (ViewModel is null)
+            return;
+
+        (PinViewModel? pin, ConnectionViewModel? wire) =
+            CanvasHoverHighlighter.ResolveHoverTarget(ViewModel, _wires, _pinDrag, canvasPoint);
+
+        if (ReferenceEquals(_hoveredPin, pin) && ReferenceEquals(_hoveredWire, wire))
+            return;
+
+        CanvasHoverHighlighter.ApplyHover(ViewModel, pin, wire);
+
+        _hoveredPin = pin;
+        _hoveredWire = wire;
+        _wires.InvalidateVisual();
+    }
+
     protected override Size MeasureOverride(Size s)
     {
         _grid.Measure(s);
@@ -135,263 +172,242 @@ public sealed partial class InfiniteCanvas : Panel
 
     protected override Size ArrangeOverride(Size s)
     {
-        try
+        _grid.Arrange(new Rect(s));
+        _grid.Width = s.Width;
+        _grid.Height = s.Height;
+        _grid.Zoom = _zoom;
+        _grid.PanOffset = _panOffset;
+
+        _scene.RenderTransform = new TransformGroup
         {
-            _grid.Arrange(new Rect(s));
-            _grid.Width = s.Width;
-            _grid.Height = s.Height;
-            _grid.Zoom = _zoom;
-            _grid.PanOffset = _panOffset;
+            Children =
+            [
+                new ScaleTransform(_zoom, _zoom),
+                new TranslateTransform(_panOffset.X, _panOffset.Y),
+            ],
+        };
+        _scene.Arrange(
+            new Rect(
+                // Keep scene arranged at origin; pan/zoom must be applied only via RenderTransform.
+                // Applying pan both in Arrange origin and TranslateTransform causes visual reset on layout passes.
+                new Point(0, 0),
+                new Size(20000, 20000)
+            )
+        );
 
-            _scene.RenderTransform = new TransformGroup
+        foreach (NodeControl nc in _scene.Children.OfType<NodeControl>())
+            if (nc.DataContext is NodeViewModel vm)
             {
-                Children =
-                [
-                    new ScaleTransform(_zoom, _zoom),
-                    new TranslateTransform(_panOffset.X, _panOffset.Y),
-                ],
-            };
-            _scene.Arrange(
-                new Rect(
-                    // Keep scene arranged at origin; pan/zoom must be applied only via RenderTransform.
-                    // Applying pan both in Arrange origin and TranslateTransform causes visual reset on layout passes.
-                    new Point(0, 0),
-                    new Size(20000, 20000)
-                )
-            );
-
-            foreach (NodeControl nc in _scene.Children.OfType<NodeControl>())
-                if (nc.DataContext is NodeViewModel vm)
-                {
-                    Canvas.SetLeft(nc, vm.Position.X);
-                    Canvas.SetTop(nc, vm.Position.Y);
-                    nc.Measure(Size.Infinity);
-                    nc.Arrange(new Rect(new Point(vm.Position.X, vm.Position.Y), nc.DesiredSize));
-                }
-
-            _wires.Arrange(new Rect(new Size(20000, 20000)));
-            _guides.Arrange(new Rect(s));
-            _guides.Width = s.Width;
-            _guides.Height = s.Height;
-            _guides.Zoom = _zoom;
-            _guides.PanOffset = _panOffset;
-
-            // Keep FitToScreen accurate by letting the layout manager know the viewport size.
-            ViewModel?.SetViewportSize(s.Width, s.Height);
-
-            // DETECT UNEXPECTED PAN RESETS
-            if (_panOffset.X == 0 && _panOffset.Y == 0 && _zoom == 1 && !_isPanning && _dragNode is null)
-            {
-                Log($"    [ArrangeOverride] Current state: PanOffset={_panOffset}, Zoom={_zoom}, Panning={_isPanning}, Dragging={_dragNode is not null}");
+                Canvas.SetLeft(nc, vm.Position.X);
+                Canvas.SetTop(nc, vm.Position.Y);
+                nc.Measure(Size.Infinity);
+                nc.Arrange(new Rect(new Point(vm.Position.X, vm.Position.Y), nc.DesiredSize));
             }
 
-            return s;
-        }
-        catch (Exception ex)
+        _wires.Arrange(new Rect(new Size(20000, 20000)));
+        _guides.Arrange(new Rect(s));
+        _guides.Width = s.Width;
+        _guides.Height = s.Height;
+        _guides.Zoom = _zoom;
+        _guides.PanOffset = _panOffset;
+
+        // Keep FitToScreen accurate by letting the layout manager know the viewport size.
+        ViewModel?.SetViewportSize(s.Width, s.Height);
+
+        // DETECT UNEXPECTED PAN RESETS
+        if (_panOffset.X == 0 && _panOffset.Y == 0 && _zoom == 1 && !_isPanning && _dragNode is null)
         {
-            Log($"!!! ERROR in ArrangeOverride: {ex.GetType().Name}: {ex.Message}");
-            Log($"    StackTrace: {ex.StackTrace}");
-            throw;
+            Log($"    [ArrangeOverride] Current state: PanOffset={_panOffset}, Zoom={_zoom}, Panning={_isPanning}, Dragging={_dragNode is not null}");
         }
+
+        return s;
     }
 
     private void Rebuild()
     {
-        try
+        Log($">>> REBUILD started");
+        foreach (NodeControl? nc in _scene.Children.OfType<NodeControl>().ToList())
+            _scene.Children.Remove(nc);
+        _nodeControlCache.Clear();
+        _nodePositionHandlers.Clear();
+        if (ViewModel is null)
         {
-            Log($">>> REBUILD started");
-            foreach (NodeControl? nc in _scene.Children.OfType<NodeControl>().ToList())
-                _scene.Children.Remove(nc);
-            _nodeControlCache.Clear();
-            _nodePositionHandlers.Clear();
-            if (ViewModel is null)
-            {
-                Log($"    ViewModel is null, exiting rebuild");
-                return;
-            }
-            _pinDrag = new PinDragInteraction(ViewModel, _scene);
-            ViewModel.Nodes.CollectionChanged += (_, e) =>
-            {
-                Log($"    !!! ViewModel.Nodes.CollectionChanged: Action={e.Action}");
-                SyncNodes();
-            };
-            ViewModel.Connections.CollectionChanged += (_, e) =>
-            {
-                Log($"    !!! ViewModel.Connections.CollectionChanged: Action={e.Action}");
-                RequestWireSync();
-            };
-            // Keep canvas transform in sync with ViewModel for both Zoom and PanOffset.
-            ViewModel.PropertyChanged += (_, e) =>
-            {
-                if (_isApplyingViewportFromCanvas)
-                    return;
-
-                if (e.PropertyName == nameof(CanvasViewModel.Zoom))
-                {
-                    Log($"    !!! ViewModel.Zoom changed, calling SyncTransform");
-                    SyncTransform();
-                }
-                else if (e.PropertyName == nameof(CanvasViewModel.PanOffset))
-                {
-                    Log($"    !!! ViewModel.PanOffset changed, calling SyncTransform");
-                    SyncTransform();
-                }
-            };
-            // Initialize from ViewModel (load from persistence) - only on first load
-            // After first initialization, preserve _panOffset even if Rebuild is called again
-            if (!_hasInitialized)
-            {
-                _panOffset = ViewModel.PanOffset;
-                _zoom = ViewModel.Zoom;
-                Log($"    First initialization: PanOffset={_panOffset}, Zoom={_zoom}");
-                _hasInitialized = true;
-            }
-            else
-            {
-                Log($"    Rebuild called again, preserving PanOffset={_panOffset}, Zoom={_zoom}");
-            }
-
+            Log($"    ViewModel is null, exiting rebuild");
+            return;
+        }
+        _pinDrag = new PinDragInteraction(ViewModel, _scene);
+        ViewModel.Nodes.CollectionChanged += (_, e) =>
+        {
+            Log($"    !!! ViewModel.Nodes.CollectionChanged: Action={e.Action}");
             SyncNodes();
-
-            // Force layout update to ensure NodeControls have been measured/arranged
-            InvalidateArrange();
-
-            // Defer SyncWires until after the first layout/render pass so that
-            // TranslatePoint returns valid coordinates.  Calling it immediately here
-            // (before NodeControls are measured/arranged by the visual tree) leaves
-            // every AbsolutePosition at (0,0), making all wires invisible until the
-            // user moves a node and triggers a re-sync.
-            Avalonia.Threading.Dispatcher.UIThread.Post(
-                SyncWires,
-                Avalonia.Threading.DispatcherPriority.Render
-            );
-
-            // Schedule additional SyncWires calls to ensure wires are rendered even if layout isn't complete
-            Avalonia.Threading.Dispatcher.UIThread.Post(
-                () =>
-                {
-                    if (ViewModel is not null)
-                    {
-                        InvalidateArrange();
-                        RequestWireSync();
-                    }
-                },
-                Avalonia.Threading.DispatcherPriority.Background
-            );
-
-            SyncTransform();
-            Log($"<<< REBUILD completed");
-        }
-        catch (Exception ex)
+            // Node list changes can race with connection sync during import/load;
+            // schedule a wire sync after nodes are materialized.
+            RequestWireSync();
+        };
+        ViewModel.Connections.CollectionChanged += (_, e) =>
         {
-            Log($"!!! ERROR in Rebuild: {ex.GetType().Name}: {ex.Message}");
-            Log($"    StackTrace: {ex.StackTrace}");
-            throw;
+            Log($"    !!! ViewModel.Connections.CollectionChanged: Action={e.Action}");
+            RequestWireSync();
+        };
+        // Keep canvas transform in sync with ViewModel for both Zoom and PanOffset.
+        ViewModel.PropertyChanged += (_, e) =>
+        {
+            if (_isApplyingViewportFromCanvas)
+                return;
+
+            if (e.PropertyName == nameof(CanvasViewModel.Zoom))
+            {
+                Log($"    !!! ViewModel.Zoom changed, calling SyncTransform");
+                SyncTransform();
+            }
+            else if (e.PropertyName == nameof(CanvasViewModel.PanOffset))
+            {
+                Log($"    !!! ViewModel.PanOffset changed, calling SyncTransform");
+                SyncTransform();
+            }
+        };
+        // Initialize from ViewModel (load from persistence) - only on first load
+        // After first initialization, preserve _panOffset even if Rebuild is called again
+        if (!_hasInitialized)
+        {
+            _panOffset = ViewModel.PanOffset;
+            _zoom = ViewModel.Zoom;
+            Log($"    First initialization: PanOffset={_panOffset}, Zoom={_zoom}");
+            _hasInitialized = true;
         }
+        else
+        {
+            Log($"    Rebuild called again, preserving PanOffset={_panOffset}, Zoom={_zoom}");
+        }
+
+        SyncNodes();
+
+        // Force layout update to ensure NodeControls have been measured/arranged
+        InvalidateArrange();
+
+        // Defer SyncWires until after the first layout/render pass so that
+        // TranslatePoint returns valid coordinates.  Calling it immediately here
+        // (before NodeControls are measured/arranged by the visual tree) leaves
+        // every AbsolutePosition at (0,0), making all wires invisible until the
+        // user moves a node and triggers a re-sync.
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            SyncWires,
+            Avalonia.Threading.DispatcherPriority.Render
+        );
+
+        // Schedule additional SyncWires calls to ensure wires are rendered even if layout isn't complete
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (ViewModel is not null)
+                {
+                    InvalidateArrange();
+                    RequestWireSync();
+                }
+            },
+            Avalonia.Threading.DispatcherPriority.Background
+        );
+
+        SyncTransform();
+        Log($"<<< REBUILD completed");
     }
 
     private void SyncNodes()
     {
-        try
+        if (ViewModel is null)
+            return;
+
+        Log($"    SyncNodes: Starting sync for {ViewModel.Nodes.Count} nodes");
+
+        // Add controls for nodes not yet in the cache
+        foreach (NodeViewModel vm in ViewModel.Nodes)
         {
-            if (ViewModel is null)
-                return;
+            if (_nodeControlCache.ContainsKey(vm))
+                continue;
+            var nc = new NodeControl { DataContext = vm };
+            Canvas.SetLeft(nc, vm.Position.X);
+            Canvas.SetTop(nc, vm.Position.Y);
+            nc.ZIndex = vm.ZOrder;
+            nc.NodeDragStarted += OnNodeDragStarted;
+            nc.NodeDragDelta += OnNodeDragDelta;
+            nc.NodeDragCompleted += OnNodeDragCompleted;
+            nc.NodeClicked += OnNodeClicked;
+            nc.NodeDoubleClicked += OnNodeDoubleClicked;
+            nc.PinPressed += OnPinPressed;
 
-            Log($"    SyncNodes: Starting sync for {ViewModel.Nodes.Count} nodes");
-
-            // Add controls for nodes not yet in the cache
-            foreach (NodeViewModel vm in ViewModel.Nodes)
+            // Track position handler so it can be unsubscribed when the node is removed
+            NodeControl capturedNc = nc;
+            NodeViewModel capturedVm = vm;
+            PropertyChangedEventHandler posHandler = (_, e) =>
             {
-                if (_nodeControlCache.ContainsKey(vm))
-                    continue;
-                var nc = new NodeControl { DataContext = vm };
-                Canvas.SetLeft(nc, vm.Position.X);
-                Canvas.SetTop(nc, vm.Position.Y);
-                nc.ZIndex = vm.ZOrder;
-                nc.NodeDragStarted += OnNodeDragStarted;
-                nc.NodeDragDelta += OnNodeDragDelta;
-                nc.NodeDragCompleted += OnNodeDragCompleted;
-                nc.NodeClicked += OnNodeClicked;
-                nc.PinPressed += OnPinPressed;
-
-                // Track position handler so it can be unsubscribed when the node is removed
-                NodeControl capturedNc = nc;
-                NodeViewModel capturedVm = vm;
-                PropertyChangedEventHandler posHandler = (_, e) =>
+                try
                 {
-                    try
+                    if (e.PropertyName == nameof(NodeViewModel.Position))
                     {
-                        if (e.PropertyName == nameof(NodeViewModel.Position))
-                        {
-                            Log($"    !!! NODE POSITION CHANGED: {capturedVm.Title}, New Position={capturedVm.Position}");
-                            Canvas.SetLeft(capturedNc, capturedVm.Position.X);
-                            Canvas.SetTop(capturedNc, capturedVm.Position.Y);
-                            Log($"    Canvas position set for {capturedVm.Title}");
-                            RequestWireSync();
-                            Log($"    RequestWireSync queued for position change");
-                            InvalidateArrange();
-                            Log($"    InvalidateArrange called for position change");
-                        }
-                        else if (e.PropertyName == nameof(NodeViewModel.ZOrder))
-                        {
-                            capturedNc.ZIndex = capturedVm.ZOrder;
-                            RequestWireSync();
-                        }
+                        Log($"    !!! NODE POSITION CHANGED: {capturedVm.Title}, New Position={capturedVm.Position}");
+                        Canvas.SetLeft(capturedNc, capturedVm.Position.X);
+                        Canvas.SetTop(capturedNc, capturedVm.Position.Y);
+                        Log($"    Canvas position set for {capturedVm.Title}");
+                        RequestWireSync();
+                        Log($"    RequestWireSync queued for position change");
+                        InvalidateArrange();
+                        Log($"    InvalidateArrange called for position change");
                     }
-                    catch (Exception ex)
+                    else if (e.PropertyName == nameof(NodeViewModel.ZOrder))
                     {
-                        Log($"!!! ERROR in NodePosition PropertyChanged handler: {ex.GetType().Name}: {ex.Message}");
-                        Log($"    StackTrace: {ex.StackTrace}");
-                        // Don't rethrow - this could prevent the whole app from continuing
+                        capturedNc.ZIndex = capturedVm.ZOrder;
+                        RequestWireSync();
                     }
-                };
-                vm.PropertyChanged += posHandler;
-                _nodePositionHandlers[vm] = posHandler;
-                _nodeControlCache[vm] = nc;
-                _scene.Children.Add(nc);
-                Log($"      Added node '{vm.Title}' at {vm.Position}");
-            }
-
-            // Remove controls for nodes no longer in ViewModel.Nodes
-            var currentNodes = new HashSet<NodeViewModel>(ViewModel.Nodes);
-            var toRemove = _nodeControlCache.Keys.Where(vm => !currentNodes.Contains(vm)).ToList();
-            foreach (NodeViewModel vm in toRemove)
-            {
-                NodeControl nc = _nodeControlCache[vm];
-                nc.NodeDragStarted -= OnNodeDragStarted;
-                nc.NodeDragDelta -= OnNodeDragDelta;
-                nc.NodeDragCompleted -= OnNodeDragCompleted;
-                nc.NodeClicked -= OnNodeClicked;
-                nc.PinPressed -= OnPinPressed;
-                if (_nodePositionHandlers.TryGetValue(vm, out PropertyChangedEventHandler? posHandler))
-                {
-                    vm.PropertyChanged -= posHandler;
-                    _nodePositionHandlers.Remove(vm);
                 }
-                _nodeControlCache.Remove(vm);
-                _scene.Children.Remove(nc);
-                Log($"      Removed node '{vm.Title}'");
-            }
-
-            NormalizeNodeZOrder();
-
-            // Ensure wires stay on top after adding/removing nodes
-            EnsureWiresOnTop();
-            Log($"    SyncNodes: Completed. Cache: {_nodeControlCache.Count} nodes");
+                catch (Exception ex)
+                {
+                    Log($"!!! ERROR in NodePosition PropertyChanged handler: {ex.GetType().Name}: {ex.Message}");
+                    Log($"    StackTrace: {ex.StackTrace}");
+                    // Don't rethrow - this could prevent the whole app from continuing
+                }
+            };
+            vm.PropertyChanged += posHandler;
+            _nodePositionHandlers[vm] = posHandler;
+            _nodeControlCache[vm] = nc;
+            _scene.Children.Add(nc);
+            Log($"      Added node '{vm.Title}' at {vm.Position}");
         }
-        catch (Exception ex)
+
+        // Remove controls for nodes no longer in ViewModel.Nodes
+        var currentNodes = new HashSet<NodeViewModel>(ViewModel.Nodes);
+        var toRemove = _nodeControlCache.Keys.Where(vm => !currentNodes.Contains(vm)).ToList();
+        foreach (NodeViewModel vm in toRemove)
         {
-            Log($"!!! ERROR in SyncNodes: {ex.GetType().Name}: {ex.Message}");
-            Log($"    StackTrace: {ex.StackTrace}");
-            throw;
+            NodeControl nc = _nodeControlCache[vm];
+            nc.NodeDragStarted -= OnNodeDragStarted;
+            nc.NodeDragDelta -= OnNodeDragDelta;
+            nc.NodeDragCompleted -= OnNodeDragCompleted;
+            nc.NodeClicked -= OnNodeClicked;
+            nc.NodeDoubleClicked -= OnNodeDoubleClicked;
+            nc.PinPressed -= OnPinPressed;
+            if (_nodePositionHandlers.TryGetValue(vm, out PropertyChangedEventHandler? posHandler))
+            {
+                vm.PropertyChanged -= posHandler;
+                _nodePositionHandlers.Remove(vm);
+            }
+            _nodeControlCache.Remove(vm);
+            _scene.Children.Remove(nc);
+            Log($"      Removed node '{vm.Title}'");
         }
+
+        NormalizeNodeZOrder();
+
+        // Keep wiring layer policy consistent after topology changes.
+        EnsureWiresOnTop();
+        // Keep wire endpoints synchronized after any node materialization/removal.
+        RequestWireSync();
+        Log($"    SyncNodes: Completed. Cache: {_nodeControlCache.Count} nodes");
     }
 
     private void EnsureWiresOnTop()
     {
-        // Layering model:
-        // - wire layer behind nodes
-        // - nodes ordered by NodeViewModel.ZOrder
+        // Keep wires behind node cards, including drag operations,
+        // to avoid endpoint markers popping above node content.
         _wires.ZIndex = -10_000;
         if (_rubberBandRect is not null)
             _rubberBandRect.ZIndex = -9_999;
@@ -399,111 +415,155 @@ public sealed partial class InfiniteCanvas : Panel
 
     private void SyncWires()
     {
-        try
+        if (ViewModel is null)
+            return;
+
+        // Remove stale/orphan connections that can leave detached wire fragments
+        // on canvas after template or node structure changes.
+        var nodeSet = ViewModel.Nodes.ToHashSet();
+        ConnectionViewModel? liveWire = _pinDrag?.LiveWire;
+        List<ConnectionViewModel> staleConnections =
+        [
+            .. ViewModel.Connections.Where(c =>
+                // Incomplete connections are only valid for the active drag wire.
+                (c.ToPin is null && !ReferenceEquals(c, liveWire))
+                // Both endpoints must belong to live nodes on canvas.
+                || !nodeSet.Contains(c.FromPin.Owner)
+                || (c.ToPin is not null && !nodeSet.Contains(c.ToPin.Owner))
+            ),
+        ];
+
+        foreach (ConnectionViewModel stale in staleConnections)
+            ViewModel.Connections.Remove(stale);
+
+        int updatedPins = UpdatePinPositions();
+        int connectionCount = ViewModel.Connections.Count(c => c.ToPin is not null);
+        bool hasUnpositionedConnectionPin = ViewModel.Connections.Any(c =>
+            c.ToPin is not null && (!c.FromPin.HasAbsolutePosition || !c.ToPin.HasAbsolutePosition)
+        );
+
+        // During add/import/load, node visuals may exist but not be fully translatable yet.
+        // Avoid overwriting existing wire endpoints with transient invalid pin coordinates;
+        // keep retrying across subsequent frames until all connected endpoints are valid.
+        if (connectionCount > 0 && (updatedPins == 0 || hasUnpositionedConnectionPin))
         {
-            if (ViewModel is null)
-                return;
-            UpdatePinPositions();
-            foreach (ConnectionViewModel c in ViewModel.Connections)
-            {
-                c.FromPoint = c.FromPin.AbsolutePosition;
-                if (c.ToPin is not null)
-                    c.ToPoint = c.ToPin.AbsolutePosition;
-            }
-            _wires.Connections = ViewModel.Connections;
-            _wires.PendingConnection = _pinDrag?.LiveWire;
-            _wires.InvalidateVisual();
-            Log($"    SyncWires: {ViewModel.Connections.Count} connections synced");
+            _wireSyncRetryCount++;
+            Log(
+                $"    SyncWires deferred: updatedPins={updatedPins}, hasUnpositionedConnectionPin={hasUnpositionedConnectionPin} with {connectionCount} connections (retry {_wireSyncRetryCount})"
+            );
+            RequestWireSync();
+            Avalonia.Threading.Dispatcher.UIThread.Post(
+                RequestWireSync,
+                Avalonia.Threading.DispatcherPriority.Background
+            );
+            return;
         }
-        catch (Exception ex)
+
+        _wireSyncRetryCount = 0;
+        foreach (ConnectionViewModel c in ViewModel.Connections)
         {
-            Log($"!!! ERROR in SyncWires: {ex.GetType().Name}: {ex.Message}");
-            Log($"    StackTrace: {ex.StackTrace}");
-            throw;
+            if (c.ToPin is not null && (!c.FromPin.HasAbsolutePosition || !c.ToPin.HasAbsolutePosition))
+                continue;
+
+            c.FromPoint = c.FromPin.AbsolutePosition;
+            if (c.ToPin is not null)
+                c.ToPoint = c.ToPin.AbsolutePosition;
         }
+        _wires.Connections = ViewModel.Connections;
+        _wires.PendingConnection = _pinDrag?.IsDragging == true ? _pinDrag.LiveWire : null;
+        _wires.InvalidateVisual();
+        Log($"    SyncWires: {ViewModel.Connections.Count} connections synced");
     }
 
     public void InvalidateWires() => SyncWires();
 
     private void SyncTransform()
     {
-        try
-        {
-            if (ViewModel is null)
-                return;
-            _zoom = ViewModel.Zoom;
-            _panOffset = ViewModel.PanOffset;
-            Log($"    SyncTransform: Zoom={_zoom}, PanOffset={_panOffset}");
+        if (ViewModel is null)
+            return;
+        _zoom = ViewModel.Zoom;
+        _panOffset = ViewModel.PanOffset;
+        Log($"    SyncTransform: Zoom={_zoom}, PanOffset={_panOffset}");
 
-            // Apply immediately (not only on next layout pass) to avoid transient
-            // or missed viewport states during fast wheel interactions.
-            _scene.RenderTransform = new TransformGroup
-            {
-                Children =
-                [
-                    new ScaleTransform(_zoom, _zoom),
-                    new TranslateTransform(_panOffset.X, _panOffset.Y),
-                ],
-            };
-
-            InvalidateArrange();
-            _grid.Zoom = _zoom;
-            _grid.PanOffset = _panOffset;
-            _grid.InvalidateVisual();
-            _wires.InvalidateVisual();
-        }
-        catch (Exception ex)
+        // Apply immediately (not only on next layout pass) to avoid transient
+        // or missed viewport states during fast wheel interactions.
+        _scene.RenderTransform = new TransformGroup
         {
-            Log($"!!! ERROR in SyncTransform: {ex.GetType().Name}: {ex.Message}");
-            throw;
-        }
+            Children =
+            [
+                new ScaleTransform(_zoom, _zoom),
+                new TranslateTransform(_panOffset.X, _panOffset.Y),
+            ],
+        };
+
+        InvalidateArrange();
+        _grid.Zoom = _zoom;
+        _grid.PanOffset = _panOffset;
+        _grid.InvalidateVisual();
+        _wires.InvalidateVisual();
     }
 
-    private void UpdatePinPositions()
+    private int UpdatePinPositions()
     {
-        try
+        if (ViewModel is null)
+            return 0;
+        var updatedPins = new HashSet<PinViewModel>();
+        foreach (NodeViewModel node in ViewModel.Nodes)
         {
-            if (ViewModel is null)
-                return;
-            int updatedPins = 0;
-            foreach (NodeViewModel node in ViewModel.Nodes)
+            if (!_nodeControlCache.TryGetValue(node, out NodeControl? nc))
+                continue;
+
+            // CRITICAL: Force re-measure/arrange to ensure pins have correct coordinates
+            // This is essential for TranslatePoint to return accurate positions
+            nc.Measure(Size.Infinity);
+            nc.Arrange(new Rect(new Point(node.Position.X, node.Position.Y), nc.DesiredSize));
+
+            // Primary path: PinShapeControl is the active pin visual in current templates.
+            foreach (PinShapeControl pinControl in nc.GetLogicalDescendants().OfType<PinShapeControl>())
             {
-                if (!_nodeControlCache.TryGetValue(node, out NodeControl? nc))
+                if (pinControl.DataContext is not PinViewModel pvm)
                     continue;
+                if (pinControl.Bounds.Width == 0 || pinControl.Bounds.Height == 0)
+                    continue; // skip collapsed/hidden elements
 
-                // CRITICAL: Force re-measure/arrange to ensure pins have correct coordinates
-                // This is essential for TranslatePoint to return accurate positions
-                nc.Measure(Size.Infinity);
-                nc.Arrange(new Rect(new Point(node.Position.X, node.Position.Y), nc.DesiredSize));
-
-                // After forced layout: use TranslatePoint from each pin Border for pixel-accurate positions.
-                foreach (Border b in nc.GetLogicalDescendants().OfType<Border>())
+                var center = new Point(pinControl.Bounds.Width / 2, pinControl.Bounds.Height / 2);
+                Point? inScene = pinControl.TranslatePoint(center, _scene);
+                if (inScene.HasValue
+                    && !double.IsNaN(inScene.Value.X)
+                    && !double.IsNaN(inScene.Value.Y)
+                    && !double.IsInfinity(inScene.Value.X)
+                    && !double.IsInfinity(inScene.Value.Y))
                 {
-                    if (b.DataContext is not PinViewModel pvm)
-                        continue;
-                    if (b.Bounds.Width == 0)
-                        continue; // skip collapsed/hidden elements
-                    var center = new Point(b.Bounds.Width / 2, b.Bounds.Height / 2);
-                    Point? inScene = b.TranslatePoint(center, _scene);
-                    if (inScene.HasValue)
-                    {
-                        // Only update if it's a reasonable coordinate (not NaN or extremely far away)
-                        if (!double.IsNaN(inScene.Value.X) && !double.IsNaN(inScene.Value.Y) &&
-                            !double.IsInfinity(inScene.Value.X) && !double.IsInfinity(inScene.Value.Y))
-                        {
-                            pvm.AbsolutePosition = inScene.Value;
-                            updatedPins++;
-                        }
-                    }
+                    pvm.AbsolutePosition = inScene.Value;
+                    updatedPins.Add(pvm);
                 }
             }
-            Log($"    UpdatePinPositions: Updated {updatedPins} pins");
+
+            // Backward-compatible fallback for legacy templates that still render pins as Border.
+            foreach (Border b in nc.GetLogicalDescendants().OfType<Border>())
+            {
+                if (b.DataContext is not PinViewModel pvm)
+                    continue;
+                if (updatedPins.Contains(pvm))
+                    continue;
+                if (b.Bounds.Width == 0 || b.Bounds.Height == 0)
+                    continue;
+
+                var center = new Point(b.Bounds.Width / 2, b.Bounds.Height / 2);
+                Point? inScene = b.TranslatePoint(center, _scene);
+                if (inScene.HasValue
+                    && !double.IsNaN(inScene.Value.X)
+                    && !double.IsNaN(inScene.Value.Y)
+                    && !double.IsInfinity(inScene.Value.X)
+                    && !double.IsInfinity(inScene.Value.Y))
+                {
+                    pvm.AbsolutePosition = inScene.Value;
+                    updatedPins.Add(pvm);
+                }
+            }
         }
-        catch (Exception ex)
-        {Log($"!!! ERROR in UpdatePinPositions: {ex.GetType().Name}: {ex.Message}");
-            Log($"    StackTrace: {ex.StackTrace}");
-            throw;
-        }
+        Log($"    UpdatePinPositions: Updated {updatedPins.Count} pins");
+        return updatedPins.Count;
     }
 
     // viewport + layer helpers moved to InfiniteCanvas.ViewportAndLayers.cs

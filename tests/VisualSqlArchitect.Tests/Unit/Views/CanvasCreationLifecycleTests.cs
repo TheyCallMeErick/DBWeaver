@@ -1,4 +1,5 @@
 using VisualSqlArchitect.UI.ViewModels;
+using VisualSqlArchitect.Core;
 using Xunit;
 
 namespace VisualSqlArchitect.Tests.Unit.Views;
@@ -179,5 +180,26 @@ public class CanvasCreationLifecycleTests
 
         // They should be different instances
         Assert.NotSame(firstCanvas, secondCanvas);
+    }
+
+    [Fact]
+    public void ActiveConnectionConfig_UpdatesLiveSqlProvider()
+    {
+        var canvas = new CanvasViewModel();
+
+        Assert.Equal(DatabaseProvider.Postgres, canvas.LiveSql.Provider);
+
+        canvas.ActiveConnectionConfig = new ConnectionConfig(
+            DatabaseProvider.SqlServer,
+            "localhost",
+            1433,
+            "master",
+            "sa",
+            "pwd",
+            false,
+            30
+        );
+
+        Assert.Equal(DatabaseProvider.SqlServer, canvas.LiveSql.Provider);
     }
 }

@@ -3,6 +3,7 @@ using VisualSqlArchitect.Nodes;
 using VisualSqlArchitect.QueryEngine;
 using VisualSqlArchitect.Registry;
 using Xunit;
+using System.Text.RegularExpressions;
 
 namespace VisualSqlArchitect.Tests.Unit.Nodes;
 
@@ -611,6 +612,74 @@ public class NodeGraphCompilerTests
     }
 
     [Fact]
+    public void Compile_TableSource_WithAlias_UsesAliasInColumnReference()
+    {
+        var tableNode = new NodeInstance(
+            Id: "tbl_alias",
+            Type: NodeType.TableSource,
+            PinLiterals: new Dictionary<string, string>(),
+            Parameters: new Dictionary<string, string>(),
+            Alias: "u",
+            TableFullName: "public.users"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tableNode],
+            SelectOutputs = [new SelectBinding("tbl_alias", "email", "email")],
+        };
+
+        var compiler = new NodeGraphCompiler(graph, NodeFixtures.Postgres);
+        CompiledNodeGraph result = compiler.Compile();
+
+        Assert.Single(result.SelectExprs);
+        string sql = result.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres);
+        Assert.Equal("\"u\".\"email\"", sql);
+    }
+
+    [Fact]
+    public void Compile_AliasNode_UsesAliasTextInputWhenConnected()
+    {
+        var tableNode = new NodeInstance(
+            Id: "tbl1",
+            Type: NodeType.TableSource,
+            PinLiterals: new Dictionary<string, string>(),
+            Parameters: new Dictionary<string, string>(),
+            TableFullName: "public.users"
+        );
+
+        var aliasInput = new NodeInstance(
+            Id: "txt1",
+            Type: NodeType.ValueString,
+            PinLiterals: new Dictionary<string, string>(),
+            Parameters: new Dictionary<string, string> { ["value"] = "email_custom" }
+        );
+
+        var aliasNode = new NodeInstance(
+            Id: "as1",
+            Type: NodeType.Alias,
+            PinLiterals: new Dictionary<string, string>(),
+            Parameters: new Dictionary<string, string> { ["alias"] = "fallback_alias" }
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tableNode, aliasInput, aliasNode],
+            Connections =
+            [
+                new Connection("tbl1", "email", "as1", "expression"),
+                new Connection("txt1", "result", "as1", "alias_text"),
+            ],
+            SelectOutputs = [new SelectBinding("as1", "result")],
+        };
+
+        CompiledNodeGraph result = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = result.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres);
+
+        Assert.Contains("AS \"email_custom\"", sql);
+    }
+
+    [Fact]
     public void Compile_BetweenFilter_EmitsBetweenClause()
     {
         var tableNode = new NodeInstance(
@@ -728,6 +797,391 @@ public class NodeGraphCompilerTests
         // Postgres JSON_EXTRACT → ->> operator
         Assert.Contains("->>", sql);
     }
+
+    [Fact]
+    public void Compile_CteSource_EmitsAliasedColumnReference()
+    {
+        var cte = new NodeInstance(
+            "cte",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "processos_elegiveis",
+                ["alias"] = "pe",
+            }
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [cte],
+            SelectOutputs = [new SelectBinding("cte", "id_processo", "id_processo")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres);
+
+        Assert.Equal("\"pe\".\"id_processo\"", sql);
+    }
+
+    [Fact]
+    public void Compile_CteSource_ResolvesNameFromConnectedCteDefinition()
+    {
+        var cteDef = new NodeInstance(
+            "cte_def",
+            NodeType.CteDefinition,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["name"] = "processos_elegiveis",
+                ["source_table"] = "orders",
+            }
+        );
+
+        var cteSource = new NodeInstance(
+            "cte_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["alias"] = "pe",
+            }
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [cteDef, cteSource],
+            Connections = [new Connection("cte_def", "table", "cte_src", "cte")],
+            SelectOutputs = [new SelectBinding("cte_src", "id_processo", "id_processo")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres);
+
+        Assert.Equal("\"pe\".\"id_processo\"", sql);
+    }
+
+    [Fact]
+    public void Compile_CteSource_UsesAliasTextInputWhenConnected()
+    {
+        var aliasInput = new NodeInstance(
+            "txt_alias",
+            NodeType.ValueString,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["value"] = "cte_alias_input" }
+        );
+
+        var cteSource = new NodeInstance(
+            "cte_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "processos_elegiveis",
+                ["alias"] = "cte_alias_param",
+            }
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [aliasInput, cteSource],
+            Connections = [new Connection("txt_alias", "result", "cte_src", "alias_text")],
+            SelectOutputs = [new SelectBinding("cte_src", "id_processo", "id_processo")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres);
+
+        Assert.Equal("\"cte_alias_input\".\"id_processo\"", sql);
+    }
+
+    [Fact]
+    public void Compile_CteSource_UsesCteNameTextInputWhenConnected()
+    {
+        var cteNameInput = new NodeInstance(
+            "txt_cte_name",
+            NodeType.ValueString,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["value"] = "cte_name_from_input" }
+        );
+
+        var cteSource = new NodeInstance(
+            "cte_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_name_from_param",
+            }
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [cteNameInput, cteSource],
+            Connections = [new Connection("txt_cte_name", "result", "cte_src", "cte_name_text")],
+            SelectOutputs = [new SelectBinding("cte_src", "id_processo", "id_processo")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres);
+
+        Assert.Equal("\"cte_name_from_input\".\"id_processo\"", sql);
+    }
+
+    [Fact]
+    public void Compile_CteSource_ResolvesConnectedCteDefinitionNameTextInput()
+    {
+        var cteNameInput = new NodeInstance(
+            "txt_cte_def_name",
+            NodeType.ValueString,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["value"] = "cte_def_name_input" }
+        );
+
+        var cteDef = new NodeInstance(
+            "cte_def",
+            NodeType.CteDefinition,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["source_table"] = "orders" }
+        );
+
+        var cteSource = new NodeInstance(
+            "cte_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>()
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [cteNameInput, cteDef, cteSource],
+            Connections =
+            [
+                new Connection("txt_cte_def_name", "result", "cte_def", "name_text"),
+                new Connection("cte_def", "table", "cte_src", "cte"),
+            ],
+            SelectOutputs = [new SelectBinding("cte_src", "id_processo", "id_processo")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres);
+
+        Assert.Equal("\"cte_def_name_input\".\"id_processo\"", sql);
+    }
+
+    [Fact]
+    public void Compile_WindowFunction_RowNumber_EmitsOverClause()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["function"] = "RowNumber",
+                ["order_1_desc"] = "false",
+            },
+            Alias: "row_num"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections =
+            [
+                new Connection("tbl", "customer_id", "wf", "partition_1"),
+                new Connection("tbl", "created_at", "wf", "order_1"),
+            ],
+            SelectOutputs = [new SelectBinding("wf", "result", "row_num")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres).ToUpperInvariant();
+
+        Assert.Contains("ROW_NUMBER() OVER", sql);
+        Assert.Contains("PARTITION BY", sql);
+        Assert.Contains("ORDER BY", sql);
+    }
+
+    [Fact]
+    public void Compile_WindowFunction_Rank_EmitsRankOverClause()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["function"] = "Rank",
+                ["order_1_desc"] = "true",
+            },
+            Alias: "rank_value"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections = [new Connection("tbl", "created_at", "wf", "order_1")],
+            SelectOutputs = [new SelectBinding("wf", "result", "rank_value")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres).ToUpperInvariant();
+
+        Assert.Contains("RANK() OVER", sql);
+        Assert.Contains("ORDER BY", sql);
+        Assert.Contains("DESC", sql);
+    }
+
+    [Fact]
+    public void Compile_WindowFunction_Lag_UsesValueOffsetAndDefault()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["function"] = "Lag",
+                ["offset"] = "2",
+                ["default_value"] = "0",
+            },
+            Alias: "prev_total"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections =
+            [
+                new Connection("tbl", "total", "wf", "value"),
+                new Connection("tbl", "created_at", "wf", "order_1"),
+            ],
+            SelectOutputs = [new SelectBinding("wf", "result", "prev_total")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres).ToUpperInvariant();
+
+        Assert.Contains("LAG(", sql);
+        Assert.Contains(", 2", sql);
+        Assert.Contains(", 0)", sql);
+        Assert.Contains("OVER", sql);
+    }
+
+    [Fact]
+    public void Compile_WindowFunction_FirstValue_EmitsFirstValueOver()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["function"] = "FirstValue",
+                ["frame"] = "UnboundedPreceding_CurrentRow",
+            },
+            Alias: "first_total"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections =
+            [
+                new Connection("tbl", "total", "wf", "value"),
+                new Connection("tbl", "created_at", "wf", "order_1"),
+            ],
+            SelectOutputs = [new SelectBinding("wf", "result", "first_total")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres).ToUpperInvariant();
+
+        Assert.Contains("FIRST_VALUE(", sql);
+        Assert.Contains("OVER", sql);
+        Assert.Contains("ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW", sql);
+    }
+
+    [Fact]
+    public void Compile_WindowFunction_VariadicPartitionAndOrderPins_AreCollectedByPrefix()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["function"] = "RowNumber",
+                ["order_1_desc"] = "true",
+                ["order_2_desc"] = "false",
+            },
+            Alias: "rn"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections =
+            [
+                new Connection("tbl", "customer_id", "wf", "partition_1"),
+                new Connection("tbl", "status", "wf", "partition_1"),
+                new Connection("tbl", "created_at", "wf", "order_1"),
+                new Connection("tbl", "id", "wf", "order_2"),
+            ],
+            SelectOutputs = [new SelectBinding("wf", "result", "rn")],
+        };
+
+        CompiledNodeGraph compiled = new NodeGraphCompiler(graph, NodeFixtures.Postgres).Compile();
+        string sql = compiled.SelectExprs[0].Expr.Emit(NodeFixtures.Postgres).ToUpperInvariant();
+
+        Assert.Contains("PARTITION BY", sql);
+        Assert.Contains("\"CUSTOMER_ID\"", sql);
+        Assert.Contains("\"STATUS\"", sql);
+        Assert.Contains("ORDER BY", sql);
+        Assert.Contains("\"CREATED_AT\" DESC", sql);
+        Assert.Contains("\"ID\"", sql);
+    }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -744,6 +1198,16 @@ public class QueryGeneratorServiceTests
         GeneratedQuery result = svc.Generate("users", graph);
         Assert.Contains("SELECT", result.Sql.ToUpper());
         Assert.Contains("users", result.Sql);
+    }
+
+    [Fact]
+    public void Generate_EmptyGraph_SQLite_ProducesSelectStar()
+    {
+        var svc = QueryGeneratorService.Create(DatabaseProvider.SQLite);
+        var graph = new NodeGraph();
+        GeneratedQuery result = svc.Generate("users", graph);
+        Assert.Contains("SELECT", result.Sql.ToUpperInvariant());
+        Assert.Contains("users", result.Sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -785,6 +1249,906 @@ public class QueryGeneratorServiceTests
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
         GeneratedQuery result = svc.Generate("users", new NodeGraph());
         Assert.Contains("SELECT", result.DebugTree);
+    }
+
+    [Fact]
+    public void Generate_DistinctFlag_ProducesSelectDistinct()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl],
+            SelectOutputs = [new SelectBinding("tbl", "status")],
+            Distinct = true,
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders", graph);
+
+        Assert.Contains("SELECT DISTINCT", result.Sql.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Generate_HavingClause_EmitsHaving()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var sum = new NodeInstance(
+            "sum",
+            NodeType.Sum,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            Alias: "total_sum"
+        );
+
+        var gt = new NodeInstance(
+            "gt",
+            NodeType.GreaterThan,
+            new Dictionary<string, string> { ["right"] = "100" },
+            new Dictionary<string, string>()
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, sum, gt],
+            Connections =
+            [
+                new Connection("tbl", "total", "sum", "value"),
+                new Connection("sum", "total", "gt", "left"),
+            ],
+            SelectOutputs = [new SelectBinding("sum", "total", "total_sum")],
+            GroupBys = [new GroupByBinding("tbl", "status")],
+            Havings = [new HavingBinding("gt", "result")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders", graph);
+
+        Assert.Contains("HAVING", result.Sql.ToUpperInvariant());
+        Assert.Contains(">", result.Sql);
+        Assert.Contains("100", result.Sql);
+    }
+
+    [Fact]
+    public void Generate_SystemDateNode_EmitsProviderCurrentTimestamp()
+    {
+        var nowNode = new NodeInstance(
+            "now",
+            NodeType.SystemDate,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>()
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [nowNode],
+            SelectOutputs = [new SelectBinding("now", "result", "now_value")],
+        };
+
+        var svcPg = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery pgSql = svcPg.Generate("orders", graph);
+        Assert.Contains("CURRENT_TIMESTAMP", pgSql.Sql.ToUpperInvariant());
+
+        var svcMy = QueryGeneratorService.Create(DatabaseProvider.MySql);
+        GeneratedQuery mySql = svcMy.Generate("orders", graph);
+        Assert.Contains("NOW()", mySql.Sql.ToUpperInvariant());
+
+        var svcSs = QueryGeneratorService.Create(DatabaseProvider.SqlServer);
+        GeneratedQuery ssSql = svcSs.Generate("orders", graph);
+        Assert.Contains("GETDATE()", ssSql.Sql.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Generate_DateAddNode_EmitsProviderSpecificSql()
+    {
+        var nowNode = new NodeInstance(
+            "now",
+            NodeType.SystemDate,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>()
+        );
+
+        var addNode = new NodeInstance(
+            "dateadd",
+            NodeType.DateAdd,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["amount"] = "7",
+                ["unit"] = "day",
+            },
+            Alias: "next_week"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [nowNode, addNode],
+            Connections = [new Connection("now", "result", "dateadd", "date")],
+            SelectOutputs = [new SelectBinding("dateadd", "result", "next_week")],
+        };
+
+        var svcPg = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery pgSql = svcPg.Generate("orders", graph);
+        Assert.Contains("INTERVAL", pgSql.Sql.ToUpperInvariant());
+
+        var svcMy = QueryGeneratorService.Create(DatabaseProvider.MySql);
+        GeneratedQuery mySql = svcMy.Generate("orders", graph);
+        Assert.Contains("DATE_ADD", mySql.Sql.ToUpperInvariant());
+
+        var svcSs = QueryGeneratorService.Create(DatabaseProvider.SqlServer);
+        GeneratedQuery ssSql = svcSs.Generate("orders", graph);
+        Assert.Contains("DATEADD", ssSql.Sql.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Generate_DateDiffDatePartAndFormat_EmitDialectFunctions()
+    {
+        var nowNode = new NodeInstance(
+            "now",
+            NodeType.SystemDate,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>()
+        );
+
+        var dateOnlyNode = new NodeInstance(
+            "today",
+            NodeType.CurrentDate,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>()
+        );
+
+        var diffNode = new NodeInstance(
+            "datediff",
+            NodeType.DateDiff,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["unit"] = "day" },
+            Alias: "days_diff"
+        );
+
+        var partNode = new NodeInstance(
+            "datepart",
+            NodeType.DatePart,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["part"] = "month" },
+            Alias: "month_num"
+        );
+
+        var formatNode = new NodeInstance(
+            "datefmt",
+            NodeType.DateFormat,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["format"] = "yyyy-MM-dd" },
+            Alias: "date_text"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [nowNode, dateOnlyNode, diffNode, partNode, formatNode],
+            Connections =
+            [
+                new Connection("today", "result", "datediff", "start"),
+                new Connection("now", "result", "datediff", "end"),
+                new Connection("now", "result", "datepart", "value"),
+                new Connection("today", "result", "datefmt", "value"),
+            ],
+            SelectOutputs =
+            [
+                new SelectBinding("datediff", "result", "days_diff"),
+                new SelectBinding("datepart", "result", "month_num"),
+                new SelectBinding("datefmt", "result", "date_text"),
+            ],
+        };
+
+        var svcPg = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery pgSql = svcPg.Generate("orders", graph);
+        Assert.Contains("EXTRACT", pgSql.Sql.ToUpperInvariant());
+        Assert.Contains("TO_CHAR", pgSql.Sql.ToUpperInvariant());
+
+        var svcMy = QueryGeneratorService.Create(DatabaseProvider.MySql);
+        GeneratedQuery mySql = svcMy.Generate("orders", graph);
+        Assert.Contains("TIMESTAMPDIFF", mySql.Sql.ToUpperInvariant());
+        Assert.Contains("DATE_FORMAT", mySql.Sql.ToUpperInvariant());
+
+        var svcSs = QueryGeneratorService.Create(DatabaseProvider.SqlServer);
+        GeneratedQuery ssSql = svcSs.Generate("orders", graph);
+        Assert.Contains("DATEDIFF", ssSql.Sql.ToUpperInvariant());
+        Assert.Contains("DATEPART", ssSql.Sql.ToUpperInvariant());
+        Assert.Contains("FORMAT", ssSql.Sql.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Generate_StringAgg_WithDistinctAndOrderBy_EmitsAggregate()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var agg = new NodeInstance(
+            "agg",
+            NodeType.StringAgg,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["separator"] = ", ",
+                ["distinct"] = "true",
+            },
+            Alias: "statuses"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, agg],
+            Connections =
+            [
+                new Connection("tbl", "status", "agg", "value"),
+                new Connection("tbl", "created_at", "agg", "order_by"),
+            ],
+            SelectOutputs = [new SelectBinding("agg", "result", "statuses")],
+            GroupBys = [new GroupByBinding("tbl", "customer_id")],
+        };
+
+        var svcPg = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery pgSql = svcPg.Generate("orders", graph);
+        Assert.Contains("STRING_AGG", pgSql.Sql.ToUpperInvariant());
+        Assert.Contains("DISTINCT", pgSql.Sql.ToUpperInvariant());
+        Assert.Contains("ORDER BY", pgSql.Sql.ToUpperInvariant());
+
+        var svcMy = QueryGeneratorService.Create(DatabaseProvider.MySql);
+        GeneratedQuery mySql = svcMy.Generate("orders", graph);
+        Assert.Contains("GROUP_CONCAT", mySql.Sql.ToUpperInvariant());
+        Assert.Contains("DISTINCT", mySql.Sql.ToUpperInvariant());
+        Assert.Contains("ORDER BY", mySql.Sql.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Generate_WindowFunction_RowNumber_ProducesSql()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["function"] = "RowNumber" },
+            Alias: "rn"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections =
+            [
+                new Connection("tbl", "customer_id", "wf", "partition_1"),
+                new Connection("tbl", "created_at", "wf", "order_1"),
+            ],
+            SelectOutputs = [new SelectBinding("wf", "result", "rn")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders", graph);
+
+        Assert.Contains("ROW_NUMBER() OVER", result.Sql.ToUpperInvariant());
+        Assert.Contains("PARTITION BY", result.Sql.ToUpperInvariant());
+        Assert.Contains("ORDER BY", result.Sql.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Generate_WindowFunction_DenseRank_ProducesSql()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["function"] = "DenseRank" },
+            Alias: "dr"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections = [new Connection("tbl", "created_at", "wf", "order_1")],
+            SelectOutputs = [new SelectBinding("wf", "result", "dr")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders", graph);
+
+        Assert.Contains("DENSE_RANK() OVER", result.Sql.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Generate_WindowFunction_Lead_ProducesSql()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["function"] = "Lead",
+                ["offset"] = "1",
+                ["default_value"] = "pending",
+            },
+            Alias: "next_status"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections =
+            [
+                new Connection("tbl", "status", "wf", "value"),
+                new Connection("tbl", "created_at", "wf", "order_1"),
+            ],
+            SelectOutputs = [new SelectBinding("wf", "result", "next_status")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders", graph);
+
+        string sql = result.Sql.ToUpperInvariant();
+        Assert.Contains("LEAD(", sql);
+        Assert.Contains("'PENDING'", sql);
+        Assert.Contains("OVER", sql);
+    }
+
+    [Fact]
+    public void Generate_WindowFunction_Ntile_ProducesSql()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["function"] = "Ntile",
+                ["ntile_groups"] = "5",
+            },
+            Alias: "bucket"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections = [new Connection("tbl", "created_at", "wf", "order_1")],
+            SelectOutputs = [new SelectBinding("wf", "result", "bucket")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders", graph);
+
+        string sql = result.Sql.ToUpperInvariant();
+        Assert.Contains("NTILE(5) OVER", sql);
+        Assert.Contains("ORDER BY", sql);
+    }
+
+    [Fact]
+    public void Generate_WindowFunction_LastValue_ProducesSql()
+    {
+        var tbl = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var wf = new NodeInstance(
+            "wf",
+            NodeType.WindowFunction,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["function"] = "LastValue",
+                ["frame"] = "CurrentRow_UnboundedFollowing",
+            },
+            Alias: "last_status"
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [tbl, wf],
+            Connections =
+            [
+                new Connection("tbl", "status", "wf", "value"),
+                new Connection("tbl", "created_at", "wf", "order_1"),
+            ],
+            SelectOutputs = [new SelectBinding("wf", "result", "last_status")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders", graph);
+
+        string sql = result.Sql.ToUpperInvariant();
+        Assert.Contains("LAST_VALUE(", sql);
+        Assert.Contains("ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING", sql);
+    }
+
+    [Fact]
+    public void Generate_CteSourceSelect_ProducesFromCteName()
+    {
+        var cte = new NodeInstance(
+            "cte",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "processos_elegiveis",
+                ["alias"] = "pe",
+            }
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [cte],
+            SelectOutputs = [new SelectBinding("cte", "id_processo", "id_processo")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("processos_elegiveis", graph);
+
+        Assert.Contains("FROM", result.Sql.ToUpperInvariant());
+        Assert.Contains("processos_elegiveis", result.Sql);
+        Assert.Contains("\"pe\".\"id_processo\"", result.Sql);
+    }
+
+    [Fact]
+    public void Generate_WithSingleCte_ProducesWithClauseAndSelectsFromCte()
+    {
+        var cteTable = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var cteGraph = new NodeGraph
+        {
+            Nodes = [cteTable],
+            SelectOutputs = [new SelectBinding("tbl", "id", "id")],
+        };
+
+        var cteSource = new NodeInstance(
+            "cte",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "orders_cte",
+                ["alias"] = "oc",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [cteSource],
+            Ctes = [new CteBinding("orders_cte", "orders", cteGraph)],
+            SelectOutputs = [new SelectBinding("cte", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders_cte", mainGraph);
+
+        string sql = result.Sql.ToUpperInvariant();
+        Assert.Contains("WITH", sql);
+        Assert.Contains("ORDERS_CTE", sql);
+        Assert.Contains("FROM \"ORDERS\"", sql);
+        Assert.Contains("FROM \"ORDERS_CTE\"", sql);
+        Assert.Contains("\"OC\".\"ID\"", sql);
+    }
+
+    [Fact]
+    public void Generate_WithRecursiveCte_Postgres_PrefixesWithRecursive()
+    {
+        var cteTable = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var cteGraph = new NodeGraph
+        {
+            Nodes = [cteTable],
+            SelectOutputs = [new SelectBinding("tbl", "id", "id")],
+        };
+
+        var cteSource = new NodeInstance(
+            "cte",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "orders_cte",
+                ["alias"] = "oc",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [cteSource],
+            Ctes = [new CteBinding("orders_cte", "orders", cteGraph, Recursive: true)],
+            SelectOutputs = [new SelectBinding("cte", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("orders_cte", mainGraph);
+
+        Assert.Contains("WITH RECURSIVE", result.Sql.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Generate_WithRecursiveCte_SqlServer_DoesNotUseRecursiveKeyword()
+    {
+        var cteTable = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            TableFullName: "orders"
+        );
+
+        var cteGraph = new NodeGraph
+        {
+            Nodes = [cteTable],
+            SelectOutputs = [new SelectBinding("tbl", "id", "id")],
+        };
+
+        var cteSource = new NodeInstance(
+            "cte",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "orders_cte",
+                ["alias"] = "oc",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [cteSource],
+            Ctes = [new CteBinding("orders_cte", "orders", cteGraph, Recursive: true)],
+            SelectOutputs = [new SelectBinding("cte", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.SqlServer);
+        GeneratedQuery result = svc.Generate("orders_cte", mainGraph);
+
+        string sql = result.Sql.ToUpperInvariant();
+        Assert.Contains("WITH", sql);
+        Assert.DoesNotContain("WITH RECURSIVE", sql);
+    }
+
+    [Fact]
+    public void Generate_WithDependentCtes_EmitsDependenciesBeforeDependents()
+    {
+        var cteSourceA = new NodeInstance(
+            "a_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_a",
+                ["alias"] = "a",
+            }
+        );
+
+        var cteGraphA = new NodeGraph
+        {
+            Nodes = [],
+        };
+
+        var cteGraphB = new NodeGraph
+        {
+            Nodes = [cteSourceA],
+            SelectOutputs = [new SelectBinding("a_src", "id", "id")],
+        };
+
+        var mainSource = new NodeInstance(
+            "main_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_b",
+                ["alias"] = "b",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [mainSource],
+            // Intentionally reversed to verify topological ordering.
+            Ctes =
+            [
+                new CteBinding("cte_b", "cte_a", cteGraphB),
+                new CteBinding("cte_a", "orders", cteGraphA),
+            ],
+            SelectOutputs = [new SelectBinding("main_src", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("cte_b", mainGraph);
+
+        Match aDef = Regex.Match(
+            result.Sql,
+            "[\\\"`\\[]?cte_a[\\\"`\\]]?\\s+AS\\s*\\(",
+            RegexOptions.IgnoreCase
+        );
+        Match bDef = Regex.Match(
+            result.Sql,
+            "[\\\"`\\[]?cte_b[\\\"`\\]]?\\s+AS\\s*\\(",
+            RegexOptions.IgnoreCase
+        );
+
+        Assert.True(aDef.Success, "Expected cte_a definition in SQL.");
+        Assert.True(bDef.Success, "Expected cte_b definition in SQL.");
+        Assert.True(aDef.Index < bDef.Index, "cte_a must be emitted before cte_b.");
+    }
+
+    [Fact]
+    public void Generate_WithCteDependencyCycle_ThrowsInvalidOperation()
+    {
+        var srcA = new NodeInstance(
+            "srcA",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_b",
+                ["alias"] = "b",
+            }
+        );
+
+        var srcB = new NodeInstance(
+            "srcB",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_a",
+                ["alias"] = "a",
+            }
+        );
+
+        var graphA = new NodeGraph
+        {
+            Nodes = [srcA],
+            SelectOutputs = [new SelectBinding("srcA", "id", "id")],
+        };
+
+        var graphB = new NodeGraph
+        {
+            Nodes = [srcB],
+            SelectOutputs = [new SelectBinding("srcB", "id", "id")],
+        };
+
+        var mainSource = new NodeInstance(
+            "main",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_a",
+                ["alias"] = "a",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [mainSource],
+            Ctes =
+            [
+                new CteBinding("cte_a", "cte_b", graphA),
+                new CteBinding("cte_b", "cte_a", graphB),
+            ],
+            SelectOutputs = [new SelectBinding("main", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => svc.Generate("cte_a", mainGraph)
+        );
+        Assert.Contains("Cycle", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Generate_WithDependentCtes_ByFromTable_EmitsDependenciesBeforeDependents()
+    {
+        var mainSource = new NodeInstance(
+            "main_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_b",
+                ["alias"] = "b",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [mainSource],
+            // Intentionally reversed order to validate topological emission from FromTable dependencies.
+            Ctes =
+            [
+                new CteBinding("cte_b", "cte_a", new NodeGraph()),
+                new CteBinding("cte_a", "orders", new NodeGraph()),
+            ],
+            SelectOutputs = [new SelectBinding("main_src", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("cte_b", mainGraph);
+
+        Match aDef = Regex.Match(
+            result.Sql,
+            "[\\\"`\\[]?cte_a[\\\"`\\]]?\\s+AS\\s*\\(",
+            RegexOptions.IgnoreCase
+        );
+        Match bDef = Regex.Match(
+            result.Sql,
+            "[\\\"`\\[]?cte_b[\\\"`\\]]?\\s+AS\\s*\\(",
+            RegexOptions.IgnoreCase
+        );
+
+        Assert.True(aDef.Success, "Expected cte_a definition in SQL.");
+        Assert.True(bDef.Success, "Expected cte_b definition in SQL.");
+        Assert.True(aDef.Index < bDef.Index, "cte_a must be emitted before cte_b.");
+    }
+
+    [Fact]
+    public void Generate_WithSelfReferenceByFromTable_WithoutRecursive_ThrowsInvalidOperation()
+    {
+        var mainSource = new NodeInstance(
+            "main_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_self",
+                ["alias"] = "s",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [mainSource],
+            Ctes = [new CteBinding("cte_self", "cte_self", new NodeGraph(), Recursive: false)],
+            SelectOutputs = [new SelectBinding("main_src", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => svc.Generate("cte_self", mainGraph)
+        );
+        Assert.Contains("not marked recursive", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Generate_WithDependentCtes_ByAliasedFromTable_EmitsDependenciesBeforeDependents()
+    {
+        var mainSource = new NodeInstance(
+            "main_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_b",
+                ["alias"] = "b",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [mainSource],
+            // Intentionally reversed to ensure aliased FROM refs are dependency-aware.
+            Ctes =
+            [
+                new CteBinding("cte_b", "cte_a a", new NodeGraph()),
+                new CteBinding("cte_a", "orders", new NodeGraph()),
+            ],
+            SelectOutputs = [new SelectBinding("main_src", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = svc.Generate("cte_b", mainGraph);
+
+        Match aDef = Regex.Match(
+            result.Sql,
+            "[\\\"`\\[]?cte_a[\\\"`\\]]?\\s+AS\\s*\\(",
+            RegexOptions.IgnoreCase
+        );
+        Match bDef = Regex.Match(
+            result.Sql,
+            "[\\\"`\\[]?cte_b[\\\"`\\]]?\\s+AS\\s*\\(",
+            RegexOptions.IgnoreCase
+        );
+
+        Assert.True(aDef.Success, "Expected cte_a definition in SQL.");
+        Assert.True(bDef.Success, "Expected cte_b definition in SQL.");
+        Assert.True(aDef.Index < bDef.Index, "cte_a must be emitted before cte_b.");
+    }
+
+    [Fact]
+    public void Generate_WithSelfReferenceByAliasedFromTable_WithoutRecursive_ThrowsInvalidOperation()
+    {
+        var mainSource = new NodeInstance(
+            "main_src",
+            NodeType.CteSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>
+            {
+                ["cte_name"] = "cte_self",
+                ["alias"] = "s",
+            }
+        );
+
+        var mainGraph = new NodeGraph
+        {
+            Nodes = [mainSource],
+            Ctes = [new CteBinding("cte_self", "cte_self s", new NodeGraph(), Recursive: false)],
+            SelectOutputs = [new SelectBinding("main_src", "id", "id")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => svc.Generate("cte_self", mainGraph)
+        );
+        Assert.Contains("not marked recursive", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -893,5 +2257,80 @@ public class NodeDefinitionRegistryTests
     {
         NodeDefinition def = NodeDefinitionRegistry.Get(NodeType.JsonExtract);
         Assert.Contains(def.Parameters, p => p.Name == "path");
+    }
+
+    [Fact]
+    public void ResultOutput_HasHavingPinAndDistinctParameter()
+    {
+        NodeDefinition def = NodeDefinitionRegistry.Get(NodeType.ResultOutput);
+        Assert.Contains(def.InputPins, p => p.Name == "having");
+        Assert.Contains(def.Parameters, p => p.Name == "distinct");
+    }
+
+    [Fact]
+    public void Registry_ContainsStringAggSystemDateAndDateArithmeticNodes()
+    {
+        NodeDefinition alias = NodeDefinitionRegistry.Get(NodeType.Alias);
+        Assert.Contains(alias.InputPins, p => p.Name == "expression");
+        Assert.Contains(alias.InputPins, p => p.Name == "alias_text");
+
+        NodeDefinition agg = NodeDefinitionRegistry.Get(NodeType.StringAgg);
+        Assert.Contains(agg.Parameters, p => p.Name == "separator");
+        Assert.Contains(agg.Parameters, p => p.Name == "distinct");
+
+        NodeDefinition systemDate = NodeDefinitionRegistry.Get(NodeType.SystemDate);
+        Assert.Contains(systemDate.OutputPins, p => p.Name == "result");
+
+        NodeDefinition window = NodeDefinitionRegistry.Get(NodeType.WindowFunction);
+        Assert.Contains(window.Parameters, p => p.Name == "function");
+        NodeParameter? fnParam = window.Parameters.FirstOrDefault(p => p.Name == "function");
+        Assert.NotNull(fnParam);
+        Assert.Contains("Rank", fnParam!.EnumValues!);
+        Assert.Contains("DenseRank", fnParam.EnumValues!);
+        Assert.Contains("Ntile", fnParam.EnumValues!);
+        Assert.Contains("Lag", fnParam.EnumValues!);
+        Assert.Contains("Lead", fnParam.EnumValues!);
+        Assert.Contains("FirstValue", fnParam.EnumValues!);
+        Assert.Contains("LastValue", fnParam.EnumValues!);
+        Assert.Contains(window.Parameters, p => p.Name == "offset");
+        Assert.Contains(window.Parameters, p => p.Name == "ntile_groups");
+        Assert.Contains(window.Parameters, p => p.Name == "default_value");
+        Assert.Contains(window.Parameters, p => p.Name == "frame");
+        Assert.Contains(window.InputPins, p => p.Name == "default");
+        Assert.Contains(window.InputPins, p => p.Name == "partition_1");
+        Assert.Contains(window.InputPins, p => p.Name == "order_1");
+        Assert.True(window.InputPins.First(p => p.Name == "partition_1").AllowMultiple);
+        Assert.True(window.InputPins.First(p => p.Name == "order_1").AllowMultiple);
+
+        NodeDefinition cteSource = NodeDefinitionRegistry.Get(NodeType.CteSource);
+        Assert.Contains(cteSource.Parameters, p => p.Name == "cte_name");
+        Assert.Contains(cteSource.Parameters, p => p.Name == "alias");
+        Assert.Contains(cteSource.InputPins, p => p.Name == "cte");
+        Assert.Contains(cteSource.InputPins, p => p.Name == "cte_name_text");
+        Assert.Contains(cteSource.InputPins, p => p.Name == "alias_text");
+        Assert.Contains(cteSource.OutputPins, p => p.Name == "result");
+
+        NodeDefinition cteDefinition = NodeDefinitionRegistry.Get(NodeType.CteDefinition);
+        Assert.Contains(cteDefinition.InputPins, p => p.Name == "name_text");
+        Assert.Contains(cteDefinition.InputPins, p => p.Name == "source_table_text");
+        Assert.Contains(cteDefinition.Parameters, p => p.Name == "name");
+        Assert.Contains(cteDefinition.Parameters, p => p.Name == "cte_name");
+        Assert.Contains(cteDefinition.Parameters, p => p.Name == "source_table");
+        Assert.Contains(cteDefinition.Parameters, p => p.Name == "recursive");
+        Assert.Contains(cteDefinition.InputPins, p => p.Name == "query");
+        Assert.Contains(cteDefinition.OutputPins, p => p.Name == "table");
+
+        NodeDefinition dateAdd = NodeDefinitionRegistry.Get(NodeType.DateAdd);
+        Assert.Contains(dateAdd.Parameters, p => p.Name == "unit");
+
+        NodeDefinition dateDiff = NodeDefinitionRegistry.Get(NodeType.DateDiff);
+        Assert.Contains(dateDiff.InputPins, p => p.Name == "start");
+        Assert.Contains(dateDiff.InputPins, p => p.Name == "end");
+
+        NodeDefinition datePart = NodeDefinitionRegistry.Get(NodeType.DatePart);
+        Assert.Contains(datePart.Parameters, p => p.Name == "part");
+
+        NodeDefinition dateFormat = NodeDefinitionRegistry.Get(NodeType.DateFormat);
+        Assert.Contains(dateFormat.Parameters, p => p.Name == "format");
     }
 }

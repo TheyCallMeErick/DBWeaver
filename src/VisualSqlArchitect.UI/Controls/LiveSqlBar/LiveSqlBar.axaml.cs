@@ -39,6 +39,6 @@ public sealed partial class LiveSqlBar : UserControl
             return;
         Avalonia.Input.Platform.IClipboard? clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         if (clipboard is not null)
-            await clipboard.SetTextAsync(vm.RawSql);
+            await clipboard.SetTextAsync(string.IsNullOrWhiteSpace(vm.DisplaySql) ? vm.RawSql : vm.DisplaySql);
     }
 }

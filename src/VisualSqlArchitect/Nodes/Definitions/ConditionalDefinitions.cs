@@ -14,7 +14,7 @@ public static class ConditionalDefinitions
         NodeCategory.Conditional,
         "NULL Fill",
         "Returns a fallback value when input is NULL — COALESCE(value, fallback)",
-        [In("value", PinDataType.Any), Out("result", PinDataType.Any)],
+        [In("value", PinDataType.Expression), Out("result", PinDataType.Expression)],
         [
             new(
                 "fallback",
@@ -46,7 +46,7 @@ public static class ConditionalDefinitions
         NodeCategory.Conditional,
         "Value Map",
         "Maps a specific input value to a new output value — CASE WHEN value = src THEN dst ELSE passthrough",
-        [In("value", PinDataType.Any), Out("result", PinDataType.Any)],
+        [In("value", PinDataType.Expression), Out("result", PinDataType.Expression)],
         [
             new("src", VisualSqlArchitect.Nodes.ParameterKind.Text, null, "Input value to match"),
             new(
@@ -63,7 +63,7 @@ public static class ConditionalDefinitions
         NodeCategory.Conditional,
         "CAST",
         "Converts a value to another data type",
-        [In("value", PinDataType.Any), Out("result", PinDataType.Any)],
+        [In("value", PinDataType.Expression), Out("result", PinDataType.Expression)],
         [
             new(
                 "targetType",
@@ -84,5 +84,42 @@ public static class ConditionalDefinitions
                 ]
             ),
         ]
+    );
+
+    public static readonly NodeDefinition ColumnRefCast = new(
+        NodeType.ColumnRefCast,
+        NodeCategory.Conditional,
+        "ColumnRef Cast",
+        "CAST explícito de coluna",
+        [In("value", PinDataType.ColumnRef), Out("result", PinDataType.Expression)],
+        [
+            new(
+                "targetType",
+                VisualSqlArchitect.Nodes.ParameterKind.CastType,
+                "Text",
+                "Target SQL type",
+                [
+                    "Text",
+                    "Integer",
+                    "BigInt",
+                    "Decimal",
+                    "Float",
+                    "Boolean",
+                    "Date",
+                    "DateTime",
+                    "Timestamp",
+                    "Uuid",
+                ]
+            ),
+        ]
+    );
+
+    public static readonly NodeDefinition ScalarFromColumn = new(
+        NodeType.ScalarFromColumn,
+        NodeCategory.Conditional,
+        "Scalar From Column",
+        "Desempacota ColumnRef para expressão escalar",
+        [In("value", PinDataType.ColumnRef), Out("result", PinDataType.Expression)],
+        []
     );
 }

@@ -16,7 +16,14 @@ public abstract class BaseDbOrchestrator(ConnectionConfig config) : IDbOrchestra
 {
     private bool _disposed;
 
+    /// <summary>
+    /// Gets the provider kind for the concrete orchestrator implementation.
+    /// </summary>
     public abstract DatabaseProvider Provider { get; }
+
+    /// <summary>
+    /// Gets the immutable connection configuration used by this orchestrator.
+    /// </summary>
     public ConnectionConfig Config { get; } =
         config ?? throw new ArgumentNullException(nameof(config));
 
@@ -60,7 +67,7 @@ public abstract class BaseDbOrchestrator(ConnectionConfig config) : IDbOrchestra
         schemaParam.ParameterName = "@schema";
         schemaParam.Value = schema;
         cmd.Parameters.Add(schemaParam);
-        
+
         var tableParam = cmd.CreateParameter();
         tableParam.ParameterName = "@table";
         tableParam.Value = table;
