@@ -174,6 +174,8 @@ public sealed class NodesListViewModel : ViewModelBase
 
     private readonly Action<NodeDefinition, Point> _spawnNode;
 
+    private readonly Action<NodeDefinition, Point> _spawnNode;
+
     public NodesListViewModel(Action<NodeDefinition, Point> spawnNode)
     {
         _spawnNode = spawnNode;

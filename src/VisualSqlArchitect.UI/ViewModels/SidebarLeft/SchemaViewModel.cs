@@ -303,6 +303,22 @@ public sealed class SchemaViewModel : ViewModelBase
             _ => PinDataType.Expression,
         };
     }
+
+    public static PinDataType MapSqlTypeToPinDataType(string? rawType)
+    {
+        string normalized = (rawType ?? string.Empty).Trim().ToLowerInvariant();
+
+        return normalized switch
+        {
+            "int" or "integer" or "bigint" or "smallint" or "tinyint" => PinDataType.Integer,
+            "decimal" or "numeric" or "float" or "double" or "real" or "money" => PinDataType.Decimal,
+            "varchar" or "nvarchar" or "text" or "char" or "nchar" or "string" => PinDataType.Text,
+            "bool" or "boolean" or "bit" => PinDataType.Boolean,
+            "datetime" or "timestamp" or "date" or "time" => PinDataType.DateTime,
+            "json" or "jsonb" => PinDataType.Json,
+            _ => PinDataType.Expression,
+        };
+    }
 }
 
 
