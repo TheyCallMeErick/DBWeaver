@@ -18,14 +18,20 @@ jobs:
       matrix:
         include:
           - rid: linux-x64
-            asset_name:
+            asset_name: DBWeaver-linux-x64.tar.gz
+            archive_type: tar
           - rid: linux-arm64
-            asset_name: 64
+            asset_name: DBWeaver-linux-arm64.tar.gz
+            archive_type: tar
           - rid: win-x64
-            asset_name: xe
+            asset_name: DBWeaver-win-x64.zip
+            archive_type: zip
           - rid: osx-x64
-            asset_name:           - rid: osx-arm64
-            asset_name:
+            asset_name: DBWeaver-osx-x64.tar.gz
+            archive_type: tar
+          - rid: osx-arm64
+            asset_name: DBWeaver-osx-arm64.tar.gz
+            archive_type: tar
 
     steps:
       - name: Checkout
@@ -36,35 +42,57 @@ jobs:
         with:
           dotnet-version: '9.x'
 
-      - name: Publish
+      - name: Resolve version
+        id: version
+        shell: bash
         run: |
-          TAG="${{ github.event.inputs.tag }}"
-          if [ -z "$TAG" ]; then
-            TAG="${{ github.ref_name }}"
+          RAW_TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$RAW_TAG" ]; then
+            RAW_TAG="${{ github.ref_name }}"
           fi
-          VERSION="${TAG#v}"
 
-          dotnet publish src/er.U      --configuration Release \
+          if [[ "$RAW_TAG" == v* ]]; then
+            TAG="$RAW_TAG"
+          else
+            TAG="v$RAW_TAG"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish
+        shell: bash
+        run: |
+          dotnet publish src/DBWeaver.UI/DBWeaver.UI.csproj \
+            --configuration Release \
             --runtime ${{ matrix.rid }} \
-            --output ./dist/${{ matrix.rid }} \
-            --self-contained \
+            --output ./dist/${{ matrix.rid }}/publish \
+            --self-contained true \
             --property:PublishSingleFile=true \
             --property:IncludeNativeLibrariesForSelfExtract=true \
-            --property:Version=$VERSION \
-            --property:InformationalVersion=$VERSION \
+            --property:Version=${{ steps.version.outputs.version }} \
+            --property:InformationalVersion=${{ steps.version.outputs.version }} \
             --property:DebugType=none \
             --property:DebugSymbols=false
 
-      - name: Rename binary
+      - name: Package artifact
+        shell: bash
         run: |
-          src=$(find ./dist/${{ matrix.rid }} -maxdepth 1 -type f -name 'ad -1)
-          mv "$src" ./dist/${{ matrix.rid }}/${{ matrix.asset_name }}
+          if [ "${{ matrix.archive_type }}" = "zip" ]; then
+            (
+              cd ./dist/${{ matrix.rid }}/publish
+              zip -r ../${{ matrix.asset_name }} .
+            )
+          else
+            tar -czf ./dist/${{ matrix.rid }}/${{ matrix.asset_name }} -C ./dist/${{ matrix.rid }}/publish .
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
           path: ./dist/${{ matrix.rid }}/${{ matrix.asset_name }}
+          if-no-files-found: error
 
   release:
     name: Create GitHub Release
@@ -81,12 +109,20 @@ jobs:
 
       - name: Determine version
         id: version
+        shell: bash
         run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          RAW_TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$RAW_TAG" ]; then
+            RAW_TAG="${{ github.ref_name }}"
           fi
+
+          if [[ "$RAW_TAG" == v* ]]; then
+            TAG="$RAW_TAG"
+          else
+            TAG="v$RAW_TAG"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
