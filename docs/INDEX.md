@@ -8,6 +8,7 @@ Este é o índice de documentação **ativa** do projeto DbWeaver.
 
 - **[CODE_CONVENTIONS.md](CODE_CONVENTIONS.md)** — Padrões, nomes, estrutura de código
 - **[EXCEPTION_HANDLING_STRATEGY.md](EXCEPTION_HANDLING_STRATEGY.md)** — Strategy para tratamento de erros
+- **[SQL_TO_NODE_INTERMEDIATE_LAYER_SPEC.md](SQL_TO_NODE_INTERMEDIATE_LAYER_SPEC.md)** — Especificação básica da camada intermediária SQL → IR → Nodes
 
 ### 🎨 Design & UI
 

@@ -33,7 +33,11 @@ public sealed class SubqueryValidator : IGraphValidator
                 continue;
             }
 
-            if (!QueryGraphHelpers.LooksLikeSelectStatement(query.Trim()))
+            string trimmedQuery = query.Trim();
+            bool isSelectSubquery = QueryGraphHelpers.LooksLikeSelectStatement(trimmedQuery);
+            bool isInLiteralList = subqueryNode.Type == NodeType.SubqueryIn && LooksLikeInLiteralList(trimmedQuery);
+
+            if (!isSelectSubquery && !isInLiteralList)
             {
                 errors.Add(
                     $"{nodeLabel} must start with SELECT, WITH, or a parenthesized SELECT. SQL may be invalid."
@@ -56,5 +60,92 @@ public sealed class SubqueryValidator : IGraphValidator
             return byInput;
 
         return null;
+    }
+
+    private static bool LooksLikeInLiteralList(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+            return false;
+
+        int depth = 0;
+        bool inSingleQuote = false;
+        bool inDoubleQuote = false;
+        bool hasValue = false;
+        int tokenStart = 0;
+
+        for (int i = 0; i < sql.Length; i++)
+        {
+            char ch = sql[i];
+
+            if (inSingleQuote)
+            {
+                if (ch == '\'' && i + 1 < sql.Length && sql[i + 1] == '\'')
+                {
+                    i++;
+                    continue;
+                }
+
+                if (ch == '\'')
+                    inSingleQuote = false;
+
+                continue;
+            }
+
+            if (inDoubleQuote)
+            {
+                if (ch == '"' && i + 1 < sql.Length && sql[i + 1] == '"')
+                {
+                    i++;
+                    continue;
+                }
+
+                if (ch == '"')
+                    inDoubleQuote = false;
+
+                continue;
+            }
+
+            if (ch == '\'')
+            {
+                inSingleQuote = true;
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inDoubleQuote = true;
+                continue;
+            }
+
+            if (ch == '(')
+            {
+                depth++;
+                continue;
+            }
+
+            if (ch == ')')
+            {
+                if (depth > 0)
+                    depth--;
+                continue;
+            }
+
+            if (ch == ',' && depth == 0)
+            {
+                if (string.IsNullOrWhiteSpace(sql[tokenStart..i]))
+                    return false;
+
+                hasValue = true;
+                tokenStart = i + 1;
+            }
+        }
+
+        if (inSingleQuote || inDoubleQuote || depth != 0)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(sql[tokenStart..]))
+            return false;
+
+        return hasValue || !string.IsNullOrWhiteSpace(sql);
     }
 }

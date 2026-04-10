@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using DBWeaver.Nodes;
 using DBWeaver.UI.Services.SqlImport;
@@ -30,173 +31,326 @@ internal sealed class SqlImportWhereClauseApplier(CanvasViewModel canvas) : ISql
         var tableNodes = coreContext.TableNodes;
         NodeViewModel result = coreContext.ResultNode;
         int sourceCount = query.FromParts.Count;
-        string qualifiedIdentifierPattern = SqlImportIdentifierNormalizer.QualifiedIdentifierPattern;
         string whereClause = StripOuterParentheses(query.WhereClause);
+        List<ImportFromPart> fromParts =
+        [
+            .. query.FromParts.Select(p => new ImportFromPart(p.Table, p.Alias, p.JoinType, p.OnClause)),
+        ];
 
-        Match existsMatch = Regex.Match(
-            whereClause,
-            @"^\s*(?<not>NOT\s+)?EXISTS\s*\(\s*(?<subquery>SELECT.+)\s*\)\s*$",
-            RegexOptions.IgnoreCase | RegexOptions.Singleline
-        );
-        if (existsMatch.Success)
+        if (TryBuildBooleanExpression(
+                whereClause,
+                query,
+                fromParts,
+                tableNodes,
+                layout,
+                sourceCount,
+                out NodeViewModel? rootCondition,
+                ref imported,
+                ref partial))
         {
-            bool negateExists = existsMatch.Groups["not"].Success;
-            string subquerySql = existsMatch.Groups["subquery"].Value.Trim();
-            string correlatedFields = SqlImportCteRewriteService.DescribeCorrelatedOuterReferences(subquerySql, query.OuterAliases);
-            NodeViewModel existsNode = new(
-                NodeDefinitionRegistry.Get(NodeType.SubqueryExists),
-                layout.SubqueryPosition(sourceCount)
-            );
-            existsNode.Parameters["query"] = subquerySql;
-            existsNode.Parameters["negate"] = negateExists ? "true" : "false";
-            _canvas.Nodes.Add(existsNode);
-            SqlImportClauseApplyUtilities.SafeWire(existsNode, "result", result, "where", _canvas);
+            SqlImportClauseApplyUtilities.SafeWire(rootCondition!, "result", result, "where", _canvas);
 
             report.Add(new ImportReportItem(
-                negateExists ? "WHERE NOT EXISTS(sub-query)" : "WHERE EXISTS(sub-query)",
-                ImportItemStatus.Imported,
-                sourceNodeId: existsNode.Id));
-            imported++;
+                $"WHERE {SqlImportClauseApplyUtilities.Truncate(query.WhereClause, 60)}",
+                partial == 0 ? ImportItemStatus.Imported : ImportItemStatus.Partial,
+                partial == 0 ? null : "Some predicates were not recognized and may need manual adjustment.",
+                rootCondition!.Id));
+        }
+        else
+        {
+            report.Add(new ImportReportItem(
+                $"WHERE {SqlImportClauseApplyUtilities.Truncate(query.WhereClause, 60)}",
+                ImportItemStatus.Partial,
+                "Condition not supported by importer; connect manually after import."));
+            partial++;
+        }
 
-            if (!string.IsNullOrWhiteSpace(correlatedFields))
+        return new SqlImportApplyResult(imported, partial, 0);
+    }
+
+    private bool TryBuildBooleanExpression(
+        string expression,
+        SqlImportParsedQuery query,
+        IReadOnlyList<ImportFromPart> fromParts,
+        IReadOnlyList<NodeViewModel> tableNodes,
+        SqlImportLayoutCalculator layout,
+        int sourceCount,
+        out NodeViewModel? node,
+        ref int imported,
+        ref int partial)
+    {
+        node = null;
+        string normalized = StripOuterParentheses(expression);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+
+        List<string> orParts = SplitTopLevelByKeyword(normalized, "OR");
+        if (orParts.Count > 1)
+            return TryBuildLogicalGate(NodeType.Or, orParts, query, fromParts, tableNodes, layout, sourceCount, out node, ref imported, ref partial);
+
+        List<string> andParts = SplitTopLevelByKeyword(normalized, "AND");
+        if (andParts.Count > 1)
+            return TryBuildLogicalGate(NodeType.And, andParts, query, fromParts, tableNodes, layout, sourceCount, out node, ref imported, ref partial);
+
+        if (TryStripNotPrefix(normalized, out string inner))
+        {
+            if (!TryBuildBooleanExpression(inner, query, fromParts, tableNodes, layout, sourceCount, out NodeViewModel? innerNode, ref imported, ref partial) || innerNode is null)
+                return false;
+
+            NodeViewModel notNode = new(NodeDefinitionRegistry.Get(NodeType.Not), layout.ComparisonPosition(sourceCount));
+            _canvas.Nodes.Add(notNode);
+            SqlImportClauseApplyUtilities.SafeWire(innerNode, "result", notNode, "condition", _canvas);
+            imported++;
+            node = notNode;
+            return true;
+        }
+
+        return TryBuildPredicateLeaf(normalized, query, fromParts, tableNodes, layout, sourceCount, out node, ref imported, ref partial);
+    }
+
+    private bool TryBuildLogicalGate(
+        NodeType gateType,
+        IReadOnlyList<string> parts,
+        SqlImportParsedQuery query,
+        IReadOnlyList<ImportFromPart> fromParts,
+        IReadOnlyList<NodeViewModel> tableNodes,
+        SqlImportLayoutCalculator layout,
+        int sourceCount,
+        out NodeViewModel? node,
+        ref int imported,
+        ref int partial)
+    {
+        node = null;
+        List<NodeViewModel> childNodes = [];
+
+        foreach (string part in parts)
+        {
+            if (!TryBuildBooleanExpression(part, query, fromParts, tableNodes, layout, sourceCount, out NodeViewModel? child, ref imported, ref partial) || child is null)
             {
-                report.Add(
-                    new ImportReportItem(
-                        "Correlation fields",
-                        ImportItemStatus.Imported,
-                        $"External references: {correlatedFields}",
-                        existsNode.Id
-                    )
-                );
-                imported++;
+                partial++;
+                return false;
             }
 
-            return new SqlImportApplyResult(imported, partial, 0);
+            childNodes.Add(child);
+        }
+
+        if (childNodes.Count == 0)
+            return false;
+        if (childNodes.Count == 1)
+        {
+            node = childNodes[0];
+            return true;
+        }
+
+        NodeViewModel gate = new(NodeDefinitionRegistry.Get(gateType), layout.ComparisonPosition(sourceCount));
+        _canvas.Nodes.Add(gate);
+
+        foreach (NodeViewModel child in childNodes)
+            SqlImportClauseApplyUtilities.SafeWire(child, "result", gate, "conditions", _canvas);
+
+        imported++;
+        node = gate;
+        return true;
+    }
+
+    private bool TryBuildPredicateLeaf(
+        string expression,
+        SqlImportParsedQuery query,
+        IReadOnlyList<ImportFromPart> fromParts,
+        IReadOnlyList<NodeViewModel> tableNodes,
+        SqlImportLayoutCalculator layout,
+        int sourceCount,
+        out NodeViewModel? node,
+        ref int imported,
+        ref int partial)
+    {
+        node = null;
+        string qualifiedIdentifierPattern = SqlImportIdentifierNormalizer.QualifiedIdentifierPattern;
+
+        Match existsMatch = Regex.Match(
+            expression,
+            @"^\s*(?<not>NOT\s+)?EXISTS\s*\(\s*(?<subquery>SELECT.+)\s*\)\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        if (existsMatch.Success)
+        {
+            string subquerySql = existsMatch.Groups["subquery"].Value.Trim();
+            bool negate = existsMatch.Groups["not"].Success;
+
+            NodeViewModel existsNode = new(NodeDefinitionRegistry.Get(NodeType.SubqueryExists), layout.SubqueryPosition(sourceCount));
+            existsNode.Parameters["query_text"] = subquerySql;
+            existsNode.Parameters["query"] = subquerySql;
+            existsNode.Parameters["negate"] = negate ? "true" : "false";
+            _canvas.Nodes.Add(existsNode);
+
+            string correlatedFields = SqlImportCteRewriteService.DescribeCorrelatedOuterReferences(subquerySql, query.OuterAliases);
+            if (!string.IsNullOrWhiteSpace(correlatedFields))
+                imported++;
+
+            imported++;
+            node = existsNode;
+            return true;
         }
 
         Match inSubqueryMatch = Regex.Match(
-            whereClause,
+            expression,
             $@"^\s*(?<left>{qualifiedIdentifierPattern})\s+(?<not>NOT\s+)?IN\s*\((?<subquery>SELECT.+?)\)\s*$",
-            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant
-        );
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
         if (inSubqueryMatch.Success)
         {
-            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(inSubqueryMatch.Groups["left"].Value)
-                .Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .LastOrDefault() ?? string.Empty;
+            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(inSubqueryMatch.Groups["left"].Value);
             bool negate = inSubqueryMatch.Groups["not"].Success;
             string subquerySql = inSubqueryMatch.Groups["subquery"].Value.Trim();
-            string correlatedFields = SqlImportCteRewriteService.DescribeCorrelatedOuterReferences(subquerySql, query.OuterAliases);
 
-            NodeViewModel inNode = new(
-                NodeDefinitionRegistry.Get(NodeType.SubqueryIn),
-                layout.SubqueryPosition(sourceCount)
-            );
+            NodeViewModel inNode = new(NodeDefinitionRegistry.Get(NodeType.SubqueryIn), layout.SubqueryPosition(sourceCount));
+            inNode.Parameters["query_text"] = subquerySql;
             inNode.Parameters["query"] = subquerySql;
             inNode.Parameters["negate"] = negate ? "true" : "false";
             _canvas.Nodes.Add(inNode);
 
-            PinViewModel? valuePin = tableNodes
-                .SelectMany(n => n.OutputPins)
-                .FirstOrDefault(p => p.Name.Equals(leftExpr, StringComparison.OrdinalIgnoreCase));
-            if (valuePin is not null)
-                SqlImportClauseApplyUtilities.SafeWire(valuePin.Owner, valuePin.Name, inNode, "value", _canvas);
-
-            SqlImportClauseApplyUtilities.SafeWire(inNode, "result", result, "where", _canvas);
-
-            report.Add(
-                new ImportReportItem(
-                    negate ? "WHERE value NOT IN(sub-query)" : "WHERE value IN(sub-query)",
-                    ImportItemStatus.Imported,
-                    sourceNodeId: inNode.Id
-                )
-            );
+            TryWireExpressionToPin(leftExpr, inNode, "value", fromParts, tableNodes);
             imported++;
+            node = inNode;
+            return true;
+        }
 
-            if (!string.IsNullOrWhiteSpace(correlatedFields))
-            {
-                report.Add(
-                    new ImportReportItem(
-                        "Correlation fields",
-                        ImportItemStatus.Imported,
-                        $"External references: {correlatedFields}",
-                        inNode.Id
-                    )
-                );
-                imported++;
-            }
+        Match inLiteralListMatch = Regex.Match(
+            expression,
+            $@"^\s*(?<left>{qualifiedIdentifierPattern})\s+(?<not>NOT\s+)?IN\s*\((?<values>.+?)\)\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        if (inLiteralListMatch.Success)
+        {
+            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(inLiteralListMatch.Groups["left"].Value);
+            bool negate = inLiteralListMatch.Groups["not"].Success;
+            string valuesSql = inLiteralListMatch.Groups["values"].Value.Trim();
 
-            return new SqlImportApplyResult(imported, partial, 0);
+            NodeViewModel inNode = new(NodeDefinitionRegistry.Get(NodeType.SubqueryIn), layout.SubqueryPosition(sourceCount));
+            inNode.Parameters["query_text"] = valuesSql;
+            inNode.Parameters["query"] = valuesSql;
+            inNode.Parameters["negate"] = negate ? "true" : "false";
+            _canvas.Nodes.Add(inNode);
+
+            TryWireExpressionToPin(leftExpr, inNode, "value", fromParts, tableNodes);
+            imported++;
+            node = inNode;
+            return true;
         }
 
         Match scalarSubqueryMatch = Regex.Match(
-            whereClause,
+            expression,
             $@"^\s*(?<left>{qualifiedIdentifierPattern})\s*(?<op><>|!=|>=|<=|=|>|<)\s*\(+\s*(?<subquery>SELECT.+?)\s*\)+\s*$",
-            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant
-        );
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
         if (scalarSubqueryMatch.Success)
         {
-            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(scalarSubqueryMatch.Groups["left"].Value)
-                .Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .LastOrDefault() ?? string.Empty;
+            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(scalarSubqueryMatch.Groups["left"].Value);
             string op = scalarSubqueryMatch.Groups["op"].Value.Trim();
             string subquerySql = scalarSubqueryMatch.Groups["subquery"].Value.Trim();
-            string correlatedFields = SqlImportCteRewriteService.DescribeCorrelatedOuterReferences(subquerySql, query.OuterAliases);
 
-            NodeViewModel scalarNode = new(
-                NodeDefinitionRegistry.Get(NodeType.SubqueryScalar),
-                layout.SubqueryPosition(sourceCount)
-            );
+            NodeViewModel scalarNode = new(NodeDefinitionRegistry.Get(NodeType.SubqueryScalar), layout.SubqueryPosition(sourceCount));
+            scalarNode.Parameters["query_text"] = subquerySql;
             scalarNode.Parameters["query"] = subquerySql;
             scalarNode.Parameters["operator"] = op == "!=" ? "<>" : op;
             _canvas.Nodes.Add(scalarNode);
 
-            PinViewModel? leftPin = tableNodes
-                .SelectMany(n => n.OutputPins)
-                .FirstOrDefault(p => p.Name.Equals(leftExpr, StringComparison.OrdinalIgnoreCase));
-            if (leftPin is not null)
-                SqlImportClauseApplyUtilities.SafeWire(leftPin.Owner, leftPin.Name, scalarNode, "left", _canvas);
-
-            SqlImportClauseApplyUtilities.SafeWire(scalarNode, "result", result, "where", _canvas);
-
-            report.Add(
-                new ImportReportItem(
-                    "WHERE value op (scalar sub-query)",
-                    ImportItemStatus.Imported,
-                    sourceNodeId: scalarNode.Id
-                )
-            );
+            TryWireExpressionToPin(leftExpr, scalarNode, "left", fromParts, tableNodes);
             imported++;
-
-            if (!string.IsNullOrWhiteSpace(correlatedFields))
-            {
-                report.Add(
-                    new ImportReportItem(
-                        "Correlation fields",
-                        ImportItemStatus.Imported,
-                        $"External references: {correlatedFields}",
-                        scalarNode.Id
-                    )
-                );
-                imported++;
-            }
-
-            return new SqlImportApplyResult(imported, partial, 0);
+            node = scalarNode;
+            return true;
         }
 
-        Match eqMatch = Regex.Match(
-            whereClause,
-            $@"^\s*\(?\s*(?<left>{qualifiedIdentifierPattern})\s*(?<op><>|!=|>=|<=|=|>|<)\s*(?<right>.+?)\s*\)?\s*$",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline
-        );
-
-        if (eqMatch.Success && !Regex.IsMatch(whereClause, @"\b(AND|OR)\b", RegexOptions.IgnoreCase))
+        Match isNullMatch = Regex.Match(
+            expression,
+            $@"^\s*(?<left>{qualifiedIdentifierPattern})\s+IS\s+(?<not>NOT\s+)?NULL\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (isNullMatch.Success)
         {
-            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(eqMatch.Groups["left"].Value)
-                .Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .LastOrDefault() ?? string.Empty;
-            string op = eqMatch.Groups["op"].Value.Trim();
-            string rightExpr = eqMatch.Groups["right"].Value.Trim().Trim('\'', '"');
+            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(isNullMatch.Groups["left"].Value);
+            bool negate = isNullMatch.Groups["not"].Success;
+
+            NodeViewModel isNullNode = new(
+                NodeDefinitionRegistry.Get(negate ? NodeType.IsNotNull : NodeType.IsNull),
+                layout.ComparisonPosition(sourceCount));
+            _canvas.Nodes.Add(isNullNode);
+
+            TryWireExpressionToPin(leftExpr, isNullNode, "value", fromParts, tableNodes);
+            imported++;
+            node = isNullNode;
+            return true;
+        }
+
+        Match betweenMatch = Regex.Match(
+            expression,
+            $@"^\s*(?<left>{qualifiedIdentifierPattern})\s+(?<not>NOT\s+)?BETWEEN\s+(?<low>.+?)\s+AND\s+(?<high>.+?)\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        if (betweenMatch.Success)
+        {
+            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(betweenMatch.Groups["left"].Value);
+            bool negate = betweenMatch.Groups["not"].Success;
+            string lowExpr = StripOuterParentheses(betweenMatch.Groups["low"].Value.Trim());
+            string highExpr = StripOuterParentheses(betweenMatch.Groups["high"].Value.Trim());
+
+            NodeViewModel betweenNode = new(
+                NodeDefinitionRegistry.Get(negate ? NodeType.NotBetween : NodeType.Between),
+                layout.ComparisonPosition(sourceCount));
+            _canvas.Nodes.Add(betweenNode);
+
+            TryWireExpressionToPin(leftExpr, betweenNode, "value", fromParts, tableNodes);
+            if (!TryWireExpressionToPin(lowExpr, betweenNode, "low", fromParts, tableNodes)
+                && !TryWireLiteralExpressionToPin(lowExpr, betweenNode, "low", layout, sourceCount))
+            {
+                betweenNode.PinLiterals["low"] = NormalizeRawSqlLiteral(lowExpr);
+            }
+
+            if (!TryWireExpressionToPin(highExpr, betweenNode, "high", fromParts, tableNodes)
+                && !TryWireLiteralExpressionToPin(highExpr, betweenNode, "high", layout, sourceCount))
+            {
+                betweenNode.PinLiterals["high"] = NormalizeRawSqlLiteral(highExpr);
+            }
+
+            imported++;
+            node = betweenNode;
+            return true;
+        }
+
+        Match likeMatch = Regex.Match(
+            expression,
+            $@"^\s*(?<left>{qualifiedIdentifierPattern})\s+(?<not>NOT\s+)?LIKE\s+(?<pattern>.+?)\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        if (likeMatch.Success)
+        {
+            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(likeMatch.Groups["left"].Value);
+            bool negate = likeMatch.Groups["not"].Success;
+            string patternExpr = likeMatch.Groups["pattern"].Value.Trim();
+
+            NodeViewModel likeNode = new(NodeDefinitionRegistry.Get(NodeType.Like), layout.ComparisonPosition(sourceCount));
+            likeNode.Parameters["pattern"] = UnquoteLiteral(patternExpr);
+            _canvas.Nodes.Add(likeNode);
+            TryWireExpressionToPin(leftExpr, likeNode, "text", fromParts, tableNodes);
+
+            if (!negate)
+            {
+                imported++;
+                node = likeNode;
+                return true;
+            }
+
+            NodeViewModel notNode = new(NodeDefinitionRegistry.Get(NodeType.Not), layout.ComparisonPosition(sourceCount));
+            _canvas.Nodes.Add(notNode);
+            SqlImportClauseApplyUtilities.SafeWire(likeNode, "result", notNode, "condition", _canvas);
+
+            imported += 2;
+            node = notNode;
+            return true;
+        }
+
+        Match binaryMatch = Regex.Match(
+            expression,
+            $@"^\s*(?<left>{qualifiedIdentifierPattern})\s*(?<op><>|!=|>=|<=|=|>|<)\s*(?<right>.+?)\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        if (binaryMatch.Success)
+        {
+            string leftExpr = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(binaryMatch.Groups["left"].Value);
+            string op = binaryMatch.Groups["op"].Value.Trim();
+            string rightExpr = StripOuterParentheses(binaryMatch.Groups["right"].Value.Trim());
 
             NodeType compType = op switch
             {
@@ -209,57 +363,321 @@ internal sealed class SqlImportWhereClauseApplier(CanvasViewModel canvas) : ISql
                 _ => NodeType.Equals,
             };
 
-            NodeViewModel comp = new(
-                NodeDefinitionRegistry.Get(compType),
-                layout.ComparisonPosition(sourceCount)
-            );
-            comp.PinLiterals["right"] = rightExpr;
+            NodeViewModel comp = new(NodeDefinitionRegistry.Get(compType), layout.ComparisonPosition(sourceCount));
             _canvas.Nodes.Add(comp);
 
-            NodeViewModel where = new(
-                NodeDefinitionRegistry.Get(NodeType.WhereOutput),
-                layout.WherePosition(sourceCount)
-            );
-            _canvas.Nodes.Add(where);
+            TryWireExpressionToPin(leftExpr, comp, "left", fromParts, tableNodes);
 
-            PinViewModel? leftPin = tableNodes
-                .SelectMany(n => n.OutputPins)
-                .FirstOrDefault(p => p.Name.Equals(leftExpr, StringComparison.OrdinalIgnoreCase));
-            if (leftPin is not null)
-                SqlImportClauseApplyUtilities.SafeWire(leftPin.Owner, leftPin.Name, comp, "left", _canvas);
+            if (IsQualifiedIdentifier(rightExpr) && TryWireExpressionToPin(rightExpr, comp, "right", fromParts, tableNodes))
+            {
+                imported++;
+                node = comp;
+                return true;
+            }
 
-            SqlImportClauseApplyUtilities.SafeWire(comp, "result", where, "condition", _canvas);
-            SqlImportClauseApplyUtilities.SafeWire(where, "result", result, "where", _canvas);
+            if (TryWireLiteralExpressionToPin(rightExpr, comp, "right", layout, sourceCount))
+            {
+                imported++;
+                node = comp;
+                return true;
+            }
 
-            report.Add(
-                new ImportReportItem(
-                    $"WHERE {leftExpr} {op} '{rightExpr}'",
-                    ImportItemStatus.Imported,
-                    sourceNodeId: where.Id
-                )
-            );
+            comp.PinLiterals["right"] = UnquoteLiteral(rightExpr);
             imported++;
+            node = comp;
+            return true;
+        }
+
+        partial++;
+        return false;
+    }
+
+    private bool TryWireExpressionToPin(
+        string expression,
+        NodeViewModel targetNode,
+        string targetPin,
+        IReadOnlyList<ImportFromPart> fromParts,
+        IReadOnlyList<NodeViewModel> tableNodes)
+    {
+        if (ImportBuildUtilities.TryResolveExpressionPin(expression, fromParts, tableNodes, out PinViewModel pin))
+        {
+            SqlImportClauseApplyUtilities.SafeWire(pin.Owner, pin.Name, targetNode, targetPin, _canvas);
+            return true;
+        }
+
+        if (ImportBuildUtilities.TryResolveSourceAndColumn(expression, fromParts, out int sourceIndex, out string column)
+            && sourceIndex >= 0
+            && sourceIndex < tableNodes.Count
+            && !string.IsNullOrWhiteSpace(column))
+        {
+            PinViewModel inferred = ImportBuildUtilities.EnsureOutputColumnPin(tableNodes[sourceIndex], column);
+            SqlImportClauseApplyUtilities.SafeWire(inferred.Owner, inferred.Name, targetNode, targetPin, _canvas);
+            return true;
+        }
+
+        string fallbackColumn = SqlImportIdentifierNormalizer.NormalizeQualifiedIdentifier(expression)
+            .Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .LastOrDefault() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(fallbackColumn))
+            return false;
+
+        PinViewModel? fallbackPin = tableNodes
+            .SelectMany(n => n.OutputPins)
+            .FirstOrDefault(p => p.Name.Equals(fallbackColumn, StringComparison.OrdinalIgnoreCase));
+        if (fallbackPin is null)
+            return false;
+
+        SqlImportClauseApplyUtilities.SafeWire(fallbackPin.Owner, fallbackPin.Name, targetNode, targetPin, _canvas);
+        return true;
+    }
+
+    private bool TryWireLiteralExpressionToPin(
+        string expression,
+        NodeViewModel targetNode,
+        string targetPin,
+        SqlImportLayoutCalculator layout,
+        int sourceCount)
+    {
+        string candidate = StripOuterParentheses(expression).Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+            return false;
+
+        if (string.Equals(candidate, "NULL", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        NodeType literalType;
+        string literalValue;
+
+        if (bool.TryParse(candidate, out bool boolValue))
+        {
+            literalType = NodeType.ValueBoolean;
+            literalValue = boolValue ? "true" : "false";
+        }
+        else if (double.TryParse(candidate, NumberStyles.Any, CultureInfo.InvariantCulture, out double numericValue))
+        {
+            literalType = NodeType.ValueNumber;
+            literalValue = numericValue.ToString(CultureInfo.InvariantCulture);
         }
         else
         {
-            NodeViewModel where = new(
-                NodeDefinitionRegistry.Get(NodeType.WhereOutput),
-                layout.WherePosition(sourceCount)
-            );
-            _canvas.Nodes.Add(where);
+            string unquoted = UnquoteLiteral(candidate);
+            if (string.IsNullOrWhiteSpace(unquoted))
+                return false;
 
-            report.Add(
-                new ImportReportItem(
-                    $"WHERE {SqlImportClauseApplyUtilities.Truncate(query.WhereClause, 40)}",
-                    ImportItemStatus.Partial,
-                    "Complex condition - connect manually",
-                    where.Id
-                )
-            );
-            partial++;
+            if (LooksLikeIsoDateOrDateTime(unquoted))
+            {
+                literalType = NodeType.ValueDateTime;
+                literalValue = unquoted;
+            }
+            else
+            {
+                literalType = NodeType.ValueString;
+                literalValue = unquoted;
+            }
         }
 
-        return new SqlImportApplyResult(imported, partial, 0);
+        NodeViewModel literalNode = new(
+            NodeDefinitionRegistry.Get(literalType),
+            layout.ComparisonPosition(sourceCount)
+        );
+        literalNode.Parameters["value"] = literalValue;
+        _canvas.Nodes.Add(literalNode);
+
+        SqlImportClauseApplyUtilities.SafeWire(literalNode, "result", targetNode, targetPin, _canvas);
+        return true;
+    }
+
+    private static bool IsQualifiedIdentifier(string expression)
+    {
+        return Regex.IsMatch(
+            expression,
+            $@"^\s*{SqlImportIdentifierNormalizer.QualifiedIdentifierPattern}\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
+
+    private static bool TryStripNotPrefix(string expression, out string inner)
+    {
+        inner = string.Empty;
+        string value = expression.TrimStart();
+        if (!value.StartsWith("NOT", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (value.Length > 3 && (char.IsLetterOrDigit(value[3]) || value[3] == '_'))
+            return false;
+
+        inner = StripOuterParentheses(value[3..].Trim());
+        return !string.IsNullOrWhiteSpace(inner);
+    }
+
+    private static List<string> SplitTopLevelByKeyword(string expression, string keyword)
+    {
+        var parts = new List<string>();
+        int start = 0;
+        int depth = 0;
+        bool inSingleQuote = false;
+        bool inDoubleQuote = false;
+        bool betweenPending = false;
+
+        for (int i = 0; i < expression.Length; i++)
+        {
+            char ch = expression[i];
+
+            if (inSingleQuote)
+            {
+                if (ch == '\'' && i + 1 < expression.Length && expression[i + 1] == '\'')
+                {
+                    i++;
+                    continue;
+                }
+
+                if (ch == '\'')
+                    inSingleQuote = false;
+
+                continue;
+            }
+
+            if (inDoubleQuote)
+            {
+                if (ch == '"' && i + 1 < expression.Length && expression[i + 1] == '"')
+                {
+                    i++;
+                    continue;
+                }
+
+                if (ch == '"')
+                    inDoubleQuote = false;
+
+                continue;
+            }
+
+            if (ch == '\'')
+            {
+                inSingleQuote = true;
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inDoubleQuote = true;
+                continue;
+            }
+
+            if (ch == '(')
+            {
+                depth++;
+                continue;
+            }
+
+            if (ch == ')')
+            {
+                if (depth > 0)
+                    depth--;
+                continue;
+            }
+
+            if (depth != 0)
+                continue;
+
+            if (MatchesKeywordAt(expression, i, "BETWEEN"))
+            {
+                betweenPending = true;
+                i += "BETWEEN".Length - 1;
+                continue;
+            }
+
+            if (keyword.Equals("AND", StringComparison.OrdinalIgnoreCase)
+                && betweenPending
+                && MatchesKeywordAt(expression, i, "AND"))
+            {
+                betweenPending = false;
+                i += "AND".Length - 1;
+                continue;
+            }
+
+            if (!MatchesKeywordAt(expression, i, keyword))
+                continue;
+
+            string segment = expression[start..i].Trim();
+            if (!string.IsNullOrWhiteSpace(segment))
+                parts.Add(segment);
+
+            i += keyword.Length - 1;
+            start = i + 1;
+        }
+
+        if (parts.Count == 0)
+        {
+            parts.Add(expression.Trim());
+            return parts;
+        }
+
+        string tail = expression[start..].Trim();
+        if (!string.IsNullOrWhiteSpace(tail))
+            parts.Add(tail);
+
+        return parts;
+    }
+
+    private static bool MatchesKeywordAt(string text, int index, string keyword)
+    {
+        if (index < 0 || index + keyword.Length > text.Length)
+            return false;
+
+        if (!text.AsSpan(index, keyword.Length).Equals(keyword.AsSpan(), StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        char before = index > 0 ? text[index - 1] : ' ';
+        char after = index + keyword.Length < text.Length ? text[index + keyword.Length] : ' ';
+
+        bool beforeIsBoundary = !char.IsLetterOrDigit(before) && before != '_';
+        bool afterIsBoundary = !char.IsLetterOrDigit(after) && after != '_';
+
+        return beforeIsBoundary && afterIsBoundary;
+    }
+
+    private static string NormalizeRawSqlLiteral(string value)
+    {
+        string trimmed = value.Trim();
+        if (trimmed.Length == 0)
+            return "NULL";
+
+        if (trimmed.Length >= 2 && trimmed[0] == '\'' && trimmed[^1] == '\'')
+            return trimmed;
+
+        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
+            return $"'{trimmed[1..^1].Replace("'", "''", StringComparison.Ordinal)}'";
+
+        if (double.TryParse(trimmed, out _))
+            return trimmed;
+
+        if (trimmed.Equals("NULL", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("TRUE", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("FALSE", StringComparison.OrdinalIgnoreCase))
+            return trimmed.ToUpperInvariant();
+
+        return $"'{trimmed.Replace("'", "''", StringComparison.Ordinal)}'";
+    }
+
+    private static string UnquoteLiteral(string value)
+    {
+        string trimmed = value.Trim();
+        if (trimmed.Length < 2)
+            return trimmed;
+
+        if (trimmed[0] == '\'' && trimmed[^1] == '\'')
+            return trimmed[1..^1].Replace("''", "'", StringComparison.Ordinal);
+
+        if (trimmed[0] == '"' && trimmed[^1] == '"')
+            return trimmed[1..^1].Replace("\"\"", "\"", StringComparison.Ordinal);
+
+        return trimmed;
+    }
+
+    private static bool LooksLikeIsoDateOrDateTime(string value)
+    {
+        return Regex.IsMatch(
+            value,
+            @"^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,7})?)?)?$",
+            RegexOptions.CultureInvariant);
     }
 
     private static string StripOuterParentheses(string clause)
