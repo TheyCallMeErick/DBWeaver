@@ -1,9 +1,0 @@
-﻿using VisualSqlArchitect.Core;
-
-namespace VisualSqlArchitect.UI.Services.ConnectionManager;
-
-public interface IConnectionErrorMessageMapper
-{
-    string Map(Exception ex, DatabaseProvider provider);
-}
-

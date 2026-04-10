@@ -1,8 +1,8 @@
 using System.ComponentModel;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.SidebarLeft;
+namespace DBWeaver.Tests.Unit.ViewModels.SidebarLeft;
 
 public class SidebarViewModelTests
 {
@@ -11,14 +11,12 @@ public class SidebarViewModelTests
     {
         var nodes = new NodesListViewModel((_, _) => { });
         var connection = new ConnectionManagerViewModel();
-        var schema = new SchemaViewModel();
         var diagnostics = new AppDiagnosticsViewModel(new CanvasViewModel());
 
-        var vm = new SidebarViewModel(nodes, connection, schema, diagnostics);
+        var vm = new SidebarViewModel(nodes, connection, diagnostics);
 
         Assert.Same(nodes, vm.NodesList);
         Assert.Same(connection, vm.ConnectionManager);
-        Assert.Same(schema, vm.Schema);
         Assert.Same(diagnostics, vm.Diagnostics);
     }
 
@@ -27,10 +25,9 @@ public class SidebarViewModelTests
     {
         var vm = CreateViewModel();
 
-        Assert.Equal(ESidebarTab.Nodes, vm.ActiveTab);
+        Assert.Equal(SidebarTab.Nodes, vm.ActiveTab);
         Assert.True(vm.ShowNodes);
         Assert.False(vm.ShowConnection);
-        Assert.False(vm.ShowSchema);
     }
 
     [Fact]
@@ -44,17 +41,15 @@ public class SidebarViewModelTests
                 raised.Add(e.PropertyName!);
         };
 
-        vm.ActiveTab = ESidebarTab.Connection;
+        vm.ActiveTab = SidebarTab.Connection;
 
-        Assert.Equal(ESidebarTab.Connection, vm.ActiveTab);
+        Assert.Equal(SidebarTab.Connection, vm.ActiveTab);
         Assert.False(vm.ShowNodes);
         Assert.True(vm.ShowConnection);
-        Assert.False(vm.ShowSchema);
 
         Assert.Contains(nameof(SidebarViewModel.ActiveTab), raised);
         Assert.Contains(nameof(SidebarViewModel.ShowNodes), raised);
         Assert.Contains(nameof(SidebarViewModel.ShowConnection), raised);
-        Assert.Contains(nameof(SidebarViewModel.ShowSchema), raised);
     }
 
     [Fact]
@@ -65,14 +60,13 @@ public class SidebarViewModelTests
         vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(SidebarViewModel.ShowNodes)
-                or nameof(SidebarViewModel.ShowConnection)
-                or nameof(SidebarViewModel.ShowSchema))
+                or nameof(SidebarViewModel.ShowConnection))
             {
                 derivedChanges++;
             }
         };
 
-        vm.ActiveTab = ESidebarTab.Nodes;
+        vm.ActiveTab = SidebarTab.Nodes;
 
         Assert.Equal(0, derivedChanges);
     }
@@ -81,7 +75,6 @@ public class SidebarViewModelTests
         new(
             new NodesListViewModel((_, _) => { }),
             new ConnectionManagerViewModel(),
-            new SchemaViewModel(),
             new AppDiagnosticsViewModel(new CanvasViewModel())
         );
 
@@ -91,27 +84,23 @@ public class SidebarViewModelTests
         var vm = CreateViewModel();
 
         vm.SelectConnectionCommand.Execute(null);
-        Assert.Equal(ESidebarTab.Connection, vm.ActiveTab);
-
-        vm.SelectSchemaCommand.Execute(null);
-        Assert.Equal(ESidebarTab.Schema, vm.ActiveTab);
+        Assert.Equal(SidebarTab.Connection, vm.ActiveTab);
 
         vm.SelectNodesCommand.Execute(null);
-        Assert.Equal(ESidebarTab.Nodes, vm.ActiveTab);
-
+        Assert.Equal(SidebarTab.Nodes, vm.ActiveTab);
     }
 
     [Fact]
     public void AddNodeCommand_SetsNodesTab_AndRaisesEvent()
     {
         var vm = CreateViewModel();
-        vm.ActiveTab = ESidebarTab.Schema;
+        vm.ActiveTab = SidebarTab.Connection;
         bool raised = false;
         vm.AddNodeRequested += () => raised = true;
 
         vm.AddNodeCommand.Execute(null);
 
-        Assert.Equal(ESidebarTab.Nodes, vm.ActiveTab);
+        Assert.Equal(SidebarTab.Nodes, vm.ActiveTab);
         Assert.True(raised);
     }
 
@@ -131,13 +120,13 @@ public class SidebarViewModelTests
     public void AddConnectionCommand_SetsConnectionTab_AndRaisesEvent()
     {
         var vm = CreateViewModel();
-        vm.ActiveTab = ESidebarTab.Nodes;
+        vm.ActiveTab = SidebarTab.Nodes;
         bool raised = false;
         vm.AddConnectionRequested += () => raised = true;
 
         vm.AddConnectionCommand.Execute(null);
 
-        Assert.Equal(ESidebarTab.Connection, vm.ActiveTab);
+        Assert.Equal(SidebarTab.Connection, vm.ActiveTab);
         Assert.True(raised);
     }
 }

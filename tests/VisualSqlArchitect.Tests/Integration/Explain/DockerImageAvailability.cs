@@ -1,7 +1,7 @@
-﻿using VisualSqlArchitect.UI.Services.Explain;
+using DBWeaver.UI.Services.Explain;
 using System.Diagnostics;
 
-namespace VisualSqlArchitect.Tests.Integration.Explain;
+namespace DBWeaver.Tests.Integration.Explain;
 
 internal static class DockerImageAvailability
 {

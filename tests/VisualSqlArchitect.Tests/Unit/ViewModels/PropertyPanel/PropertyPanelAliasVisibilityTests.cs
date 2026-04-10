@@ -1,10 +1,10 @@
 using Avalonia;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Services.Localization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Services.Localization;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.PropertyPanel;
+namespace DBWeaver.Tests.Unit.ViewModels.PropertyPanel;
 
 public class PropertyPanelAliasVisibilityTests
 {

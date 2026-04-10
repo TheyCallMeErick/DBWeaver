@@ -1,7 +1,7 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using DBWeaver.UI.Services.Benchmark;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public sealed class BenchmarkLatencyProfileSamplerTests
 {

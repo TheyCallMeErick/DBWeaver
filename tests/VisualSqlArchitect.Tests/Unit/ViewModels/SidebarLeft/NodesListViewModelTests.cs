@@ -1,8 +1,8 @@
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.Nodes;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.Nodes;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.SidebarLeft;
+namespace DBWeaver.Tests.Unit.ViewModels.SidebarLeft;
 
 public class NodesListViewModelTests
 {
@@ -30,9 +30,23 @@ public class NodesListViewModelTests
                 Assert.True(
                     item.Title.Contains("upper", StringComparison.OrdinalIgnoreCase)
                     || item.Subtitle.Contains("upper", StringComparison.OrdinalIgnoreCase)
+                    || item.SearchTerms.Any(t => t.Contains("upper", StringComparison.OrdinalIgnoreCase))
                 )
             )
         );
+    }
+
+    [Fact]
+    public void SearchQuery_ByTag_FindsTaggedNodes()
+    {
+        var vm = new NodesListViewModel((_, _) => { });
+
+        vm.SearchQuery = "report";
+
+        Assert.NotEmpty(vm.FilteredGroups);
+        Assert.Contains(
+            vm.FilteredGroups.SelectMany(g => g.Items),
+            item => item.SearchTerms.Any(t => t.Equals("report", StringComparison.OrdinalIgnoreCase)));
     }
 
     [Fact]
@@ -85,5 +99,24 @@ public class NodesListViewModelTests
 
         Assert.Equal(string.Empty, vm.SearchQuery);
         Assert.True(vm.ShowIntro);
+    }
+
+    [Fact]
+    public void NodeItemSpawn_UsesViewportAwareDefaultSentinel()
+    {
+        NodeDefinition? spawnedDef = null;
+        Avalonia.Point spawnedPos = default;
+        var vm = new NodesListViewModel((def, pos) =>
+        {
+            spawnedDef = def;
+            spawnedPos = pos;
+        });
+
+        NodeTypeItemViewModel firstItem = vm.FilteredGroups.SelectMany(g => g.Items).First();
+        firstItem.SpawnNodeCommand.Execute(null);
+
+        Assert.NotNull(spawnedDef);
+        Assert.True(double.IsNaN(spawnedPos.X));
+        Assert.True(double.IsNaN(spawnedPos.Y));
     }
 }

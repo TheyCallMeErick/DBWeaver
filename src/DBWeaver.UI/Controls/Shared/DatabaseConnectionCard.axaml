@@ -1,0 +1,175 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:connmodels="using:DBWeaver.UI.Services.ConnectionManager.Models"
+             x:Class="DBWeaver.UI.Controls.Shared.DatabaseConnectionCard"
+             x:CompileBindings="False"
+             x:Name="Root">
+
+  <Border Background="{StaticResource Bg2Brush}"
+          BorderBrush="{StaticResource BorderBrush}"
+          BorderThickness="1"
+          CornerRadius="{StaticResource RadiusLG}"
+          Padding="12">
+
+    <StackPanel Spacing="10">
+
+      <!-- Row 1: icon + status + latency + disconnect -->
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <!-- DB icon -->
+        <Border Grid.Column="0"
+                Width="36" Height="36"
+                Background="{StaticResource Bg0Brush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusSM}"
+                VerticalAlignment="Center">
+            <mi:MaterialIcon Kind="Database"
+                 Width="16"
+                 Height="16"
+                 Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"/>
+        </Border>
+
+        <!-- Status + latency -->
+        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
+          <StackPanel Orientation="Horizontal" Spacing="5"
+                      IsVisible="{Binding IsConnected, ElementName=Root}">
+            <Ellipse Width="6" Height="6" Fill="{StaticResource StatusOkBrush}"/>
+            <TextBlock Text="Conectado"
+                       Foreground="{StaticResource StatusOkBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       FontWeight="{StaticResource FontWeightHeading}"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="5"
+                      IsVisible="{Binding IsReloading, ElementName=Root}">
+            <Ellipse Width="6" Height="6" Fill="{StaticResource StatusWarningBrush}"/>
+            <TextBlock Text="Carregando schema…"
+                       Foreground="{StaticResource StatusWarningBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       FontWeight="{StaticResource FontWeightHeading}"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+          <TextBlock FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextSecondaryBrush}"
+                     IsVisible="{Binding LatencyMs, ElementName=Root,
+                                 Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Run Text="Latência: "/>
+            <Run Text="{Binding LatencyMs, ElementName=Root}"/>
+            <Run Text=" ms"/>
+          </TextBlock>
+          <TextBlock Text="{Binding ConnectionName, ElementName=Root}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     FontWeight="{StaticResource FontWeightHeading}"
+                     Foreground="{StaticResource TextPrimaryBrush}"
+                     IsVisible="{Binding ConnectionName, ElementName=Root, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     TextTrimming="CharacterEllipsis"
+                     MaxLines="1"/>
+          <TextBlock Text="{Binding ConnectionSubtitle, ElementName=Root}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     IsVisible="{Binding ConnectionSubtitle, ElementName=Root, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     TextTrimming="CharacterEllipsis"
+                     MaxLines="1"/>
+        </StackPanel>
+
+        <!-- Disconnect button -->
+        <Button x:Name="DisconnectButton"
+                Grid.Column="2"
+                Classes="secondary"
+                Padding="7,3"
+                CornerRadius="{StaticResource RadiusSM}"
+                FontSize="{StaticResource FontSizeCaption}"
+                Command="{Binding DisconnectCommand, ElementName=Root}"
+                IsVisible="{Binding IsConnected, ElementName=Root}"
+                Content="Desconectar"/>
+      </Grid>
+
+      <!-- Divider -->
+      <Border Height="1" Background="{StaticResource BorderSubtleBrush}"/>
+
+      <!-- Row 2: connection combo -->
+      <StackPanel Spacing="3">
+        <TextBlock Text="Conexão"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   Foreground="{StaticResource TextSecondaryBrush}"/>
+        <ComboBox x:Name="ConnectionComboBox"
+                  ItemsSource="{Binding AvailableConnections, ElementName=Root}"
+                  SelectedItem="{Binding SelectedConnection, ElementName=Root}"
+                  SelectionChanged="OnConnectionSelectionChanged"
+                  HorizontalAlignment="Stretch"
+                  Background="{StaticResource Bg1Brush}"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  CornerRadius="{StaticResource RadiusSM}"
+                  FontSize="{StaticResource FontSizeLabel}"
+                  IsEnabled="{Binding IsReloading, ElementName=Root,
+                              Converter={x:Static BoolConverters.Not}}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="connmodels:ConnectionProfile">
+              <TextBlock Text="{Binding Name}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+
+      <!-- Row 3: schema combo -->
+      <StackPanel Spacing="3">
+        <TextBlock Text="Schema"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   Foreground="{StaticResource TextSecondaryBrush}"/>
+        <ComboBox x:Name="DatabaseComboBox"
+                  ItemsSource="{Binding AvailableSchemas, ElementName=Root}"
+                  SelectedItem="{Binding SelectedSchema, ElementName=Root}"
+                  SelectionChanged="OnDatabaseSelectionChanged"
+                  HorizontalAlignment="Stretch"
+                  Background="{StaticResource Bg1Brush}"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  CornerRadius="{StaticResource RadiusSM}"
+                  FontSize="{StaticResource FontSizeLabel}"
+                  IsEnabled="{Binding IsReloading, ElementName=Root,
+                              Converter={x:Static BoolConverters.Not}}"/>
+      </StackPanel>
+
+      <!-- Row 4: metadata summary + progress bar -->
+      <Border Background="{StaticResource Bg0Brush}"
+              CornerRadius="{StaticResource RadiusSM}"
+              Padding="9,7">
+        <StackPanel Spacing="5">
+          <TextBlock x:Name="MetadataSummaryText"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource AccentSecondaryHoverBrush}"
+                     Text="{Binding MetadataSummary, ElementName=Root}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding MetadataSummary, ElementName=Root, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          <TextBlock x:Name="VersionText"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     Text="{Binding MetadataDetails, ElementName=Root}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding MetadataDetails, ElementName=Root, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          <TextBlock Text="Versão indisponível"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     IsVisible="{Binding MetadataDetails, ElementName=Root, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+          <TextBlock Text="Metadados indisponíveis"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     IsVisible="{Binding MetadataSummary, ElementName=Root, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+          <ProgressBar x:Name="ReloadingProgressBar"
+                       IsIndeterminate="True"
+                       Height="2"
+                       Foreground="{StaticResource AccentPrimaryBrush}"
+                       Background="{StaticResource BorderSubtleBrush}"
+                       IsVisible="{Binding IsReloading, ElementName=Root}"/>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </Border>
+</UserControl>

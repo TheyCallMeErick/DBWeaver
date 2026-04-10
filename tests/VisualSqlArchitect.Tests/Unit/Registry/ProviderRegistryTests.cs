@@ -1,10 +1,10 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.Providers.Dialects;
-using VisualSqlArchitect.QueryEngine;
-using VisualSqlArchitect.Registry;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
+using DBWeaver.Providers.Dialects;
+using DBWeaver.QueryEngine;
+using DBWeaver.Registry;
 
-namespace VisualSqlArchitect.Tests.Unit.Registry;
+namespace DBWeaver.Tests.Unit.Registry;
 
 /// <summary>
 /// Tests for IProviderRegistry and ProviderRegistry implementation.

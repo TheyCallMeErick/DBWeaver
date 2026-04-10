@@ -1,13 +1,13 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Services.Ddl;
-using VisualSqlArchitect.UI.Serialization;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas.Strategies;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Services.Ddl;
+using DBWeaver.UI.Serialization;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas.Strategies;
 using System.Text.Json;
 
-namespace VisualSqlArchitect.Tests.Unit.Services.Ddl;
+namespace DBWeaver.Tests.Unit.Services.Ddl;
 
 public class DdlSchemaImporterTests
 {

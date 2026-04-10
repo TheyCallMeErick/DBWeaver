@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class DataPreviewPanelClipRegressionTests
 {
@@ -13,7 +13,7 @@ public class DataPreviewPanelClipRegressionTests
         Assert.Contains("<Border Grid.Row=\"2\"", xaml);
         Assert.Contains("IsVisible=\"{Binding ShowDataPreview}\"", xaml);
         Assert.Contains("IsVisible=\"{Binding ShowLiveSql}\"", xaml);
-        Assert.Contains("CornerRadius=\"0,0,10,10\"", xaml);
+        Assert.Contains("CornerRadius=\"{StaticResource RadiusLGBottom}\"", xaml);
         Assert.Contains("ClipToBounds=\"True\"", xaml);
     }
 
@@ -25,7 +25,7 @@ public class DataPreviewPanelClipRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Views",
                 "Panels",
                 "DataPreviewPanel.axaml"

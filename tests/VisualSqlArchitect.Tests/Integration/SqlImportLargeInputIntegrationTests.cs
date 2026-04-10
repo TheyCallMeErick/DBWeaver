@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.ViewModels;
+
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Integration;
+namespace Integration;
 
 public class SqlImportLargeInputIntegrationTests
 {
@@ -20,6 +20,7 @@ public class SqlImportLargeInputIntegrationTests
         canvas.SqlImporter.SqlInput = sql;
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.True(canvas.SqlImporter.ReportImportedCount > 0);

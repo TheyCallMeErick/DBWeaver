@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using System.ComponentModel;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 /// <summary>
 /// Behavioral tests for CanvasViewModel disposal safety.

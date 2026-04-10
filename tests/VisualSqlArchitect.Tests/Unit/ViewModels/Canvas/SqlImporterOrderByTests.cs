@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class SqlImporterOrderByTests
 {
@@ -21,24 +21,19 @@ public class SqlImporterOrderByTests
         await canvas.SqlImporter.ImportAsync();
 
         var resultNode = canvas.Nodes.First(n => n.Type == NodeType.ResultOutput);
+        var orderConnections = canvas.Connections
+            .Where(c => c.ToPin?.Owner == resultNode
+                && (c.ToPin.Name.Equals("order_by", StringComparison.OrdinalIgnoreCase)
+                    || c.ToPin.Name.Equals("order_by_desc", StringComparison.OrdinalIgnoreCase)))
+            .ToList();
 
-        Assert.True(resultNode.Parameters.TryGetValue("import_order_terms", out string? orderTermsRaw));
-        Assert.False(string.IsNullOrWhiteSpace(orderTermsRaw));
-
-        string[] terms = orderTermsRaw!.Split(';', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(2, terms.Length);
-
-        string[] first = terms[0].Split('|');
-        string[] second = terms[1].Split('|');
-
-        Assert.Equal(3, first.Length);
-        Assert.Equal(3, second.Length);
-
-        Assert.Equal("customer_id", first[1], ignoreCase: true);
-        Assert.Equal("ASC", first[2], ignoreCase: true);
-        Assert.Equal("id", second[1], ignoreCase: true);
-        Assert.Equal("DESC", second[2], ignoreCase: true);
+        Assert.Equal(2, orderConnections.Count);
+        Assert.Contains(orderConnections, c =>
+            c.ToPin!.Name.Equals("order_by", StringComparison.OrdinalIgnoreCase)
+            && c.FromPin.Name.Equals("customer_id", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(orderConnections, c =>
+            c.ToPin!.Name.Equals("order_by_desc", StringComparison.OrdinalIgnoreCase)
+            && c.FromPin.Name.Equals("id", StringComparison.OrdinalIgnoreCase));
     }
 }
-
 

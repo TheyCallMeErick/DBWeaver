@@ -1,7 +1,4 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Providers;
-
-namespace VisualSqlArchitect.Tests.Unit.Core;
+namespace DBWeaver.Tests.Unit.Core;
 
 public class DdlExecutionOrchestratorTests
 {

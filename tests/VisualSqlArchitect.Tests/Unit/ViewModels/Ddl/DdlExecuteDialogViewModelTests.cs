@@ -1,7 +1,7 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Core;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Ddl;
+namespace DBWeaver.Tests.Unit.ViewModels.Ddl;
 
 public class DdlExecuteDialogViewModelTests
 {

@@ -1,8 +1,8 @@
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.Core;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.Core;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Views;
+namespace DBWeaver.Tests.Unit.Views;
 
 /// <summary>
 /// Tests for MainWindow canvas creation and service lifecycle.

@@ -1,6 +1,6 @@
-using VisualSqlArchitect.UI.Services.Settings;
+using DBWeaver.UI.Services.Settings;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class ThemeJsonSettingsServiceTests
 {
@@ -33,7 +33,7 @@ public class ThemeJsonSettingsServiceTests
         const string json = """
         {
           "colors": {
-            "macroBg0": "#0B1020",
+                        "bg0": "#0B1020",
             "textPrimary": "#E8EAED",
             "textSecondary": "#8B95A8"
           }

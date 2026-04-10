@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.Core;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels.Canvas;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class PostgresExplainExecutorTests
 {

@@ -1,14 +1,14 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
-using VisualSqlArchitect.CanvasKit;
+using DBWeaver.CanvasKit;
 
-namespace VisualSqlArchitect.Tests.Unit.CanvasLib;
+namespace DBWeaver.Tests.Unit.CanvasLib;
 
 public sealed class CanvasStableApiContractTests
 {
     private const string StableApiDocFingerprintPrefix = "Stable API v1 fingerprint:";
-    private const string ExpectedStableApiV1Fingerprint = "2E9A29E3F86B3ABFF9616A91BE7A28405BDD18BAA95F3320809C4E35FA3634E3";
+    private const string ExpectedStableApiV1Fingerprint = "3D3DC30E3942372191355A09F8431CC94A1F3E7CC477E41DB9309C98F29B333A";
 
     [Fact]
     public void StableApiV1_RequiredTypesExistAndArePublic()

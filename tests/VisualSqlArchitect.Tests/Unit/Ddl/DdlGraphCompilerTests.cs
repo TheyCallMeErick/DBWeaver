@@ -1,9 +1,9 @@
-using VisualSqlArchitect.Ddl;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
+using DBWeaver.Ddl;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
 using System.Text.Json;
 
-namespace VisualSqlArchitect.Tests.Unit.Ddl;
+namespace DBWeaver.Tests.Unit.Ddl;
 
 public class DdlGraphCompilerTests
 {
@@ -761,10 +761,19 @@ public class DdlGraphCompilerTests
                     NodeType.TableSource,
                     new Dictionary<string, string>(),
                     new Dictionary<string, string>(),
+                    Alias: "orders",
+                    ColumnPins: new Dictionary<string, string> { ["status"] = "status" },
+                    ColumnPinTypes: new Dictionary<string, PinDataType> { ["status"] = PinDataType.Text },
                     TableFullName: "public.orders"
                 ),
+                new NodeInstance(
+                    "out",
+                    NodeType.ResultOutput,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>()
+                ),
             ],
-            SelectOutputs = [new SelectBinding("tbl", "status")],
+            Connections = [new Connection("tbl", "status", "out", "column")],
         };
 
         string payload = JsonSerializer.Serialize(subgraph);

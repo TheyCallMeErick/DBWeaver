@@ -1,7 +1,7 @@
-using VisualSqlArchitect.Metadata;
+using DBWeaver.Metadata;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Metadata;
+namespace DBWeaver.Tests.Unit.Metadata;
 
 public sealed class CanvasTableTrackerTests
 {

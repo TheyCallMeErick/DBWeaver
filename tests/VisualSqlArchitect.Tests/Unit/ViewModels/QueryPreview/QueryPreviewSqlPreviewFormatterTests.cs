@@ -1,7 +1,7 @@
-﻿using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.Services.QueryPreview;
+﻿using DBWeaver.Core;
+using DBWeaver.UI.Services.QueryPreview;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 
 public class QueryPreviewSqlPreviewFormatterTests
 {

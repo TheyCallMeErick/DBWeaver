@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             x:Class="DBWeaver.UI.Controls.SqlEditor.DiffPreviewControl"
+             x:DataType="vm:SqlEditorViewModel">
+  <StackPanel Spacing="4">
+    <TextBlock Text="{Binding [sqlEditor.diffPreview.title], Source={x:Static loc:LocalizationService.Instance}}"
+               FontWeight="{StaticResource FontWeightTitle}"
+               Foreground="{StaticResource TextPrimaryBrush}"/>
+    <TextBlock Text="{Binding PendingMutationDiffText}"
+               Foreground="{StaticResource TextSecondaryBrush}"
+               TextWrapping="Wrap"/>
+  </StackPanel>
+</UserControl>

@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "name": "Studio Dark",
+    "version": "1.0"
+  },
+  "colors": {
+    "bg0": "#090B14",
+    "bg1": "#0F1220",
+    "bg2": "#151A2C",
+    "bg3": "#1C2338",
+    "bg4": "#252F49",
+    "textPrimary": "#E7ECFF",
+    "textSecondary": "#AEB9D9",
+    "textMuted": "#7F8AAE",
+    "textDisabled": "#66708F",
+    "textInverse": "#0B0F1D",
+    "textAccent": "#8FA7FF",
+    "btnPrimaryBg": "#2563EB",
+    "btnPrimaryFg": "#F8FAFC",
+    "btnWarningBg": "#7C2D12",
+    "btnWarningFg": "#FED7AA"
+  },
+  "typography": {
+    "uiFont": "Manrope,Sora,Plus Jakarta Sans,Segoe UI,Arial,sans-serif",
+    "nodeFont": "Space Grotesk,Manrope,Segoe UI,Arial,sans-serif",
+    "monoFont": "JetBrainsMono Nerd Font,JetBrains Mono,IBM Plex Mono,Cascadia Code,Consolas,monospace",
+    "displaySize": 24,
+    "headingSize": 18,
+    "titleSize": 15,
+    "nodeTitleSize": 14,
+    "labelSize": 13,
+    "bodySize": 12,
+    "captionSize": 11,
+    "monoBodySize": 12,
+    "monoSmallSize": 11
+  }
+}

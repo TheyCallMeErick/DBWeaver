@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
 using Xunit;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+using DBWeaver.UI.ViewModels.Canvas;
 using System.Reflection;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 /// <summary>
 /// Regression tests for ExplainPlanViewModel fire-and-forget exception handling.
@@ -123,7 +123,7 @@ public class ExplainPlanViewModelFireAndForgetTests
     [Fact]
     public void ErrorMessage_InitiallyNull()
     {
-        var canvas = new VisualSqlArchitect.UI.ViewModels.CanvasViewModel();
+        var canvas = new DBWeaver.UI.ViewModels.CanvasViewModel();
         var vm = new ExplainPlanViewModel(canvas);
 
         // Before any run, ErrorMessage must be null/empty (no spurious errors shown)
@@ -134,7 +134,7 @@ public class ExplainPlanViewModelFireAndForgetTests
     [Fact]
     public void IsLoading_InitiallyFalse()
     {
-        var canvas = new VisualSqlArchitect.UI.ViewModels.CanvasViewModel();
+        var canvas = new DBWeaver.UI.ViewModels.CanvasViewModel();
         var vm = new ExplainPlanViewModel(canvas);
 
         Assert.False(vm.IsLoading);
@@ -143,7 +143,7 @@ public class ExplainPlanViewModelFireAndForgetTests
     [Fact]
     public void HasData_FalseWhenNoSteps()
     {
-        var canvas = new VisualSqlArchitect.UI.ViewModels.CanvasViewModel();
+        var canvas = new DBWeaver.UI.ViewModels.CanvasViewModel();
         var vm = new ExplainPlanViewModel(canvas);
 
         // With no steps and not loading, HasData must be false
@@ -154,7 +154,7 @@ public class ExplainPlanViewModelFireAndForgetTests
     [Fact]
     public void Close_SetsIsVisible_False()
     {
-        var canvas = new VisualSqlArchitect.UI.ViewModels.CanvasViewModel();
+        var canvas = new DBWeaver.UI.ViewModels.CanvasViewModel();
         var vm = new ExplainPlanViewModel(canvas);
 
         vm.Close();

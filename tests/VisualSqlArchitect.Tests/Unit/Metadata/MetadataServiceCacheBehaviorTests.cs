@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Metadata;
+namespace DBWeaver.Tests.Unit.Metadata;
 
 public sealed class MetadataServiceCacheBehaviorTests
 {
@@ -72,7 +72,7 @@ public sealed class MetadataServiceCacheBehaviorTests
     public async Task AddMetadataIntelligence_RegistersJoinSuggestionEngine_AndMetadataServiceFactory()
     {
         var services = new ServiceCollection();
-        services.AddVisualSqlArchitect();
+        services.AddDBWeaver();
         services.AddMetadataIntelligence();
 
         await using ServiceProvider provider = services.BuildServiceProvider();
@@ -85,7 +85,7 @@ public sealed class MetadataServiceCacheBehaviorTests
     public async Task AddMetadataIntelligence_ConfigureCallback_OverridesOptionDefaults()
     {
         var services = new ServiceCollection();
-        services.AddVisualSqlArchitect();
+        services.AddDBWeaver();
         services.AddMetadataIntelligence(opts => opts.CacheTtl = TimeSpan.FromSeconds(9));
 
         await using ServiceProvider provider = services.BuildServiceProvider();
@@ -99,7 +99,7 @@ public sealed class MetadataServiceCacheBehaviorTests
     {
         var customEngine = new RecordingJoinSuggestionEngine();
         var services = new ServiceCollection();
-        services.AddVisualSqlArchitect();
+        services.AddDBWeaver();
         services.AddMetadataIntelligence(
             configure: null,
             configureIntelligence: intelligence =>

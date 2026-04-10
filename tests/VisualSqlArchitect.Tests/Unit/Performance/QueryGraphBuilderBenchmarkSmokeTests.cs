@@ -1,11 +1,11 @@
 ﻿using Avalonia;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.QueryPreview;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.Services.QueryPreview;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Performance;
+namespace DBWeaver.Tests.Unit.Performance;
 
 public class QueryGraphBuilderBenchmarkSmokeTests
 {

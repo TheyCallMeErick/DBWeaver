@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:ctrl="using:DBWeaver.UI.Controls"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.SidebarControl"
+             x:DataType="vm:SidebarViewModel"
+             VerticalAlignment="Stretch"
+             HorizontalAlignment="Stretch">
+
+  <!-- Tab Bar Style -->
+  <UserControl.Styles>
+    <Style Selector="Button.tab-button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="FontWeight" Value="{StaticResource FontWeightStrong}"/>
+      <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+      <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+      <Setter Property="Padding" Value="14,9"/>
+      <Setter Property="MinHeight" Value="42"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="CornerRadius" Value="0"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.1"/>
+          <BrushTransition Property="Foreground" Duration="0:0:0.1"/>
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.tab-button:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+
+    <Style Selector="Button.tab-button.active">
+      <Setter Property="Background" Value="{StaticResource AccentTealBrush}"/>
+      <Setter Property="Foreground" Value="{StaticResource BtnPrimaryFgBrush}"/>
+    </Style>
+
+    <Style Selector="Button.tab-button:focus-visible">
+      <Setter Property="Border.BorderBrush" Value="{StaticResource BorderActiveBrush}"/>
+      <Setter Property="Border.BorderThickness" Value="0,0,0,2"/>
+    </Style>
+
+    <Style Selector="Button.tab-button:disabled">
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="Opacity" Value="0.62"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="42,*,Auto">
+
+    <!-- Tab Bar (Header) -->
+    <Border Grid.Row="0"
+          Background="{StaticResource Bg1Brush}"
+          BorderBrush="{StaticResource BorderSubtleBrush}"
+            BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Spacing="0">
+
+        <!-- Nodes Tab -->
+        <Button x:Name="NodesTabButton"
+                Classes="tab-button"
+                Classes.active="{Binding ShowNodes}"
+          Content="{Binding [sidebar.tab.nodes], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+        <!-- Connection Tab -->
+        <Button x:Name="ConnectionTabButton"
+                Classes="tab-button"
+                Classes.active="{Binding ShowConnection}"
+          Content="{Binding [sidebar.tab.connection], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+      </StackPanel>
+    </Border>
+
+    <!-- Tab Content Area -->
+    <Grid Grid.Row="1" RowDefinitions="*">
+      <!-- Nodes Tab -->
+      <Grid IsVisible="{Binding ShowNodes}" Grid.Column="0">
+        <ctrl:NodesListControl x:Name="NodesControl"/>
+      </Grid>
+
+      <!-- Connection Tab -->
+      <Grid IsVisible="{Binding ShowConnection}" Grid.Column="0" VerticalAlignment="Stretch">
+        <ctrl:ConnectionTabControl x:Name="ConnectionControl"
+                                   VerticalAlignment="Stretch"
+                                   HorizontalAlignment="Stretch"/>
+      </Grid>
+
+    </Grid>
+
+    <!-- Footer (Add Node button) -->
+    <Border Grid.Row="2"
+          Background="{StaticResource Bg1Brush}"
+          BorderBrush="{StaticResource BorderSubtleBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="8,6"
+            IsVisible="{Binding ShowNodes}">
+      <Grid>
+        <Button Content="{Binding [sidebar.addNode], Source={x:Static loc:LocalizationService.Instance}}"
+        Classes="success"
+          Command="{Binding AddNodeCommand}"
+                Padding="10,7"
+        FontSize="{StaticResource FontSizeCaption}"
+              FontWeight="{StaticResource FontWeightLabel}"
+          CornerRadius="{StaticResource RadiusSM}"
+                BorderThickness="0"
+                HorizontalAlignment="Stretch"/>
+      </Grid>
+    </Border>
+  </Grid>
+
+</UserControl>

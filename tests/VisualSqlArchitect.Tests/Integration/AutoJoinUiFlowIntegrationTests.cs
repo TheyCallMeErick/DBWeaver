@@ -1,10 +1,9 @@
 using System.Collections.ObjectModel;
 using Avalonia;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Services.Localization;
-using VisualSqlArchitect.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Integration;
+
+
+namespace Integration;
 
 public class AutoJoinUiFlowIntegrationTests
 {
@@ -50,7 +49,7 @@ public class AutoJoinUiFlowIntegrationTests
         ctx.Controller.RunSelectedAutoJoin();
 
         Assert.True(ctx.ManualJoinDialog.IsVisible);
-        Assert.Equal(EToastSeverity.Warning, ctx.Toasts.Severity);
+        Assert.Equal(ToastSeverity.Warning, ctx.Toasts.Severity);
 
         ctx.ManualJoinDialog.SelectedLeftColumn = ctx.ManualJoinDialog.LeftColumns
             .First(c => c.Name.Equals("id", StringComparison.OrdinalIgnoreCase));
@@ -61,7 +60,7 @@ public class AutoJoinUiFlowIntegrationTests
         ctx.ManualJoinDialog.ConfirmCommand.Execute(null);
 
         Assert.False(ctx.ManualJoinDialog.IsVisible);
-        Assert.Equal(EToastSeverity.Success, ctx.Toasts.Severity);
+        Assert.Equal(ToastSeverity.Success, ctx.Toasts.Severity);
         Assert.Single(ctx.Nodes, n => n.Type == NodeType.Join);
         Assert.Equal(2, ctx.Connections.Count(c => c.ToPin?.Owner?.Type == NodeType.Join));
     }

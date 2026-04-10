@@ -1,6 +1,6 @@
-using VisualSqlArchitect.CanvasKit;
+using DBWeaver.CanvasKit;
 
-namespace VisualSqlArchitect.Tests.Unit.CanvasLib;
+namespace DBWeaver.Tests.Unit.CanvasLib;
 
 public sealed class CanvasWireGeometryTests
 {

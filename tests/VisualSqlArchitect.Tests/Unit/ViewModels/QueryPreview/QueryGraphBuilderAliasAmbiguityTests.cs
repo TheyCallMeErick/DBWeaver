@@ -1,11 +1,11 @@
 ﻿using Avalonia;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.QueryPreview;
-using static VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview.QueryPreviewTestNodeFactory;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.Services.QueryPreview;
+using static DBWeaver.Tests.Unit.ViewModels.QueryPreview.QueryPreviewTestNodeFactory;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 
 public class QueryGraphBuilderAliasAmbiguityTests
 {

@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.Services;
+using DBWeaver.UI.Services;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class CredentialVaultStoreTests
 {
@@ -18,7 +18,7 @@ public class CredentialVaultStoreTests
 
             vault.SaveSecret(profileId, secret);
 
-            string vaultPath = Path.Combine(root, "VisualSqlArchitect", "credentials.vault.json");
+            string vaultPath = Path.Combine(root, "DBWeaver", "credentials.vault.json");
             Assert.True(File.Exists(vaultPath));
 
             string json = File.ReadAllText(vaultPath);
@@ -90,7 +90,7 @@ public class CredentialVaultStoreTests
             const string secret = "SensitivePassword!99";
             vault.SaveSecret("p1", secret);
 
-            string vaultPath = Path.Combine(root, "VisualSqlArchitect", "credentials.vault.json");
+            string vaultPath = Path.Combine(root, "DBWeaver", "credentials.vault.json");
             string json = File.ReadAllText(vaultPath);
 
             // The stored value must carry a protection prefix — never plaintext.
@@ -119,7 +119,7 @@ public class CredentialVaultStoreTests
         try
         {
             // Write a syntactically valid "enc:" entry whose base64 content is corrupt.
-            string vaultDir = Path.Combine(root, "VisualSqlArchitect");
+            string vaultDir = Path.Combine(root, "DBWeaver");
             Directory.CreateDirectory(vaultDir);
             string vaultPath = Path.Combine(vaultDir, "credentials.vault.json");
             File.WriteAllText(vaultPath, """{"p1":"enc:dGhpcyBpcyBub3QgdmFsaWQgY2lwaGVydGV4dA=="}""");
@@ -145,7 +145,7 @@ public class CredentialVaultStoreTests
 
         try
         {
-            string vaultDir = Path.Combine(root, "VisualSqlArchitect");
+            string vaultDir = Path.Combine(root, "DBWeaver");
             Directory.CreateDirectory(vaultDir);
             string vaultPath = Path.Combine(vaultDir, "credentials.vault.json");
             File.WriteAllText(vaultPath, "{ not-valid-json");

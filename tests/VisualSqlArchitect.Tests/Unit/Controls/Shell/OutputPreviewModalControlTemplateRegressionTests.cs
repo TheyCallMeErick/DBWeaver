@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls.Shell;
+namespace DBWeaver.Tests.Unit.Controls.Shell;
 
 public class OutputPreviewModalControlTemplateRegressionTests
 {
@@ -22,8 +22,8 @@ public class OutputPreviewModalControlTemplateRegressionTests
         string xaml = ReadControlXaml();
 
         Assert.Contains("Style Selector=\"ae|TextEditor.ddl-output\"", xaml);
-        Assert.Contains("Background\" Value=\"#070B10\"", xaml);
-        Assert.Contains("BorderBrush\" Value=\"{StaticResource MacroBorderSubtleBrush}\"", xaml);
+        Assert.Contains("Background\" Value=\"{StaticResource Bg0Brush}\"", xaml);
+        Assert.Contains("BorderBrush\" Value=\"{StaticResource BorderSubtleBrush}\"", xaml);
         Assert.Contains("FontFamily\" Value=\"{StaticResource MonoFont}\"", xaml);
     }
 
@@ -35,7 +35,7 @@ public class OutputPreviewModalControlTemplateRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "Shell",
                 "OutputPreviewModalControl.axaml"

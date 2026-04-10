@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.Services.Localization;
+using DBWeaver.UI.Services.Localization;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class LocalizationServiceTests
 {

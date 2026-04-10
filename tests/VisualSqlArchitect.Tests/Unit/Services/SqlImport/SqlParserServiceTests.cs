@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.Services.SqlImport;
+using DBWeaver.UI.Services.SqlImport;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services.SqlImport;
+namespace DBWeaver.Tests.Unit.Services.SqlImport;
 
 public class SqlParserServiceTests
 {

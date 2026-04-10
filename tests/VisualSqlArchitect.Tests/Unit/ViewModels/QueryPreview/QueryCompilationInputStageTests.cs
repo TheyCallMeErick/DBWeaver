@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.QueryPreview;
+﻿using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.Services.QueryPreview;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 
 public class QueryCompilationInputStageTests
 {
@@ -42,6 +42,32 @@ public class QueryCompilationInputStageTests
         Assert.Empty(result.Errors);
     }
 
+    [Fact]
+    public void Execute_WhenMultipleTopLevelOutputsExist_ShortCircuitsWithAmbiguityGuidance()
+    {
+        var stage = CreateStage();
+        var canvas = new CanvasViewModel();
+        canvas.Nodes.Clear();
+        canvas.Connections.Clear();
+
+        NodeViewModel table = QueryPreviewTestNodeFactory.NumberTable("public.orders", "id");
+        NodeViewModel outputA = QueryPreviewTestNodeFactory.Node(NodeType.ResultOutput);
+        NodeViewModel outputB = QueryPreviewTestNodeFactory.Node(NodeType.ResultOutput);
+
+        canvas.Nodes.Add(table);
+        canvas.Nodes.Add(outputA);
+        canvas.Nodes.Add(outputB);
+        QueryPreviewTestNodeFactory.Connect(canvas, table, "id", outputA, "column");
+        QueryPreviewTestNodeFactory.Connect(canvas, table, "id", outputB, "column");
+
+        QueryCompilationInputStageResult result = stage.Execute(
+            new QueryCompilationPipelineContext(canvas, DatabaseProvider.Postgres));
+
+        Assert.True(result.ShouldShortCircuit);
+        Assert.Null(result.Snapshot);
+        Assert.Contains("Multiple top-level Result Output nodes", result.ShortCircuitSql, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static QueryCompilationInputStage CreateStage() =>
         new(
             ctes => ctes.ToDictionary(
@@ -56,4 +82,3 @@ public class QueryCompilationInputStageTests
                     string.Equals(name, "column", StringComparison.OrdinalIgnoreCase));
 
 }
-

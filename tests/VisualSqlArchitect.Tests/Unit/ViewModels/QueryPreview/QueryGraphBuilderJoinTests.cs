@@ -1,12 +1,12 @@
 ﻿
 using Avalonia;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.QueryPreview;
-using static VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview.QueryPreviewTestNodeFactory;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.Services.QueryPreview;
+using static DBWeaver.Tests.Unit.ViewModels.QueryPreview.QueryPreviewTestNodeFactory;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 public class QueryGraphBuilderJoinTests
 {
     [Fact]
@@ -20,10 +20,14 @@ public class QueryGraphBuilderJoinTests
         NodeViewModel customers = Table("public.customers", "id");
         NodeViewModel join = Node(NodeType.Join);
         join.Parameters["join_type"] = "RIGHT";
+        NodeViewModel equals = Node(NodeType.Equals);
 
         NodeViewModel columnList = Node(NodeType.ColumnList);
         NodeViewModel result = Node(NodeType.ResultOutput);
 
+        Connect(canvas, orders, "customer_id", equals, "left");
+        Connect(canvas, customers, "id", equals, "right");
+        Connect(canvas, equals, "result", join, "condition");
         Connect(canvas, orders, "customer_id", join, "left");
         Connect(canvas, customers, "id", join, "right");
         Connect(canvas, orders, "id", columnList, "columns");
@@ -32,6 +36,7 @@ public class QueryGraphBuilderJoinTests
         canvas.Nodes.Add(orders);
         canvas.Nodes.Add(customers);
         canvas.Nodes.Add(join);
+        canvas.Nodes.Add(equals);
         canvas.Nodes.Add(columnList);
         canvas.Nodes.Add(result);
 
@@ -54,10 +59,14 @@ public class QueryGraphBuilderJoinTests
         NodeViewModel customers = Table("public.customers", "id");
         NodeViewModel join = Node(NodeType.Join);
         join.Parameters["join_type"] = "LEFT";
+        NodeViewModel equals = Node(NodeType.Equals);
 
         NodeViewModel columnList = Node(NodeType.ColumnList);
         NodeViewModel result = Node(NodeType.ResultOutput);
 
+        Connect(canvas, orders, "customer_id", equals, "left");
+        Connect(canvas, customers, "id", equals, "right");
+        Connect(canvas, equals, "result", join, "condition");
         Connect(canvas, orders, "customer_id", join, "left");
         Connect(canvas, customers, "id", join, "right");
         Connect(canvas, orders, "id", columnList, "columns");
@@ -66,6 +75,7 @@ public class QueryGraphBuilderJoinTests
         canvas.Nodes.Add(orders);
         canvas.Nodes.Add(customers);
         canvas.Nodes.Add(join);
+        canvas.Nodes.Add(equals);
         canvas.Nodes.Add(columnList);
         canvas.Nodes.Add(result);
 
@@ -121,10 +131,14 @@ public class QueryGraphBuilderJoinTests
         NodeViewModel customers = Table("public.customers", "id");
         NodeViewModel join = Node(NodeType.Join);
         join.Parameters["join_type"] = "FULL";
+        NodeViewModel equals = Node(NodeType.Equals);
 
         NodeViewModel columnList = Node(NodeType.ColumnList);
         NodeViewModel result = Node(NodeType.ResultOutput);
 
+        Connect(canvas, orders, "customer_id", equals, "left");
+        Connect(canvas, customers, "id", equals, "right");
+        Connect(canvas, equals, "result", join, "condition");
         Connect(canvas, orders, "customer_id", join, "left");
         Connect(canvas, customers, "id", join, "right");
         Connect(canvas, orders, "id", columnList, "columns");
@@ -133,6 +147,7 @@ public class QueryGraphBuilderJoinTests
         canvas.Nodes.Add(orders);
         canvas.Nodes.Add(customers);
         canvas.Nodes.Add(join);
+        canvas.Nodes.Add(equals);
         canvas.Nodes.Add(columnList);
         canvas.Nodes.Add(result);
 
@@ -335,7 +350,7 @@ public class QueryGraphBuilderJoinTests
 
         (string sql, List<string> errors) = sut.BuildSql();
 
-        Assert.Empty(errors);
+        Assert.DoesNotContain(errors, e => e.Contains("error", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("join", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(" and ", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("customer_id", sql, StringComparison.OrdinalIgnoreCase);

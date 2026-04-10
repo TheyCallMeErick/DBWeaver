@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.Core;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels.Canvas;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class MySqlExplainExecutorTests
 {
@@ -120,6 +120,28 @@ public class MySqlExplainExecutorTests
         Assert.Contains(result.Nodes, n => n.AlertLabel == "SEQ SCAN");
     }
 
+    [Fact]
+    public async Task RunAsync_DoesNotFallback_WhenAnalyzeIsCancelled()
+    {
+        var runner = new FakeRunner(analyzeText: "unused", jsonText: "{}")
+        {
+            ThrowCancellationOnAnalyze = true
+        };
+        var sut = new MySqlExplainExecutor(runner, new MySqlExplainPlanParser());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            sut.RunAsync(
+                "SELECT * FROM orders",
+                DatabaseProvider.MySql,
+                BuildMySqlConfig(),
+                new ExplainOptions(IncludeAnalyze: true),
+                ct: new CancellationToken(canceled: true))
+        );
+
+        Assert.Equal(1, runner.AnalyzeCalls);
+        Assert.Equal(0, runner.JsonCalls);
+    }
+
     private static ConnectionConfig BuildMySqlConfig() =>
         new(
             Provider: DatabaseProvider.MySql,
@@ -133,6 +155,7 @@ public class MySqlExplainExecutorTests
     private sealed class FakeRunner(string analyzeText, string jsonText) : IMySqlExplainQueryRunner
     {
         public bool ThrowOnAnalyze { get; init; }
+        public bool ThrowCancellationOnAnalyze { get; init; }
         public int AnalyzeCalls { get; private set; }
         public int JsonCalls { get; private set; }
 
@@ -153,10 +176,11 @@ public class MySqlExplainExecutorTests
         )
         {
             AnalyzeCalls++;
+            if (ThrowCancellationOnAnalyze)
+                throw new OperationCanceledException(ct);
             if (ThrowOnAnalyze)
                 throw new InvalidOperationException("analyze not supported");
             return Task.FromResult(analyzeText);
         }
     }
 }
-

@@ -1,8 +1,8 @@
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+
+using DBWeaver.UI.ViewModels.Canvas;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Integration;
+namespace Integration;
 
 public class SqlImportPartialFallbackIntegrationTests
 {
@@ -17,13 +17,14 @@ public class SqlImportPartialFallbackIntegrationTests
             "WITH cte AS (SELECT id FROM public.orders) SELECT id FROM cte";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, r =>
-            r.Status == EImportItemStatus.Imported
+            r.Status == ImportItemStatus.Imported
             && r.Label.Contains("CTE", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(canvas.SqlImporter.Report, r =>
-            r.Status == EImportItemStatus.Skipped
+            r.Status == ImportItemStatus.Skipped
             && r.Label.Contains("CTE / sub-query", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -35,20 +36,20 @@ public class SqlImportPartialFallbackIntegrationTests
         canvas.SqlImporter.ImportStartDelayMs = 0;
         canvas.SqlImporter.ImportTimeout = TimeSpan.FromSeconds(5);
         canvas.SqlImporter.SqlInput =
-            "SELECT unknown_col FROM orders ORDER BY id DESC";
+            "SELECT id FROM public.orders UNION SELECT id FROM public.customers";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
 
         var problematic = canvas.SqlImporter.Report
-            .Where(r => r.Status is EImportItemStatus.Partial or EImportItemStatus.Skipped)
+            .Where(r => r.Status is ImportItemStatus.Partial or ImportItemStatus.Skipped)
             .ToList();
 
         Assert.NotEmpty(problematic);
         Assert.All(problematic, item => Assert.False(string.IsNullOrWhiteSpace(item.Note)));
-        Assert.Contains(problematic, item => item.Label.Contains("Column:", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(canvas.SqlImporter.Report, item => item.Label.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(problematic, item => item.Label.Contains("UNION", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -62,10 +63,11 @@ public class SqlImportPartialFallbackIntegrationTests
             "SELECT o.id FROM public.orders o WHERE EXISTS (SELECT 1 FROM public.order_items i WHERE i.order_id = o.id)";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, item =>
-            item.Status == EImportItemStatus.Imported
+            item.Status == ImportItemStatus.Imported
             && item.Label.Contains("EXISTS", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -80,6 +82,7 @@ public class SqlImportPartialFallbackIntegrationTests
             "SELECT o.id FROM public.orders o WHERE EXISTS (SELECT 1 FROM public.order_items i WHERE i.order_id = o.id AND i.customer_id = o.customer_id)";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, item =>
@@ -99,10 +102,11 @@ public class SqlImportPartialFallbackIntegrationTests
             "WITH 1cte AS (SELECT id FROM public.orders) SELECT id FROM 1cte";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, item =>
-            item.Status == EImportItemStatus.Partial
+            item.Status == ImportItemStatus.Partial
             && item.Label.Contains("CTE name diagnostics", StringComparison.OrdinalIgnoreCase)
             && (item.Note ?? string.Empty).Contains("Invalid CTE name", StringComparison.OrdinalIgnoreCase));
     }
@@ -118,10 +122,11 @@ public class SqlImportPartialFallbackIntegrationTests
             "WITH cte AS (SELECT id FROM public.orders), cte AS (SELECT id FROM public.customers) SELECT id FROM cte";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, item =>
-            item.Status == EImportItemStatus.Partial
+            item.Status == ImportItemStatus.Partial
             && item.Label.Contains("CTE name diagnostics", StringComparison.OrdinalIgnoreCase)
             && (item.Note ?? string.Empty).Contains("Duplicate CTE name", StringComparison.OrdinalIgnoreCase));
     }
@@ -137,14 +142,15 @@ public class SqlImportPartialFallbackIntegrationTests
             "WITH cte_orders AS (SELECT id FROM public.orders) SELECT id FROM cte_orders";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, item =>
-            item.Status == EImportItemStatus.Imported
+            item.Status == ImportItemStatus.Imported
             && item.Label.Contains("CTE", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(canvas.SqlImporter.Report, item =>
             item.Label.Contains("CTE / sub-query", StringComparison.OrdinalIgnoreCase)
-            && item.Status == EImportItemStatus.Skipped);
+            && item.Status == ImportItemStatus.Skipped);
     }
 
     [Fact]
@@ -158,13 +164,14 @@ public class SqlImportPartialFallbackIntegrationTests
             "WITH cte_a AS (SELECT id FROM public.orders), cte_b AS (SELECT id FROM cte_a) SELECT id FROM cte_b";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, item =>
-            item.Status == EImportItemStatus.Imported
+            item.Status == ImportItemStatus.Imported
             && item.Label.Contains("CTE", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(canvas.SqlImporter.Report, item =>
             item.Label.Contains("CTE / sub-query", StringComparison.OrdinalIgnoreCase)
-            && item.Status == EImportItemStatus.Skipped);
+            && item.Status == ImportItemStatus.Skipped);
     }
 }

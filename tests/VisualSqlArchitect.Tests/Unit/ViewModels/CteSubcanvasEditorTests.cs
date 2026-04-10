@@ -1,10 +1,8 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using Avalonia;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Serialization;
-using VisualSqlArchitect.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class CteSubcanvasEditorTests
 {
@@ -110,6 +108,84 @@ public class CteSubcanvasEditorTests
         Assert.Contains(vm.Nodes, n => string.Equals(n.Subtitle, "public.orders", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(vm.Connections, c => c.ToPin?.Owner.Type == NodeType.ColumnList && c.ToPin.Name == "columns");
         Assert.Contains(vm.Connections, c => c.ToPin?.Owner.Type == NodeType.ResultOutput && c.ToPin.Name == "columns");
+    }
+
+    [Fact]
+    public async Task EnterSubqueryEditor_MaterializesOuterInputBridge()
+    {
+        var vm = new CanvasViewModel();
+        vm.Nodes.Clear();
+        vm.Connections.Clear();
+        vm.UndoRedo.Clear();
+
+        NodeViewModel table = vm.SpawnTableNode("public.orders", [("id", PinDataType.Number)], new Point(0, 0));
+        NodeViewModel subquery = vm.SpawnNode(NodeDefinitionRegistry.Get(NodeType.Subquery), new Point(280, 40));
+        subquery.IsSelected = true;
+
+        vm.ConnectPins(
+            table.OutputPins.First(pin => pin.Name == "id"),
+            subquery.InputPins.First(pin => pin.Name == "input_1"));
+
+        bool entered = await vm.EnterSelectedCteEditorAsync();
+
+        Assert.True(entered);
+        Assert.True(vm.IsInCteEditor);
+        Assert.Contains(vm.Nodes, n => string.Equals(n.Id, CanvasSerializer.SubqueryInputBridgeNodeId, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ExitSubqueryEditor_PersistsSubgraphAndQueryText()
+    {
+        var vm = new CanvasViewModel();
+        vm.Nodes.Clear();
+        vm.Connections.Clear();
+        vm.UndoRedo.Clear();
+
+        NodeViewModel table = vm.SpawnTableNode("public.orders", [("id", PinDataType.Number)], new Point(0, 0));
+        NodeViewModel subquery = vm.SpawnNode(NodeDefinitionRegistry.Get(NodeType.Subquery), new Point(280, 40));
+        vm.ConnectPins(
+            table.OutputPins.First(pin => pin.Name == "id"),
+            subquery.InputPins.First(pin => pin.Name == "input_1"));
+
+        Assert.True(await vm.EnterSubqueryEditorAsync(subquery));
+
+        NodeViewModel bridge = Assert.Single(vm.Nodes, n => n.Id == CanvasSerializer.SubqueryInputBridgeNodeId);
+        NodeViewModel result = Assert.Single(vm.Nodes, n => n.Type == NodeType.ResultOutput);
+        PinViewModel projectionPin = bridge.OutputPins.First(pin => pin.Name != "*");
+        vm.ConnectPins(projectionPin, result.InputPins.First(pin => pin.Name == "column"));
+
+        Assert.True(await vm.ExitCteEditorAsync());
+
+        NodeViewModel restored = Assert.Single(vm.Nodes, n => n.Type == NodeType.Subquery);
+        Assert.True(restored.Parameters.ContainsKey(CanvasSerializer.SubquerySubgraphParameterKey));
+        Assert.True(restored.Parameters.TryGetValue("query", out string? querySql));
+        Assert.Contains("SELECT", querySql ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task EnterSelectedCteEditor_SubqueryDefinition_OpensSubquerySubcanvas()
+    {
+        var vm = new CanvasViewModel();
+        vm.Nodes.Clear();
+        vm.Connections.Clear();
+        vm.UndoRedo.Clear();
+
+        NodeViewModel table = vm.SpawnTableNode("public.orders", [("id", PinDataType.Number)], new Point(0, 0));
+        NodeViewModel subqueryDefinition = vm.SpawnNode(NodeDefinitionRegistry.Get(NodeType.SubqueryDefinition), new Point(280, 40));
+        subqueryDefinition.IsSelected = true;
+
+        if (subqueryDefinition.InputPins.Any(pin => pin.Name == "input_1"))
+        {
+            vm.ConnectPins(
+                table.OutputPins.First(pin => pin.Name == "id"),
+                subqueryDefinition.InputPins.First(pin => pin.Name == "input_1"));
+        }
+
+        bool entered = await vm.EnterSelectedCteEditorAsync();
+
+        Assert.True(entered);
+        Assert.True(vm.IsInCteEditor);
+        Assert.Contains(vm.Nodes, n => string.Equals(n.Id, CanvasSerializer.SubqueryInputBridgeNodeId, StringComparison.Ordinal));
     }
 
     private static CanvasViewModel BuildCanvasWithCteSubgraph(out NodeViewModel cteNode, out string cteId)

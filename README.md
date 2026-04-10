@@ -1,6 +1,6 @@
 <div align="center">
 
-# Visual SQL Architect
+# DBWeaver
 
 **Crie consultas SQL visualmente - sem precisar digitar.**
 
@@ -24,7 +24,7 @@ Um designer SQL baseado em nós e canvas infinito que compila para SQL real e pa
 
 ## O que é?
 
-O Visual SQL Architect permite arrastar nós para o canvas e conectá-los para montar consultas SQL. Cada conexão vira um JOIN, cada nó de filtro vira uma cláusula WHERE, e o resultado aparece instantaneamente como SQL ao vivo abaixo do canvas - sem digitação, sem erros de sintaxe e sem dor de cabeça com dialetos.
+O DBWeaver permite arrastar nós para o canvas e conectá-los para montar consultas SQL. Cada conexão vira um JOIN, cada nó de filtro vira uma cláusula WHERE, e o resultado aparece instantaneamente como SQL ao vivo abaixo do canvas - sem digitação, sem erros de sintaxe e sem dor de cabeça com dialetos.
 
 Diagrama visual do fluxo (query por nós): veja [Diagramas compartilhados](#shared-diagrams).
 
@@ -107,9 +107,9 @@ Baixe o binário self-contained mais recente em [Releases](https://github.com/Th
 
 | Plataforma | Binário |
 |---|---|
-| Windows x64 | `VisualSqlArchitect-win-x64.exe` |
-| Linux x64 | `VisualSqlArchitect-linux-x64` |
-| macOS x64 | `VisualSqlArchitect-osx-x64` |
+| Windows x64 | `xe` |
+| Linux x64 | `` |
+| macOS x64 | `|
 
 ---
 
@@ -122,9 +122,7 @@ git clone https://github.com/TheyCallMeErick/VisualSqlArchtect.git
 cd VisualSqlArchtect
 
 # Executar a aplicação
-dotnet run --project src/VisualSqlArchitect.UI
-
-# Executar a suíte de testes
+dotnet run --project src/xecutar a suíte de testes
 dotnet test files.sln
 ```
 
@@ -157,7 +155,7 @@ O pipeline de CI roda em todo PR; o pipeline de release publica binários automa
 
 ### What is it?
 
-Visual SQL Architect is a node-based SQL designer with an infinite canvas. You connect nodes to compose queries visually: connections become JOINs, filter nodes become WHERE clauses, and the generated SQL is shown live below the canvas.
+DBWeaver is a node-based SQL designer with an infinite canvas. You connect nodes to compose queries visually: connections become JOINs, filter nodes become WHERE clauses, and the generated SQL is shown live below the canvas.
 
 ### Features
 
@@ -219,9 +217,9 @@ Get the latest self-contained binaries from [Releases](https://github.com/TheyCa
 
 | Platform | Binary |
 |---|---|
-| Windows x64 | `VisualSqlArchitect-win-x64.exe` |
-| Linux x64 | `VisualSqlArchitect-linux-x64` |
-| macOS x64 | `VisualSqlArchitect-osx-x64` |
+| Windows x64 | `xe` |
+| Linux x64 | `` |
+| macOS x64 | `|
 
 ### Build from source
 
@@ -232,9 +230,7 @@ git clone https://github.com/TheyCallMeErick/VisualSqlArchtect.git
 cd VisualSqlArchtect
 
 # Run the app
-dotnet run --project src/VisualSqlArchitect.UI
-
-# Run tests
+dotnet run --project src/un tests
 dotnet test files.sln
 ```
 
@@ -344,10 +340,7 @@ flowchart TD
     ROOT --> SRC[src]
     ROOT --> TESTS[tests]
 
-    SRC --> CORE[VisualSqlArchitect core]
-    SRC --> UI[VisualSqlArchitect UI]
-
-    CORE --> NODES[Nodes]
+    SRC --> CORE[  SRC --> UI[  CORE --> NODES[Nodes]
     CORE --> EXPR[Expressions]
     CORE --> META[Metadata]
     CORE --> PROV[Providers]
@@ -359,12 +352,11 @@ flowchart TD
     UI --> SERVICES[Services]
     UI --> SERIAL[Serialization]
 
-    TESTS --> TESTPROJ[VisualSqlArchitect.Tests]
-```
+    TESTS --> TESTPROJ[``
 
 ---
 
 <div align="center">
-Construído com Avalonia UI · .NET 9 · SqlKata  
+Construído com Avalonia UI · .NET 9 · SqlKata
 Built with Avalonia UI · .NET 9 · SqlKata
 </div>

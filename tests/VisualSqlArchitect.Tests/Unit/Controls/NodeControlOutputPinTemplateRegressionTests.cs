@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class NodeControlOutputPinTemplateRegressionTests
 {
@@ -9,7 +9,7 @@ public class NodeControlOutputPinTemplateRegressionTests
     public void OutputPinTemplates_KeepTypedLayerAndFallbackRing()
     {
         string repoRoot = FindRepoRoot();
-        string xamlPath = Path.Combine(repoRoot, "src", "VisualSqlArchitect.UI", "Controls", "Node", "NodeControl.axaml");
+        string xamlPath = Path.Combine(repoRoot, "src", "DBWeaver.UI", "Controls", "Node", "NodeControl.axaml");
 
         Assert.True(File.Exists(xamlPath));
 

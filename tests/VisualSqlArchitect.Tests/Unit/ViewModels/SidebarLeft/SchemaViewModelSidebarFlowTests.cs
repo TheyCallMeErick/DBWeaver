@@ -1,9 +1,9 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.SidebarLeft;
+namespace DBWeaver.Tests.Unit.ViewModels.SidebarLeft;
 
 public class SchemaViewModelSidebarFlowTests
 {
@@ -24,6 +24,8 @@ public class SchemaViewModelSidebarFlowTests
         Assert.True(vm.HasConnection);
         Assert.Equal("db", vm.DatabaseName);
         Assert.Empty(vm.Categories);
+        Assert.True(vm.ShowNoTablesState);
+        Assert.False(vm.ShowFilterEmptyState);
     }
 
     [Fact]
@@ -34,11 +36,9 @@ public class SchemaViewModelSidebarFlowTests
 
         Assert.True(vm.HasConnection);
         Assert.Equal("sample_db", vm.DatabaseName);
-        Assert.Equal(4, vm.Categories.Count);
+        Assert.Equal(2, vm.Categories.Count);
         Assert.Equal("Tables", vm.Categories[0].Name);
         Assert.Equal("Views", vm.Categories[1].Name);
-        Assert.Equal("Procedures", vm.Categories[2].Name);
-        Assert.Equal("Triggers", vm.Categories[3].Name);
 
         Assert.Single(vm.Categories[0].Items);
         Assert.Single(vm.Categories[1].Items);
@@ -68,9 +68,9 @@ public class SchemaViewModelSidebarFlowTests
 
         vm.FilterQuery = "nonexistent_filter";
 
-        Assert.Equal(2, vm.Categories.Count);
-        Assert.Equal("Procedures", vm.Categories[0].Name);
-        Assert.Equal("Triggers", vm.Categories[1].Name);
+        Assert.Empty(vm.Categories);
+        Assert.True(vm.ShowFilterEmptyState);
+        Assert.False(vm.ShowNoTablesState);
     }
 
     private static DbMetadata BuildSampleMetadata()

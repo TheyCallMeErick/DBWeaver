@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Integration;
+namespace DBWeaver.Tests.Integration;
 
 /// <summary>
 /// Integration tests for canvas save/load file operations.

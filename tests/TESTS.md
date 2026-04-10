@@ -5,8 +5,7 @@
 O projeto de testes está organizado em **categorias lógicas** com fixtures compartilhadas para evitar duplicação de código.
 
 ```
-tests/VisualSqlArchitect.Tests/
-├── Fixtures/                 # Fixtures compartilhadas
+tests/── Fixtures/                 # Fixtures compartilhadas
 │   └── TestFixtures.cs       # Builders e helpers para testes
 │
 ├── Unit/                     # Testes unitários
@@ -19,15 +18,15 @@ tests/VisualSqlArchitect.Tests/
 │
 ├── Integration/              # Testes de integração (futuro)
 │
-└── VisualSqlArchitect.Tests.csproj
+└── roj
 ```
 
 ## Namespaces
 
-- **VisualSqlArchitect.Tests.Fixtures** - Fixtures compartilhadas
-- **VisualSqlArchitect.Tests.Unit.Metadata** - Testes de metadados
-- **VisualSqlArchitect.Tests.Unit.Nodes** - Testes de emissão de nós
-- **VisualSqlArchitect.Tests.Unit.Queries** - Testes de queries
+- **tures** - Fixtures compartilhadas
+- **t.Metadata** - Testes de metadados
+- **t.Nodes** - Testes de emissão de nós
+- **t.Queries** - Testes de queries
 
 ## Arquivos de Teste
 
@@ -66,7 +65,7 @@ public class MyNodeTests
     {
         var ctx = TestFixtures.Node.PostgresContext;
         var column = TestFixtures.Node.OrderTotal;
-        
+
         // seu teste aqui
     }
 }
@@ -81,7 +80,7 @@ public class MyMetadataTests
     {
         var schema = TestFixtures.Metadata.CreateEcommerceSchema();
         var ordersTable = schema.FindTable("public", "orders");
-        
+
         // seu teste aqui
     }
 }
@@ -94,7 +93,7 @@ public class MyMetadataTests
 dotnet test
 
 # Apenas categoria específica
-dotnet test --filter "Namespace=VisualSqlArchitect.Tests.Unit.Nodes"
+dotnet test --filter "Namespace=t.Nodes"
 
 # Com saída verbosa
 dotnet test --verbosity=detailed
@@ -113,19 +112,19 @@ A pasta `Integration/` está reservada para testes que:
 
 | Categoria | Regras cobertas | Arquivos de teste |
 |---|---|---|
-| Type mismatch | Compatibilidade de pinos e conexoes invalidas | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderConnectionValidationTests.cs` |
-| Predicate | AND/OR/COMPILE WHERE redundante ou vazio; NOT sem condition (ativo) | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderLogicGateValidationTests.cs`; `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderNotAndJsonValidationTests.cs` |
-| Comparison | Inputs obrigatorios de comparacao; LIKE sem pattern | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderComparisonValidationTests.cs`; `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderQualifyTests.cs` |
-| Window | value/order/frame/offset/ntile validation | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderWindowFunctionTests.cs` |
-| CTE | nome, escopo, from inference, recursive prefix, CTE source alias | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderCteTests.cs` |
-| Join | Join explicito por tipo; join incompleto; fallback legado | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderJoinTests.cs` |
-| Subquery | shape SQL, alias handling e validacoes de subquery nodes | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderSubqueryTests.cs` |
-| Set operation | operador suportado, query obrigatoria, shape SELECT | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderSetOperationTests.cs` |
-| Query hints | hints por provider e validacao de sintaxe | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderQueryHintsTests.cs` |
-| Pivot | pivot/unpivot provider-aware e configuracao invalida | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderPivotTests.cs` |
-| Diagnostics estruturados | severidade/categoria/code + compatibilidade com mensagens legadas | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/PreviewDiagnosticMapperTests.cs`; `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderDiagnosticsTests.cs` |
-| Paginacao | TOP/LIMIT <= 0; OFFSET sem ORDER BY deterministico | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderPaginationValidationTests.cs` |
-| Alias ambiguo | duplicidade de alias no mesmo escopo; sem falso positivo cross-scope | `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryGraphBuilderAliasAmbiguityTests.cs` |
+| Type mismatch | Compatibilidade de pinos e conexoes invalidas | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderConnectionValidationTests.cs` |
+| Predicate | AND/OR/COMPILE WHERE redundante ou vazio; NOT sem condition (ativo) | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderLogicGateValidationTests.cs`; `tests/DBWeaver.Tls/QueryPreview/QueryGraphBuilderNotAndJsonValidationTests.cs` |
+| Comparison | Inputs obrigatorios de comparacao; LIKE sem pattern | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderComparisonValidationTests.cs`; `tests/DBWeaver.Tls/QueryPreview/QueryGraphBuilderQualifyTests.cs` |
+| Window | value/order/frame/offset/ntile validation | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderWindowFunctionTests.cs` |
+| CTE | nome, escopo, from inference, recursive prefix, CTE source alias | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderCteTests.cs` |
+| Join | Join explicito por tipo; join incompleto; fallback legado | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderJoinTests.cs` |
+| Subquery | shape SQL, alias handling e validacoes de subquery nodes | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderSubqueryTests.cs` |
+| Set operation | operador suportado, query obrigatoria, shape SELECT | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderSetOperationTests.cs` |
+| Query hints | hints por provider e validacao de sintaxe | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderQueryHintsTests.cs` |
+| Pivot | pivot/unpivot provider-aware e configuracao invalida | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderPivotTests.cs` |
+| Diagnostics estruturados | severidade/categoria/code + compatibilidade com mensagens legadas | `tests/t/ViewModels/QueryPreview/PreviewDiagnosticMapperTests.cs`; `tests/DBWeaver.Tls/QueryPreview/QueryGraphBuilderDiagnosticsTests.cs` |
+| Paginacao | TOP/LIMIT <= 0; OFFSET sem ORDER BY deterministico | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderPaginationValidationTests.cs` |
+| Alias ambiguo | duplicidade de alias no mesmo escopo; sem falso positivo cross-scope | `tests/t/ViewModels/QueryPreview/QueryGraphBuilderAliasAmbiguityTests.cs` |
 
 ### Regras criticas de warning (minimo 1 teste por regra)
 
@@ -149,8 +148,8 @@ A pasta `Integration/` está reservada para testes que:
 ## Snapshot critico de diagnosticos
 
 - Escopo: apenas codigos de diagnostico criticos do preview, evitando snapshot fragil de SQL completo.
-- Arquivo snapshot: `tests/VisualSqlArchitect.Tests/Fixtures/Snapshots/querypreview-diagnostic-codes.snap`.
-- Teste verificador: `tests/VisualSqlArchitect.Tests/Unit/ViewModels/QueryPreview/QueryPreviewDiagnosticSnapshotTests.cs`.
+- Arquivo snapshot: `tests/tures/Snapshots/querypreview-diagnostic-codes.snap`.
+- Teste verificador: `tests/t/ViewModels/QueryPreview/QueryPreviewDiagnosticSnapshotTests.cs`.
 
 ### Politica de atualizacao do snapshot
 

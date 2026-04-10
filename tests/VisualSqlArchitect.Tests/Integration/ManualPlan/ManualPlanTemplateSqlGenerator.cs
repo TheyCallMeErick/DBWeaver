@@ -1,7 +1,7 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Core;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Integration.ManualPlan;
+namespace DBWeaver.Tests.Integration.ManualPlan;
 
 internal static class ManualPlanTemplateSqlGenerator
 {

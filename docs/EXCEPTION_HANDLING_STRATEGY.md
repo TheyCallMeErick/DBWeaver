@@ -1,6 +1,4 @@
-# Estratégia de Tratamento de Exceções — VisualSqlArchitect
-
-Data: 2026-04-01
+# Estratégia de Tratamento de Exceções — 2026-04-01
 Escopo: domínio, infraestrutura e UI
 
 ## Objetivo
@@ -9,12 +7,11 @@ Padronizar como falhas são propagadas, logadas e exibidas ao usuário para evit
 
 ## Contrato por camada
 
-1. Domínio/Core (`VisualSqlArchitect`)
-- Operações de validação e configuração inválida devem lançar exceção.
+1. Domínio/Core (`ações de validação e configuração inválida devem lançar exceção.
 - Operações de execução tolerante (ex.: preview/teste de conexão) podem retornar `Result` com `Success=false` quando a falha for operacional esperada.
 - Nunca engolir exceções sem transformar em sinal explícito (`Result` ou evento de warning).
 
-2. Infraestrutura/Serviços (`VisualSqlArchitect.UI.Services`)
+2. Infraestrutura/Serviços (`es`)
 - Serviços de execução devem usar `ILogger<T>` para logs estruturados.
 - Exceções inesperadas devem ser logadas em `LogError` e repropagadas quando o chamador tiver contexto para decisão de UX.
 - Em persistência local de melhor-esforço, emitir warning observável (evento/callback) em vez de falha silenciosa.

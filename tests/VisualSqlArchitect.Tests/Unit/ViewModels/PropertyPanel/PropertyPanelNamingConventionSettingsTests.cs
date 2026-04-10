@@ -1,6 +1,6 @@
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.PropertyPanel;
+namespace DBWeaver.Tests.Unit.ViewModels.PropertyPanel;
 
 public class PropertyPanelNamingConventionSettingsTests
 {

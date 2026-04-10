@@ -1,11 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Controls;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Controls;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class PinDragInteractionTests
 {

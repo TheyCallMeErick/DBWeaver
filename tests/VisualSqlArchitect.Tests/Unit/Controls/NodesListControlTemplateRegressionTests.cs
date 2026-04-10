@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class NodesListControlTemplateRegressionTests
 {
@@ -33,7 +33,7 @@ public class NodesListControlTemplateRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "SidebarLeft",
                 "NodesListControl.axaml"

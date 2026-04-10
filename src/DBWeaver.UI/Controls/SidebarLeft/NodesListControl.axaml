@@ -1,0 +1,416 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.NodesListControl"
+             x:DataType="vm:NodesListViewModel"
+             Background="{StaticResource Bg0Brush}">
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.group-header">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+      <Setter Property="FontWeight" Value="{StaticResource FontWeightStrong}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+      <Setter Property="Margin" Value="12,14,12,8"/>
+    </Style>
+
+    <Style Selector="Border.node-card">
+      <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusLG}"/>
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+      <Setter Property="RenderTransform" Value="scale(1)"/>
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowSM}"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.1"/>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15"/>
+          <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Border.node-card:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderActiveBrush}"/>
+      <Setter Property="RenderTransform" Value="scale(1.02)"/>
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowLG}"/>
+    </Style>
+
+    <Style Selector="Border.node-card.selected">
+      <Setter Property="Background" Value="{StaticResource BtnInfoBgBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderActiveBrush}"/>
+      <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+
+    <Style Selector="Button.node-card-button">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.node-card-button:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.985)"/>
+    </Style>
+
+    <Style Selector="TextBlock.node-card-title">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+      <Setter Property="FontWeight" Value="{StaticResource FontWeightStrong}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+      <Setter Property="TextAlignment" Value="Center"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="MaxLines" Value="2"/>
+    </Style>
+
+    <Style Selector="TextBlock.node-card-subtitle">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="TextAlignment" Value="Center"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="MaxLines" Value="3"/>
+      <Setter Property="Opacity" Value="0.8"/>
+    </Style>
+
+    <Style Selector="Button.node-card-button:pointerover Border.node-card">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderActiveBrush}"/>
+    </Style>
+
+    <Style Selector="StackPanel.nodes-empty-state TextBlock">
+      <Setter Property="TextAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="Border.node-tooltip">
+      <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusLG}"/>
+      <Setter Property="Padding" Value="10"/>
+      <Setter Property="MaxWidth" Value="360"/>
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowLG}"/>
+    </Style>
+
+    <Style Selector="ToolTip.node-tooltip-shell">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Margin" Value="0"/>
+    </Style>
+
+    <Style Selector="Border.node-tooltip-tag">
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+      <Setter Property="Padding" Value="7,2"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Margin" Value="0,0,5,5"/>
+    </Style>
+
+    <Style Selector="Border.node-card-tag">
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+      <Setter Property="Padding" Value="5,1"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Margin" Value="0,0,4,0"/>
+    </Style>
+
+    <Style Selector="TextBlock.tag-chip-text">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontWeight" Value="{StaticResource FontWeightStrong}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,*">
+
+    <!-- Search Bar -->
+    <Border Grid.Row="0"
+          Background="{StaticResource Bg1Brush}"
+          BorderBrush="{StaticResource BorderSubtleBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="12,10,12,10">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <mi:MaterialIcon Grid.Column="0"
+                         Kind="Magnify"
+                         Foreground="{StaticResource TextSecondaryBrush}"
+                         VerticalAlignment="Center"
+                         Margin="0,0,8,0"
+                         Width="18"
+                         Height="18"/>
+        <TextBox Grid.Column="1"
+                 Name="NodesSearchBox"
+                 Classes="sidebar-input"
+                 Text="{Binding SearchQuery}"
+                 Watermark="{Binding [nodesList.search], Source={x:Static loc:LocalizationService.Instance}}"
+                 Background="Transparent"
+                 BorderBrush="Transparent"
+                 BorderThickness="1"
+                 Foreground="{StaticResource TextPrimaryBrush}"
+                 Padding="4,0,0,0"
+                 FontSize="{StaticResource FontSizeBody}"/>
+        <Button Grid.Column="2"
+                Content="✕"
+                IsVisible="{Binding SearchQuery, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Command="{Binding ClearSearchCommand}"
+                Background="Transparent"
+                Foreground="{StaticResource TextSecondaryBrush}"
+                Padding="4,2"
+                Margin="6,0,0,0"
+                FontSize="{StaticResource FontSizeTitle}"/>
+      </Grid>
+    </Border>
+
+    <!-- Groups and Items Scroller -->
+    <ScrollViewer Grid.Row="2"
+                  VerticalScrollBarVisibility="Auto"
+                  IsVisible="{Binding HasResults}"
+                  Theme="{StaticResource FluentScrollViewer}">
+      <StackPanel Margin="0,0,0,8">
+        <ItemsControl ItemsSource="{Binding FilteredGroups}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:NodeTypeGroupViewModel">
+              <StackPanel Spacing="0">
+                <!-- Group Header with category color -->
+                <Grid Margin="12,14,12,8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+
+                  <!-- Category indicator dot + name -->
+                  <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8" Fill="{Binding Color}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Name}"
+                               Foreground="{Binding Color}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               FontWeight="{StaticResource FontWeightStrong}"/>
+                  </StackPanel>
+
+                  <!-- Count -->
+                  <TextBlock Grid.Column="2"
+                             Text="{Binding Count}"
+                             Foreground="{StaticResource TextSecondaryBrush}"
+                             FontSize="{StaticResource FontSizeCaption}"
+                             VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- Items Grid (Wrapping layout) -->
+                <ItemsControl ItemsSource="{Binding Items}"
+                              IsVisible="{Binding IsExpanded}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel Orientation="Horizontal" Margin="8,0,8,8"/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:NodeTypeItemViewModel">
+                      <Button Classes="node-card-button"
+                              Command="{Binding SpawnNodeCommand}"
+                              PointerPressed="OnNodeCardPointerPressed"
+                              PointerMoved="OnNodeCardPointerMoved"
+                              PointerReleased="OnNodeCardPointerReleased"
+                              Width="110"
+                          Height="132"
+                                Margin="4,5"
+                              Padding="0"
+                              Background="Transparent"
+                              BorderThickness="0">
+                        <ToolTip.Tip>
+                          <ToolTip Classes="node-tooltip-shell">
+                            <Border Classes="node-tooltip">
+                              <StackPanel Spacing="8">
+                              <TextBlock Text="{Binding Title}"
+                                         FontSize="{StaticResource FontSizeBody}"
+                                         FontWeight="{StaticResource FontWeightStrong}"
+                                         Foreground="{StaticResource TextPrimaryBrush}"/>
+                              <TextBlock Text="{Binding Subtitle}"
+                                         FontSize="{StaticResource FontSizeCaption}"
+                                         Foreground="{StaticResource TextSecondaryBrush}"
+                                         TextWrapping="Wrap"/>
+
+                              <ItemsControl ItemsSource="{Binding TooltipTags}"
+                                            IsVisible="{Binding HasTooltipTags}">
+                                <ItemsControl.ItemsPanel>
+                                  <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                  </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate DataType="vm:NodeTagTooltipItemViewModel">
+                                <Border Classes="node-tooltip-tag"
+                                            Background="{Binding BackgroundColor}"
+                                            BorderBrush="{Binding BorderColor}">
+                                      <TextBlock Text="{Binding Name}"
+                                                 Foreground="{Binding ForegroundColor}"
+                                                 FontSize="{StaticResource FontSizeCaption}"
+                                                 Classes="tag-chip-text"/>
+                                    </Border>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+
+                              <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="4">
+                                  <TextBlock Text="{Binding [tooltip.pins.inputs], Source={x:Static loc:LocalizationService.Instance}}"
+                                             FontSize="{StaticResource FontSizeCaption}"
+                                             FontWeight="{StaticResource FontWeightStrong}"
+                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                  <ItemsControl ItemsSource="{Binding InputPins}" IsVisible="{Binding HasInputPins}">
+                                    <ItemsControl.ItemTemplate>
+                                      <DataTemplate DataType="vm:NodePinTooltipItemViewModel">
+                                        <Grid ColumnDefinitions="Auto,Auto,*">
+                                          <TextBlock Text="{Binding ShapeGlyph}"
+                                                     Foreground="{Binding Color}"
+                                                     FontFamily="{StaticResource MonoFont}"
+                                                     FontSize="{StaticResource FontSizeCaption}"
+                                                     VerticalAlignment="Center"/>
+                                          <TextBlock Text="{Binding Name}"
+                                                     Margin="6,0,0,0"
+                                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                                     FontSize="{StaticResource FontSizeCaption}"
+                                                     VerticalAlignment="Center"/>
+                                          <TextBlock Grid.Column="2"
+                                                     Text="{Binding TypeName}"
+                                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                                     FontFamily="{StaticResource MonoFont}"
+                                                     FontSize="{StaticResource FontSizeCaption}"
+                                                     VerticalAlignment="Center"
+                                                     HorizontalAlignment="Right"/>
+                                        </Grid>
+                                      </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                                  <TextBlock Text="{Binding [tooltip.pins.none], Source={x:Static loc:LocalizationService.Instance}}"
+                                             FontSize="{StaticResource FontSizeCaption}"
+                                             Foreground="{StaticResource TextMutedBrush}"
+                                             IsVisible="{Binding HasInputPins, Converter={x:Static BoolConverters.Not}}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Spacing="4" Margin="10,0,0,0">
+                                  <TextBlock Text="{Binding [tooltip.pins.outputs], Source={x:Static loc:LocalizationService.Instance}}"
+                                             FontSize="{StaticResource FontSizeCaption}"
+                                             FontWeight="{StaticResource FontWeightStrong}"
+                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                  <ItemsControl ItemsSource="{Binding OutputPins}" IsVisible="{Binding HasOutputPins}">
+                                    <ItemsControl.ItemTemplate>
+                                      <DataTemplate DataType="vm:NodePinTooltipItemViewModel">
+                                        <Grid ColumnDefinitions="Auto,Auto,*">
+                                          <TextBlock Text="{Binding ShapeGlyph}"
+                                                     Foreground="{Binding Color}"
+                                                     FontFamily="{StaticResource MonoFont}"
+                                                     FontSize="{StaticResource FontSizeCaption}"
+                                                     VerticalAlignment="Center"/>
+                                          <TextBlock Text="{Binding Name}"
+                                                     Margin="6,0,0,0"
+                                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                                     FontSize="{StaticResource FontSizeCaption}"
+                                                     VerticalAlignment="Center"/>
+                                          <TextBlock Grid.Column="2"
+                                                     Text="{Binding TypeName}"
+                                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                                     FontFamily="{StaticResource MonoFont}"
+                                                     FontSize="{StaticResource FontSizeCaption}"
+                                                     VerticalAlignment="Center"
+                                                     HorizontalAlignment="Right"/>
+                                        </Grid>
+                                      </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                                  <TextBlock Text="{Binding [tooltip.pins.none], Source={x:Static loc:LocalizationService.Instance}}"
+                                             FontSize="{StaticResource FontSizeCaption}"
+                                             Foreground="{StaticResource TextMutedBrush}"
+                                             IsVisible="{Binding HasOutputPins, Converter={x:Static BoolConverters.Not}}"/>
+                                </StackPanel>
+                              </Grid>
+                              </StackPanel>
+                            </Border>
+                          </ToolTip>
+                        </ToolTip.Tip>
+                        <Border Classes="node-card" Padding="10,10">
+                        <Grid RowDefinitions="Auto,Auto,Auto,*"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch">
+                          <!-- Icon -->
+                          <mi:MaterialIcon Kind="{Binding IconKind}"
+                                          Foreground="{StaticResource AccentBlueBrush}"
+                                          Width="24"
+                                          Height="24"
+                              HorizontalAlignment="Center"/>
+
+                          <!-- Title -->
+                          <TextBlock Grid.Row="1"
+                             Classes="node-card-title"
+                                     Margin="0,6,0,0"
+                             Text="{Binding Title}"/>
+
+                          <ItemsControl Grid.Row="2"
+                                        ItemsSource="{Binding CardTags}"
+                                        HorizontalAlignment="Center"
+                                        Margin="0,4,0,0"
+                                        IsVisible="{Binding HasCardTags}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate DataType="vm:NodeTagTooltipItemViewModel">
+                                <Border Classes="node-card-tag"
+                                        Background="{Binding BackgroundColor}"
+                                        BorderBrush="{Binding BorderColor}">
+                                  <TextBlock Text="{Binding Name}"
+                                             Foreground="{Binding ForegroundColor}"
+                                             FontSize="{StaticResource FontSizeCaption}"
+                                             Classes="tag-chip-text"/>
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+
+                          <!-- Subtitle -->
+                          <TextBlock Grid.Row="3"
+                             Classes="node-card-subtitle"
+                                     Margin="0,4,0,0"
+                             Text="{Binding Subtitle}"/>
+                        </Grid>
+                        </Border>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <StackPanel Grid.Row="2"
+                Classes="nodes-empty-state"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="8"
+                IsVisible="{Binding HasResults, Converter={x:Static BoolConverters.Not}}">
+      <mi:MaterialIcon Kind="MagnifyClose" Foreground="{StaticResource TextSecondaryBrush}" Width="36" Height="36"/>
+      <TextBlock Text="{Binding [nodesList.empty], Source={x:Static loc:LocalizationService.Instance}}"
+                 Foreground="{StaticResource TextPrimaryBrush}"
+                 FontSize="{StaticResource FontSizeBody}"
+                 FontWeight="{StaticResource FontWeightStrong}"/>
+      <TextBlock Text="{Binding [nodesList.emptyHint], Source={x:Static loc:LocalizationService.Instance}}"
+                 Foreground="{StaticResource TextSecondaryBrush}"
+                 FontSize="{StaticResource FontSizeCaption}"
+                 Opacity="0.85"
+                 MaxWidth="240"/>
+    </StackPanel>
+
+  </Grid>
+
+</UserControl>

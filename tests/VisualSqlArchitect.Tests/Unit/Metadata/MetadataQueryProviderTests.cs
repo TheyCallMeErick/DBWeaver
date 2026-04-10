@@ -1,7 +1,7 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
 
-namespace VisualSqlArchitect.Tests.Unit.Metadata;
+namespace DBWeaver.Tests.Unit.Metadata;
 
 /// <summary>
 /// Tests for IMetadataQueryProvider implementations.

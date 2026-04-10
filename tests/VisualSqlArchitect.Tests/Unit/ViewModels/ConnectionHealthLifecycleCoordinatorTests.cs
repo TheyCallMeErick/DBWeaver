@@ -1,9 +1,8 @@
-﻿using VisualSqlArchitect.UI.Services.ConnectionManager;
-using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using DBWeaver.UI.Services.ConnectionManager;
+using DBWeaver.UI.Services.Benchmark;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class ConnectionHealthLifecycleCoordinatorTests
 {
@@ -12,7 +11,7 @@ public class ConnectionHealthLifecycleCoordinatorTests
     {
         var monitor = new FakeConnectionHealthMonitorService
         {
-            NextStatus = EConnectionHealthStatus.Degraded,
+            NextStatus = ConnectionHealthStatus.Degraded,
         };
         var coordinator = new ConnectionHealthLifecycleCoordinator(monitor);
 
@@ -44,13 +43,13 @@ public class ConnectionHealthLifecycleCoordinatorTests
             },
         };
 
-        EConnectionHealthStatus status = await coordinator.EvaluateActiveStatusAsync(
+        ConnectionHealthStatus status = await coordinator.EvaluateActiveStatusAsync(
             profiles,
             activeProfileId: "p-2",
             runTestAsync: (_, _, _, _) => Task.FromResult(new ConnectionTestResult(true, null, null)),
             degradedLatencyThresholdMs: 500);
 
-        Assert.Equal(EConnectionHealthStatus.Degraded, status);
+        Assert.Equal(ConnectionHealthStatus.Degraded, status);
         Assert.Equal("p-2", monitor.LastProfileId);
     }
 
@@ -71,7 +70,7 @@ public class ConnectionHealthLifecycleCoordinatorTests
 
     private sealed class FakeConnectionHealthMonitorService : IConnectionHealthMonitorService
     {
-        public EConnectionHealthStatus NextStatus { get; set; } = EConnectionHealthStatus.Unknown;
+        public ConnectionHealthStatus NextStatus { get; set; } = ConnectionHealthStatus.Unknown;
         public string? LastProfileId { get; private set; }
         public string? LastRestartProfileId { get; private set; }
 
@@ -95,7 +94,7 @@ public class ConnectionHealthLifecycleCoordinatorTests
         public Task HealthMonitorLoopAsync(CancellationToken ct, Func<CancellationToken, Task> runHealthCheckAsync)
             => Task.CompletedTask;
 
-        public Task<EConnectionHealthStatus> EvaluateStatusAsync(
+        public Task<ConnectionHealthStatus> EvaluateStatusAsync(
             ConnectionProfile? profile,
             Func<ConnectionConfig, DatabaseProvider, int, CancellationToken, Task<ConnectionTestResult>> runTestAsync,
             double degradedLatencyThresholdMs,

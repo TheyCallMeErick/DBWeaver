@@ -1,12 +1,12 @@
 using System.Collections.ObjectModel;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Services.SqlImport.Build;
-using VisualSqlArchitect.UI.Services.SqlImport.Execution.Applying;
-using VisualSqlArchitect.UI.Services.SqlImport.Execution.Parsing;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Services.SqlImport.Build;
+using DBWeaver.UI.Services.SqlImport.Execution.Applying;
+using DBWeaver.UI.Services.SqlImport.Execution.Parsing;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
 
-namespace VisualSqlArchitect.Tests.Unit.Services.SqlImport.Execution.Applying;
+namespace DBWeaver.Tests.Unit.Services.SqlImport.Execution.Applying;
 
 public class SqlImportApplyStepsTests
 {
@@ -26,7 +26,7 @@ public class SqlImportApplyStepsTests
     }
 
     [Fact]
-    public void OrderingClauseApplier_WithProjectedAlias_SetsImportedOrderTerms()
+    public void OrderingClauseApplier_WithProjectedAlias_CreatesOrderByConnection()
     {
         var setup = CreateCoreContext(selectedColumns: [new ImportSelectTerm("id", "order_id")]);
         var query = CreateQuery(orderBy: "order_id DESC", selectedColumns: [new SqlImportSelectedColumn("id", "order_id")]);
@@ -37,12 +37,14 @@ public class SqlImportApplyStepsTests
         SqlImportApplyResult result = step.Apply(context);
 
         Assert.Equal(1, result.Imported);
-        Assert.True(setup.CoreContext.ResultNode.Parameters.TryGetValue("import_order_terms", out string? terms));
-        Assert.Contains("DESC", terms, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(setup.Canvas.Connections, c =>
+            c.ToPin?.Owner == setup.CoreContext.ResultNode
+            && c.ToPin.Name.Equals("order_by_desc", StringComparison.OrdinalIgnoreCase)
+            && c.FromPin.Name.Equals("id", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public void GroupingClauseApplier_WithMappedTerms_SetsImportedGroupTerms()
+    public void GroupingClauseApplier_WithMappedTerms_CreatesGroupByConnection()
     {
         var setup = CreateCoreContext(selectedColumns: [new ImportSelectTerm("id", null)]);
         var query = CreateQuery(groupBy: "id", selectedColumns: [new SqlImportSelectedColumn("id", null)]);
@@ -53,8 +55,10 @@ public class SqlImportApplyStepsTests
         SqlImportApplyResult result = step.Apply(context);
 
         Assert.Equal(1, result.Imported);
-        Assert.True(setup.CoreContext.ResultNode.Parameters.TryGetValue("import_group_terms", out string? terms));
-        Assert.Contains("id", terms, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(setup.Canvas.Connections, c =>
+            c.ToPin?.Owner == setup.CoreContext.ResultNode
+            && c.ToPin.Name.Equals("group_by", StringComparison.OrdinalIgnoreCase)
+            && c.FromPin.Name.Equals("id", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -98,9 +102,10 @@ public class SqlImportApplyStepsTests
         var builder = new ImportModelToCanvasBuilder(canvas);
 
         var buildInput = new ImportBuildInput(
-            [new ImportFromPart("public.orders", null, null)],
+            [new ImportFromPart("public.orders", null, null, null)],
             selectedColumns ?? [new ImportSelectTerm("id", null)],
             IsStar: false,
+            StarQualifier: null,
             SqlImportLayoutPolicy.Default
         );
 
@@ -120,8 +125,9 @@ public class SqlImportApplyStepsTests
         new(
             isDistinct,
             IsStar: false,
+            StarQualifier: null,
             selectedColumns ?? [new SqlImportSelectedColumn("id", null)],
-            [new SqlImportSourcePart("public.orders", null, null)],
+            [new SqlImportSourcePart("public.orders", null, null, null)],
             whereClause,
             orderBy,
             groupBy,

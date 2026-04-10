@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.UI.Services.CommandPalette;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using DBWeaver.UI.Services.Benchmark;
+using DBWeaver.UI.Services.CommandPalette;
+
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class CommandPaletteFilterServiceTests
 {

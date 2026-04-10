@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             x:Class="DBWeaver.UI.Controls.SqlEditor.SqlEditorResultPanel"
+             x:DataType="vm:SqlEditorViewModel">
+  <Border Background="{StaticResource Bg0Brush}"
+          BorderBrush="{StaticResource BorderSubtleBrush}"
+          BorderThickness="1"
+          CornerRadius="{StaticResource RadiusMD}"
+          Padding="8"
+          ClipToBounds="True">
+    <Grid RowDefinitions="Auto,*">
+      <TextBlock Grid.Row="0"
+                 Text="{Binding [sqlEditor.results.title], Source={x:Static loc:LocalizationService.Instance}}"
+                 Foreground="{StaticResource TextPrimaryBrush}"
+                 FontWeight="{StaticResource FontWeightTitle}"
+                 FontSize="{StaticResource FontSizeBody}"
+                 Margin="0,0,0,6"/>
+
+      <Grid Grid.Row="1">
+        <TextBlock Text="{Binding ResultsEmptyText}"
+                   IsVisible="{Binding IsResultRowsEmpty}"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   FontSize="{StaticResource FontSizeCaption}"/>
+
+        <DataGrid IsReadOnly="True"
+                  IsVisible="{Binding HasResultRows}"
+                  AutoGenerateColumns="False"
+                  x:Name="ResultGrid"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="True"
+                  HorizontalScrollBarVisibility="Auto"
+                  VerticalScrollBarVisibility="Auto"/>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

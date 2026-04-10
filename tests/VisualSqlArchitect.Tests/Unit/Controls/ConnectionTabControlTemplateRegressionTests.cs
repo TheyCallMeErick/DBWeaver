@@ -1,19 +1,34 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class ConnectionTabControlTemplateRegressionTests
 {
     [Fact]
-    public void ConnectionTemplate_DefinesInteractiveCardStates_AndEmptyStateHint()
+    public void ConnectionTemplate_ContainsDatabaseConnectionCard()
     {
         string xaml = ReadConnectionXaml();
 
-        Assert.Contains("Style Selector=\"Border.connection-card:pointerover\"", xaml);
-        Assert.Contains("Style Selector=\"Border.connection-card.active\"", xaml);
-        Assert.Contains("Classes=\"empty-state\"", xaml);
-        Assert.Contains("Profiles.Count, Converter={x:Static BoolConverters.Not}", xaml);
+        Assert.Contains("DatabaseConnectionCard", xaml);
+    }
+
+    [Fact]
+    public void ConnectionTemplate_ContainsSchemaControl()
+    {
+        string xaml = ReadConnectionXaml();
+
+        Assert.Contains("ctrl:SchemaControl", xaml);
+        Assert.Contains("DataContext=\"{Binding Canvas.Schema}\"", xaml);
+        Assert.Contains("IsVisible=\"{Binding ActiveProfileId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}\"", xaml);
+    }
+
+    [Fact]
+    public void ConnectionTemplate_SectionHeadersUseUppercaseTealCaption()
+    {
+        string xaml = ReadConnectionXaml();
+
+        Assert.Contains("section-header-teal", xaml);
     }
 
     [Fact]
@@ -21,9 +36,46 @@ public class ConnectionTabControlTemplateRegressionTests
     {
         string xaml = ReadConnectionXaml();
 
-        Assert.Contains("Content=\"{Binding [connectionTab.new], Source={x:Static loc:LocalizationService.Instance}}\"", xaml);
         Assert.Contains("Classes=\"primary\"", xaml);
-        Assert.Contains("Command=\"{Binding OpenNewProfileCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding ConnectOrOpenManagerCommand}\"", xaml);
+    }
+
+    [Fact]
+    public void ConnectionTemplate_RemovesSavedProfilesSection()
+    {
+        string xaml = ReadConnectionXaml();
+
+        Assert.DoesNotContain("PERFIS SALVOS", xaml);
+        Assert.DoesNotContain("ItemsSource=\"{Binding Profiles}\"", xaml);
+    }
+
+    [Fact]
+    public void ConnectionTemplate_NoConnectionStateHasConnectButton()
+    {
+        string xaml = ReadConnectionXaml();
+
+        Assert.Contains("IsVisible=\"{Binding ActiveProfileId, Converter={x:Static StringConverters.IsNullOrEmpty}}\"", xaml);
+        Assert.Contains("Command=\"{Binding ConnectOrOpenManagerCommand}\"", xaml);
+    }
+
+    [Fact]
+    public void ConnectionTemplate_ShowsLoadingStateWhileConnecting()
+    {
+        string xaml = ReadConnectionXaml();
+
+        Assert.Contains("IsVisible=\"{Binding IsConnecting}\"", xaml);
+        Assert.Contains("Conectando...", xaml);
+        Assert.Contains("IsEnabled=\"{Binding IsConnecting, Converter={x:Static BoolConverters.Not}}\"", xaml);
+        Assert.Contains("IsReloading=\"{Binding IsBusy}\"", xaml);
+    }
+
+    [Fact]
+    public void ConnectionTemplate_UsesStretchLayoutForFullHeightSidebar()
+    {
+        string xaml = ReadConnectionXaml();
+
+        Assert.Contains("VerticalAlignment=\"Stretch\"", xaml);
+        Assert.Contains("RowDefinitions=\"Auto,*\"", xaml);
     }
 
     private static string ReadConnectionXaml()
@@ -32,13 +84,8 @@ public class ConnectionTabControlTemplateRegressionTests
         while (dir is not null)
         {
             string candidate = Path.Combine(
-                dir.FullName,
-                "src",
-                "VisualSqlArchitect.UI",
-                "Controls",
-                "SidebarLeft",
-                "ConnectionTabControl.axaml"
-            );
+                dir.FullName, "src", "DBWeaver.UI",
+                "Controls", "SidebarLeft", "ConnectionTabControl.axaml");
 
             if (File.Exists(candidate))
                 return File.ReadAllText(candidate);
@@ -46,6 +93,6 @@ public class ConnectionTabControlTemplateRegressionTests
             dir = dir.Parent;
         }
 
-        throw new FileNotFoundException("Could not locate ConnectionTabControl.axaml from test base directory.");
+        throw new FileNotFoundException("Could not locate ConnectionTabControl.axaml.");
     }
 }

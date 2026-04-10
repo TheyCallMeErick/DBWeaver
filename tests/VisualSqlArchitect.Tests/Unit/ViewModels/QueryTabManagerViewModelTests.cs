@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+﻿using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.Services.Benchmark;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
+
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class QueryTabManagerViewModelTests
 {

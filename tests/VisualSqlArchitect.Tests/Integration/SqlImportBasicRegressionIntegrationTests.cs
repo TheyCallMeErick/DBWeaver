@@ -1,8 +1,8 @@
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+
+using DBWeaver.UI.ViewModels.Canvas;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Integration;
+namespace Integration;
 
 public class SqlImportBasicRegressionIntegrationTests
 {
@@ -16,11 +16,12 @@ public class SqlImportBasicRegressionIntegrationTests
         canvas.SqlImporter.SqlInput = "SELECT id FROM orders WHERE id = 10";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
         canvas.LiveSql.Recompile();
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, r =>
-            r.Status == EImportItemStatus.Imported
+            r.Status == ImportItemStatus.Imported
             && r.Label.Contains("WHERE", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("select", canvas.LiveSql.RawSql, StringComparison.OrdinalIgnoreCase);
     }
@@ -35,6 +36,7 @@ public class SqlImportBasicRegressionIntegrationTests
         canvas.SqlImporter.SqlInput = "SELECT id AS order_id FROM public.orders";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
         canvas.LiveSql.Recompile();
 
         Assert.True(canvas.SqlImporter.HasReport);
@@ -53,11 +55,12 @@ public class SqlImportBasicRegressionIntegrationTests
         canvas.SqlImporter.SqlInput = "SELECT id, customer_id FROM public.orders";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
         canvas.LiveSql.Recompile();
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, r =>
-            r.Status == EImportItemStatus.Imported
+            r.Status == ImportItemStatus.Imported
             && r.Label.Contains("SELECT", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("select", canvas.LiveSql.RawSql, StringComparison.OrdinalIgnoreCase);
     }
@@ -73,21 +76,22 @@ public class SqlImportBasicRegressionIntegrationTests
             "SELECT orders.id FROM orders INNER JOIN customers ON orders.customer_id = customers.id WHERE orders.id = 10";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
         canvas.LiveSql.Recompile();
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.True(canvas.SqlImporter.ReportImportedCount >= 4);
         Assert.Contains(canvas.SqlImporter.Report, r =>
-            r.Status == EImportItemStatus.Imported
+            r.Status == ImportItemStatus.Imported
             && r.Label.Contains("FROM:", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(canvas.SqlImporter.Report, r =>
-            r.Status == EImportItemStatus.Imported
+            r.Status == ImportItemStatus.Imported
             && r.Label.Contains("JOIN", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(canvas.SqlImporter.Report, r =>
-            r.Status == EImportItemStatus.Imported
+            r.Status == ImportItemStatus.Imported
             && r.Label.Contains("WHERE", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(canvas.SqlImporter.Report, r =>
-            r.Status == EImportItemStatus.Imported
+            r.Status == ImportItemStatus.Imported
             && r.Label.Contains("SELECT", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -102,6 +106,7 @@ public class SqlImportBasicRegressionIntegrationTests
             "SELECT orders.id FROM orders INNER JOIN customers ON orders.customer_id = customers.id WHERE orders.id = 10";
 
         await canvas.SqlImporter.ImportAsync();
+        SqlImportWiringAssertions.AssertGraphWiringIfGraphExists(canvas);
         canvas.LiveSql.Recompile();
 
         Assert.True(canvas.SqlImporter.HasReport);

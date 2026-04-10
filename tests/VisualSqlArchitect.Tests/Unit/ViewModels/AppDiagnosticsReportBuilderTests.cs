@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using System.ComponentModel;
-using VisualSqlArchitect.UI.Services.Localization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Services.Localization;
+
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class AppDiagnosticsReportBuilderTests
 {
@@ -21,14 +21,14 @@ public class AppDiagnosticsReportBuilderTests
                 Name = "Validation",
                 Details = "No issues",
                 Recommendation = "Keep going",
-                Status = EDiagnosticStatus.Ok,
+                Status = DiagnosticStatus.Ok,
                 LastCheckAt = new DateTime(2026, 4, 3, 10, 30, 0)
             }
         ]);
 
         string report = builder.BuildReport("All systems OK", [category]);
 
-        Assert.Contains("Visual SQL Architect - Diagnostic Report", report, StringComparison.Ordinal);
+        Assert.Contains("DBWeaver - Diagnostic Report", report, StringComparison.Ordinal);
         Assert.Contains("Overall: All systems OK", report, StringComparison.Ordinal);
         Assert.Contains("[Canvas Integrity]", report, StringComparison.Ordinal);
         Assert.Contains("- Validation [Ok]", report, StringComparison.Ordinal);

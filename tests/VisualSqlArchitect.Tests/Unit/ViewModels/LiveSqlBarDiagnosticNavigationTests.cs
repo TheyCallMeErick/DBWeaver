@@ -1,13 +1,13 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using Avalonia;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.Registry;
-using VisualSqlArchitect.UI.Services.LiveSqlBar;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.QueryPreview.Models;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.Registry;
+using DBWeaver.UI.Services.LiveSqlBar;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.Services.QueryPreview.Models;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class LiveSqlBarDiagnosticNavigationTests
 {

@@ -1,0 +1,173 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.CommandPaletteControl"
+             x:DataType="vm:CommandPaletteViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.cmd-item">
+      <Setter Property="Background"   Value="Transparent"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+      <Setter Property="Padding"      Value="10,7"/>
+      <Setter Property="Margin"       Value="4,1"/>
+      <Setter Property="Cursor"       Value="Hand"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.08"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.cmd-item:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg3Brush}"/>
+    </Style>
+    <Style Selector="Border.cmd-item.selected">
+      <Setter Property="Background" Value="{StaticResource PanelActiveBrush}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- ══ Floating panel ══════════════════════════════════════════════════════ -->
+  <Border Width="420"
+          CornerRadius="{StaticResource RadiusLG}"
+          Background="{StaticResource Bg1Brush}"
+          BorderBrush="{StaticResource BorderSubtleBrush}"
+          BorderThickness="1"
+          BoxShadow="{StaticResource ShadowXL}">
+
+    <StackPanel>
+      <!-- ── Search input ────────────────────────────────────────────────── -->
+      <Border Background="{StaticResource Bg2Brush}"
+              CornerRadius="{StaticResource RadiusLGTop}"
+              Padding="12,10">
+
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+          <!-- Command palette icon -->
+          <mi:MaterialIcon Grid.Column="0"
+                           Kind="Console"
+                           Width="18" Height="18"
+                           Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
+
+          <!-- Text input -->
+          <TextBox Grid.Column="1"
+                   Text="{Binding Query, Mode=TwoWay}"
+                   Watermark="{Binding [commandPalette.watermark], Source={x:Static loc:LocalizationService.Instance}}"
+                   FontSize="{StaticResource FontSizeLabel}"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   CaretBrush="{StaticResource AccentPrimaryHoverBrush}"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   Name="SearchInput"
+                   AutomationProperties.Name="{Binding [commandPalette.search], Source={x:Static loc:LocalizationService.Instance}}">
+            <TextBox.Styles>
+              <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+                <Setter Property="BorderBrush" Value="Transparent"/>
+              </Style>
+            </TextBox.Styles>
+          </TextBox>
+
+          <!-- Shortcut badge -->
+          <Border Grid.Column="2"
+                  Background="{StaticResource BorderSubtleBrush}"
+                  CornerRadius="{StaticResource RadiusXS}"
+                  Padding="5,2"
+                  VerticalAlignment="Center">
+            <TextBlock Text="{Binding [commandPalette.shortcut], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource TextMutedBrush}"/>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- Divider -->
+      <Border Height="1" Background="{StaticResource Bg3Brush}"/>
+
+      <!-- ── Results list ──────────────────────────────────────────────── -->
+      <ScrollViewer MaxHeight="360" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Results}" Margin="0,4,0,4" Name="ResultsList">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PaletteCommandItem">
+
+              <Border Classes="cmd-item">
+                <Grid ColumnDefinitions="32,*,Auto">
+
+                  <!-- Icon badge -->
+                  <mi:MaterialIcon Grid.Column="0"
+                                   Kind="{Binding Icon}"
+                                   Width="16" Height="16"
+                                   Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+
+                  <!-- Name + description -->
+                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               FontWeight="{StaticResource FontWeightLabel}"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="{Binding Description}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextMutedBrush}"/>
+                  </StackPanel>
+
+                  <!-- Shortcut badge -->
+                  <Border Grid.Column="2"
+                          Background="{StaticResource Bg3Brush}"
+                          CornerRadius="{StaticResource RadiusXS}"
+                          Padding="6,2"
+                          VerticalAlignment="Center"
+                          Margin="8,0,0,0"
+                          IsVisible="{Binding Shortcut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding Shortcut}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource MonoFont}"/>
+                  </Border>
+                </Grid>
+              </Border>
+
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <!-- Empty state -->
+      <Border Padding="16,20"
+              IsVisible="{Binding Results.Count, Converter={x:Static BoolConverters.Not}}">
+        <TextBlock Text="{Binding [commandPalette.empty], Source={x:Static loc:LocalizationService.Instance}}"
+                   FontSize="{StaticResource FontSizeLabel}"
+                   Foreground="{StaticResource TextMutedBrush}"
+                   HorizontalAlignment="Center"/>
+      </Border>
+
+      <!-- ── Footer keyboard hints ────────────────────────────────────── -->
+      <Border Background="{StaticResource Bg1Brush}"
+              CornerRadius="{StaticResource RadiusLGBottom}"
+              Padding="12,7">
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Border Background="{StaticResource Bg3Brush}" CornerRadius="{StaticResource RadiusXS}" Padding="4,1">
+              <TextBlock Text="↑↓" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+            </Border>
+              <TextBlock Text="{Binding [common.navigate], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Border Background="{StaticResource Bg3Brush}" CornerRadius="{StaticResource RadiusXS}" Padding="4,1">
+              <TextBlock Text="↵" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+            </Border>
+              <TextBlock Text="{Binding [commandPalette.execute], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Border Background="{StaticResource Bg3Brush}" CornerRadius="{StaticResource RadiusXS}" Padding="4,1">
+              <TextBlock Text="{Binding [common.esc], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+            </Border>
+              <TextBlock Text="{Binding [common.close], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Border>
+</UserControl>

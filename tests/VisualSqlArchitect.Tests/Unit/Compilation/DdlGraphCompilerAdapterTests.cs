@@ -1,9 +1,6 @@
-using VisualSqlArchitect.Compilation;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Compilation;
+
+namespace DBWeaver.Unit.Compilation;
 
 /// <summary>
 /// Tests for DdlGraphCompilerAdapter - verifies wrapping behavior and error handling.

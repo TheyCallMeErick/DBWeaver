@@ -1,9 +1,9 @@
 using System.Runtime.Serialization;
 using Avalonia.Controls;
-using VisualSqlArchitect.UI.Services;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Services;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class CommandPaletteServiceTests
 {
@@ -14,7 +14,7 @@ public class CommandPaletteServiceTests
         var window = (Window)FormatterServices.GetUninitializedObject(typeof(Window));
 #pragma warning restore SYSLIB0050
         var canvas = new CanvasViewModel();
-        var shell = new ShellViewModel(canvas);
+        var shell = new ShellViewModel(canvas, connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
         var fileOps = new FileOperationsService(window, canvas);
         var export = new ExportService(window, canvas);
         var preview = new PreviewService(window, canvas);

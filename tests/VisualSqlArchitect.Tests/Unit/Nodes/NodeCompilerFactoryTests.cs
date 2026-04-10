@@ -1,8 +1,8 @@
-using VisualSqlArchitect.Nodes.Compilers;
-using VisualSqlArchitect.Registry;
-using NodeModel = VisualSqlArchitect.Nodes;
+using DBWeaver.Nodes.Compilers;
+using DBWeaver.Registry;
+using NodeModel = DBWeaver.Nodes;
 
-namespace VisualSqlArchitect.Tests.Unit.Nodes;
+namespace DBWeaver.Tests.Unit.Nodes;
 
 public sealed class NodeCompilerFactoryTests
 {
@@ -51,8 +51,8 @@ public sealed class NodeCompilerFactoryTests
     private sealed class FakeCompilationContext : INodeCompilationContext
     {
         private static readonly NodeModel.EmitContext EmitCtx = new(
-            VisualSqlArchitect.Core.DatabaseProvider.Postgres,
-            new SqlFunctionRegistry(VisualSqlArchitect.Core.DatabaseProvider.Postgres));
+            DBWeaver.Core.DatabaseProvider.Postgres,
+            new SqlFunctionRegistry(DBWeaver.Core.DatabaseProvider.Postgres));
 
         public NodeModel.NodeGraph Graph { get; } = new();
         public NodeModel.EmitContext EmitContext => EmitCtx;

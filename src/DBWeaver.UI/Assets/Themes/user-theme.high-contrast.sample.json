@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "name": "High Contrast Verification",
+    "version": "1.0"
+  },
+  "colors": {
+    "bg0": "#05070D",
+    "bg1": "#0A1220",
+    "bg2": "#13213A",
+    "bg3": "#1D2D4D",
+    "bg4": "#29416E",
+    "textPrimary": "#F5FAFF",
+    "textSecondary": "#B4C5DC",
+    "textMuted": "#8FA3BF",
+    "textDisabled": "#6C7F9D",
+    "textInverse": "#03050A",
+    "textAccent": "#9BB8FF",
+    "btnPrimaryBg": "#1D4ED8",
+    "btnPrimaryFg": "#FFFFFF",
+    "btnWarningBg": "#9A3412",
+    "btnWarningFg": "#FFF1E8"
+  },
+  "typography": {
+    "uiFont": "Manrope,Segoe UI,Arial,sans-serif",
+    "nodeFont": "Space Grotesk,Manrope,Segoe UI,Arial,sans-serif",
+    "monoFont": "JetBrainsMono Nerd Font,JetBrains Mono,Cascadia Code,Consolas,monospace",
+    "displaySize": 24,
+    "headingSize": 18,
+    "titleSize": 15,
+    "nodeTitleSize": 14,
+    "labelSize": 13,
+    "bodySize": 12,
+    "captionSize": 11,
+    "monoBodySize": 12,
+    "monoSmallSize": 11
+  }
+}

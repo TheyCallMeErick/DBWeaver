@@ -1,8 +1,8 @@
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.Nodes.Definitions;
+using DBWeaver.Nodes;
+using DBWeaver.Nodes.Definitions;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Nodes;
+namespace DBWeaver.Tests.Unit.Nodes;
 
 public class DdlPhase1NodeDefinitionsTests
 {

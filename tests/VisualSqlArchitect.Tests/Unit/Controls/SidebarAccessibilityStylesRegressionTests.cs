@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class SidebarAccessibilityStylesRegressionTests
 {
@@ -31,7 +31,7 @@ public class SidebarAccessibilityStylesRegressionTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            string candidate = Path.Combine(dir.FullName, "src", "VisualSqlArchitect.UI", "Assets", "Themes", "AppStyles.axaml");
+            string candidate = Path.Combine(dir.FullName, "src", "DBWeaver.UI", "Assets", "Themes", "AppStyles.axaml");
             if (File.Exists(candidate))
                 return File.ReadAllText(candidate);
             dir = dir.Parent;
@@ -45,7 +45,7 @@ public class SidebarAccessibilityStylesRegressionTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            string candidate = Path.Combine(dir.FullName, "src", "VisualSqlArchitect.UI", "Controls", "SidebarLeft", "SidebarControl.axaml");
+            string candidate = Path.Combine(dir.FullName, "src", "DBWeaver.UI", "Controls", "SidebarLeft", "SidebarControl.axaml");
             if (File.Exists(candidate))
                 return File.ReadAllText(candidate);
             dir = dir.Parent;

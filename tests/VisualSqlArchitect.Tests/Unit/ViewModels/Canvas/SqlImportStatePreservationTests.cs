@@ -1,11 +1,11 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
-using VisualSqlArchitect.UI.ViewModels.UndoRedo;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
+using DBWeaver.UI.ViewModels.UndoRedo;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 /// <summary>
 /// Tests for SQL import functionality and state preservation.

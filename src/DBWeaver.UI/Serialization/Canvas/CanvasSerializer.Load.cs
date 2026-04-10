@@ -1,0 +1,357 @@
+using System.Text.Json;
+using Avalonia;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Services.Workspace.Models;
+using DBWeaver.UI.ViewModels;
+
+namespace DBWeaver.UI.Serialization;
+
+public static partial class CanvasSerializer
+{
+    /// <summary>
+    /// Rebuilds a <see cref="CanvasViewModel"/> from JSON.
+    /// Clears the existing canvas before loading.
+    /// Returns a <see cref="CanvasLoadResult"/>.
+    /// </summary>
+    /// <param name="columnLookup">Optional catalog to restore TableSource column pins.</param>
+    public static CanvasLoadResult Deserialize(
+        string json,
+        CanvasViewModel vm,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup =
+            null
+    )
+    {
+        if (LooksLikeDocumentWorkspaceEnvelope(json) || LooksLikeLegacyWorkspaceEnvelope(json))
+            return DeserializeWorkspace(json, vm, null, columnLookup);
+
+        SavedCanvas? raw;
+        try
+        {
+            raw = JsonSerializer.Deserialize<SavedCanvas>(json, _opts);
+        }
+        catch (JsonException ex)
+        {
+            return CanvasLoadResult.Fail($"Invalid JSON: {ex.Message}");
+        }
+
+        if (raw is null)
+            return CanvasLoadResult.Fail("Canvas file is empty or could not be parsed.");
+
+        return DeserializeSavedCanvas(raw, vm, columnLookup);
+    }
+
+    public static CanvasLoadResult DeserializeWorkspace(
+        string json,
+        CanvasViewModel queryVm,
+        CanvasViewModel? ddlVm,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup =
+            null
+    )
+    {
+        if (!LooksLikeDocumentWorkspaceEnvelope(json) && !LooksLikeLegacyWorkspaceEnvelope(json))
+            return CanvasLoadResult.Fail("Unsupported file format. Expected workspace canvas envelope.");
+
+        if (LooksLikeDocumentWorkspaceEnvelope(json))
+            return DeserializeDocumentWorkspace(json, queryVm, ddlVm, columnLookup);
+
+        return DeserializeLegacyWorkspace(json, queryVm, ddlVm, columnLookup);
+    }
+
+    private static CanvasLoadResult DeserializeDocumentWorkspace(
+        string json,
+        CanvasViewModel queryVm,
+        CanvasViewModel? ddlVm,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup)
+    {
+        SavedWorkspaceDocumentsCanvas? workspace;
+        try
+        {
+            workspace = JsonSerializer.Deserialize<SavedWorkspaceDocumentsCanvas>(json, _opts);
+        }
+        catch (JsonException ex)
+        {
+            return CanvasLoadResult.Fail($"Invalid workspace JSON: {ex.Message}");
+        }
+
+        if (workspace is null)
+            return CanvasLoadResult.Fail("Workspace file is empty or could not be parsed.");
+
+        if (workspace.Version < 5 || workspace.Version > CurrentSchemaVersion)
+            return CanvasLoadResult.Fail(
+                $"Unsupported workspace schema version {workspace.Version}. "
+                    + $"This build supports versions 5–{CurrentSchemaVersion}."
+            );
+
+        List<SavedWorkspaceDocument> documents = workspace.Documents ?? [];
+        if (documents.Count == 0)
+            return CanvasLoadResult.Fail("Workspace does not contain any document.");
+
+        SavedWorkspaceDocument? queryDocument = documents.FirstOrDefault(document =>
+            IsDocumentType(document, WorkspaceDocumentType.QueryCanvas));
+        if (queryDocument?.CanvasPayload is null)
+            return CanvasLoadResult.Fail("Workspace query document payload is missing.");
+
+        CanvasLoadResult queryLoad = DeserializeSavedCanvas(
+            queryDocument.CanvasPayload,
+            queryVm,
+            columnLookup,
+            CanvasNodeFamily.Query
+        );
+        if (!queryLoad.Success)
+            return queryLoad;
+
+        var warnings = queryLoad.Warnings?.ToList() ?? [];
+
+        SavedWorkspaceDocument? ddlDocument = documents.FirstOrDefault(document =>
+            IsDocumentType(document, WorkspaceDocumentType.DdlCanvas));
+        if (ddlDocument?.CanvasPayload is not null && ddlVm is not null)
+        {
+            CanvasLoadResult ddlLoad = ApplyDdlFromSavedCanvas(ddlDocument.CanvasPayload, ddlVm);
+            if (!ddlLoad.Success)
+                warnings.Add($"DDL canvas restore skipped: {ddlLoad.Error}");
+            else if (ddlLoad.Warnings is { Count: > 0 })
+                warnings.AddRange(ddlLoad.Warnings.Select(w => $"DDL: {w}"));
+        }
+        else if (ddlDocument?.CanvasPayload is not null)
+        {
+            warnings.Add("File contains a DDL document snapshot, but no DDL target canvas was provided during load.");
+        }
+
+        WorkspaceDocumentType activeDocumentType = ResolveActiveDocumentType(workspace, documents);
+        return CanvasLoadResult.Ok(warnings.Count > 0 ? warnings : null, activeDocumentType);
+    }
+
+    private static CanvasLoadResult DeserializeLegacyWorkspace(
+        string json,
+        CanvasViewModel queryVm,
+        CanvasViewModel? ddlVm,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup)
+    {
+        SavedWorkspaceCanvas? workspace;
+        try
+        {
+            workspace = JsonSerializer.Deserialize<SavedWorkspaceCanvas>(json, _opts);
+        }
+        catch (JsonException ex)
+        {
+            return CanvasLoadResult.Fail($"Invalid workspace JSON: {ex.Message}");
+        }
+
+        if (workspace is null)
+            return CanvasLoadResult.Fail("Workspace file is empty or could not be parsed.");
+
+        if (workspace.Version != 4)
+            return CanvasLoadResult.Fail(
+                $"Unsupported workspace schema version {workspace.Version}. "
+                    + "This build supports legacy version 4 and document schema v5+."
+            );
+
+        CanvasLoadResult queryLoad = DeserializeSavedCanvas(
+            workspace.QueryCanvas,
+            queryVm,
+            columnLookup,
+            CanvasNodeFamily.Query
+        );
+        if (!queryLoad.Success)
+            return queryLoad;
+
+        var warnings = queryLoad.Warnings?.ToList() ?? [];
+
+        if (ddlVm is not null)
+        {
+            CanvasLoadResult ddlLoad = ApplyDdlFromSavedCanvas(workspace.DdlCanvas, ddlVm);
+            if (!ddlLoad.Success)
+                warnings.Add($"DDL canvas restore skipped: {ddlLoad.Error}");
+            else if (ddlLoad.Warnings is { Count: > 0 })
+                warnings.AddRange(ddlLoad.Warnings.Select(w => $"DDL: {w}"));
+        }
+        else if (workspace.DdlCanvas.Nodes.Count > 0 || workspace.DdlCanvas.Connections.Count > 0)
+        {
+            warnings.Add("File contains a DDL canvas snapshot, but no DDL target canvas was provided during load.");
+        }
+
+        warnings.Add("Legacy workspace envelope migrated to document-oriented workspace model during load.");
+        WorkspaceDocumentType activeType = ResolveLegacyActiveDocumentType(workspace);
+        return CanvasLoadResult.Ok(warnings.Count > 0 ? warnings : null, activeType);
+    }
+
+    private static CanvasLoadResult ApplyDdlFromSavedCanvas(
+        SavedCanvas saved,
+        CanvasViewModel ddlVm
+    )
+    {
+        var scratch = new CanvasViewModel();
+        scratch.Nodes.Clear();
+        scratch.Connections.Clear();
+
+        CanvasLoadResult load = DeserializeSavedCanvas(saved, scratch, null, CanvasNodeFamily.Ddl);
+        if (!load.Success)
+            return load;
+
+        ddlVm.ReplaceGraph(scratch.Nodes.ToList(), scratch.Connections.ToList());
+        if (Enum.TryParse(saved.DatabaseProvider, true, out DatabaseProvider provider))
+            ddlVm.Provider = provider;
+
+        return load;
+    }
+
+    private static CanvasLoadResult DeserializeSavedCanvas(
+        SavedCanvas raw,
+        CanvasViewModel vm,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Name, PinDataType Type)>>? columnLookup,
+        CanvasNodeFamily allowedFamily = CanvasNodeFamily.Any
+    )
+    {
+        if (raw.Version != CurrentCanvasSchemaVersion)
+            return CanvasLoadResult.Fail(
+                $"Unsupported canvas schema version {raw.Version}. "
+                    + $"This build supports only version {CurrentCanvasSchemaVersion}."
+            );
+
+        SavedCanvas saved = raw;
+        var warnings = new List<string>();
+
+        vm.Connections.Clear();
+        vm.Nodes.Clear();
+        vm.UndoRedo.Clear();
+
+        vm.Zoom = saved.Zoom;
+        vm.PanOffset = new Point(saved.PanX, saved.PanY);
+
+        var nodeMap = new Dictionary<string, NodeViewModel>(StringComparer.Ordinal);
+        var skippedNodes = new List<(string NodeId, string NodeType, string Reason)>();
+
+        foreach (SavedNode sn in saved.Nodes)
+        {
+            (NodeViewModel? nodeVm, string? skipReason) = BuildNodeVm(sn, columnLookup, allowedFamily);
+            if (nodeVm is null)
+            {
+                skippedNodes.Add((sn.NodeId, sn.NodeType, skipReason ?? "Unknown error"));
+                continue;
+            }
+            nodeMap[sn.NodeId] = nodeVm;
+            vm.Nodes.Add(nodeVm);
+        }
+
+        var loadOrderById = saved.Nodes
+            .Select((n, i) => (n.NodeId, i))
+            .ToDictionary(x => x.NodeId, x => x.i, StringComparer.Ordinal);
+
+        int z = 0;
+        foreach (NodeViewModel n in vm.Nodes
+                     .OrderBy(n => n.ZOrder)
+                     .ThenBy(n => loadOrderById.TryGetValue(n.Id, out int idx) ? idx : int.MaxValue))
+            n.ZOrder = z++;
+
+        if (skippedNodes.Count > 0)
+        {
+            var skippedSummary = string.Join(", ",
+                skippedNodes.GroupBy(s => s.NodeType)
+                    .Select(g => $"{g.Count()} {g.Key}"));
+            warnings.Add(
+                $"Warning: {skippedNodes.Count} node(s) could not be loaded and were skipped: {skippedSummary}. " +
+                "This may indicate the file was created with a newer version or has unsupported node types."
+            );
+
+            int familyFiltered = skippedNodes.Count(s =>
+                s.Reason.Contains("canvas family mismatch", StringComparison.OrdinalIgnoreCase)
+            );
+            if (familyFiltered > 0)
+            {
+                string target = allowedFamily == CanvasNodeFamily.Ddl ? "DDL" : "Query";
+                warnings.Add(
+                    $"Skipped {familyFiltered} legacy node(s) that belong to the opposite canvas family while loading {target} canvas."
+                );
+            }
+        }
+
+        ConnectionRebuildStats connectionStats = RebuildConnections(saved.Connections, nodeMap, vm.Connections);
+        AddConnectionRebuildWarnings(connectionStats, warnings);
+
+        foreach (SavedNode sn in saved.Nodes)
+        {
+            if (!nodeMap.TryGetValue(sn.NodeId, out NodeViewModel? nodeVm))
+                continue;
+            if (nodeVm.Type == NodeType.ResultOutput)
+            {
+                nodeVm.SyncOutputColumns(vm.Connections);
+
+                if (!sn.Parameters.TryGetValue("__colOrder", out string? colOrderStr))
+                    continue;
+
+                string[] savedOrder = colOrderStr.Split('|', StringSplitOptions.RemoveEmptyEntries);
+                ApplySavedColumnOrder(nodeVm, savedOrder);
+                continue;
+            }
+
+            if (nodeVm.Type == NodeType.CteSource)
+                nodeVm.SyncCteSourceColumns(vm.Connections);
+        }
+
+        return CanvasLoadResult.Ok(warnings.Count > 0 ? warnings : null);
+    }
+
+    private static bool LooksLikeLegacyWorkspaceEnvelope(string json)
+    {
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement root = doc.RootElement;
+            return root.ValueKind == JsonValueKind.Object
+                && root.TryGetProperty(nameof(SavedWorkspaceCanvas.QueryCanvas), out _)
+                && root.TryGetProperty(nameof(SavedWorkspaceCanvas.DdlCanvas), out _);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool LooksLikeDocumentWorkspaceEnvelope(string json)
+    {
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement root = doc.RootElement;
+            return root.ValueKind == JsonValueKind.Object
+                && root.TryGetProperty(nameof(SavedWorkspaceDocumentsCanvas.Documents), out _);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsDocumentType(SavedWorkspaceDocument document, WorkspaceDocumentType documentType)
+    {
+        return string.Equals(document.DocumentType, documentType.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static WorkspaceDocumentType ResolveActiveDocumentType(
+        SavedWorkspaceDocumentsCanvas workspace,
+        IReadOnlyList<SavedWorkspaceDocument> documents)
+    {
+        if (workspace.ActiveDocumentId is Guid activeId)
+        {
+            SavedWorkspaceDocument? active = documents.FirstOrDefault(document => document.DocumentId == activeId);
+            if (active is not null && Enum.TryParse(active.DocumentType, true, out WorkspaceDocumentType activeType))
+                return activeType;
+        }
+
+        return documents
+            .Select(document => Enum.TryParse(document.DocumentType, true, out WorkspaceDocumentType type) ? type : (WorkspaceDocumentType?)null)
+            .FirstOrDefault(type => type.HasValue) ?? WorkspaceDocumentType.QueryCanvas;
+    }
+
+    private static WorkspaceDocumentType ResolveLegacyActiveDocumentType(SavedWorkspaceCanvas workspace)
+    {
+        bool hasQueryContent = workspace.QueryCanvas.Nodes.Count > 0 || workspace.QueryCanvas.Connections.Count > 0;
+        bool hasDdlContent = workspace.DdlCanvas.Nodes.Count > 0 || workspace.DdlCanvas.Connections.Count > 0;
+
+        if (!hasQueryContent && hasDdlContent)
+            return WorkspaceDocumentType.DdlCanvas;
+
+        return WorkspaceDocumentType.QueryCanvas;
+    }
+}

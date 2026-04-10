@@ -1,8 +1,8 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.Registry;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.Registry;
 
-namespace VisualSqlArchitect.Tests.Unit.Nodes;
+namespace DBWeaver.Tests.Unit.Nodes;
 
 public class CteReferenceExprTests
 {

@@ -1,0 +1,393 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:connmodels="using:DBWeaver.UI.Services.ConnectionManager.Models"
+             xmlns:shared="using:DBWeaver.UI.Controls.Shared"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.ConnectionManagerControl"
+             x:DataType="vm:ConnectionManagerViewModel">
+
+  <UserControl.Styles>
+    <!-- List item hover -->
+    <Style Selector="ListBoxItem">
+      <Setter Property="Background"   Value="Transparent"/>
+      <Setter Property="Padding"      Value="10,8"/>
+      <Setter Property="Margin"       Value="4,2"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource PanelActiveBrush}"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+    </Style>
+    <!-- Form labels -->
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize"   Value="11"/>
+      <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+      <Setter Property="Margin"     Value="0,0,0,4"/>
+    </Style>
+    <!-- Form input fields -->
+    <Style Selector="TextBox.field">
+      <Setter Property="Background"      Value="{StaticResource Bg0Brush}"/>
+      <Setter Property="BorderBrush"     Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="Foreground"      Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="FontSize"        Value="12"/>
+      <Setter Property="Padding"         Value="8,6"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <!-- Button variants -->
+    <Style Selector="Button.primary">
+      <Setter Property="Background"      Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="Foreground"      Value="{StaticResource BtnPrimaryFgBrush}"/>
+      <Setter Property="Padding"         Value="12,7"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="FontSize"        Value="12"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background"      Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="Foreground"      Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="Padding"         Value="12,7"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="FontSize"        Value="12"/>
+      <Setter Property="BorderBrush"     Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.danger">
+      <Setter Property="Background"      Value="Transparent"/>
+      <Setter Property="Foreground"      Value="{StaticResource StatusErrorBrush}"/>
+      <Setter Property="Padding"         Value="8,7"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="FontSize"        Value="12"/>
+      <Setter Property="BorderBrush"     Value="{StaticResource StatusErrorBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- ══ Connection Manager overlay card ══════════════════════════════════════ -->
+    <Border Width="780"
+      MaxHeight="560"
+      CornerRadius="{StaticResource RadiusLG}"
+      Background="{StaticResource Bg1Brush}"
+      BorderBrush="{StaticResource BorderBrush}"
+          BorderThickness="1"
+          BoxShadow="{StaticResource ShadowXL}">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+      <!-- Header -->
+      <Border Grid.Row="0" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="20,14">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <Border Width="30" Height="30" CornerRadius="{StaticResource RadiusSM}"
+                    Background="{StaticResource Bg2Brush}" BorderBrush="{StaticResource BorderFocusBrush}" BorderThickness="1">
+              <mi:MaterialIcon Kind="DatabaseSettings" Width="16" Height="16" Foreground="{StaticResource AccentPrimaryBrush}"/>
+            </Border>
+            <TextBlock Text="{Binding [connection.title], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeTitle}" FontWeight="{StaticResource FontWeightTitle}" Foreground="{StaticResource TextSecondaryBrush}"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+
+          <Button Grid.Column="2" Classes="secondary" Command="{Binding CloseCommand}"
+                  Width="28" Height="28" Padding="0"
+                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+              ToolTip.Tip="{Binding [tooltip.closeEsc], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="{Binding [connection.close], Source={x:Static loc:LocalizationService.Instance}}">
+            <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
+          </Button>
+        </Grid>
+      </Border>
+
+      <!-- Active connection health banner -->
+      <!-- <Border Grid.Row="1" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1"
+              Background="{StaticResource Bg0Brush}" Padding="16,10">
+        <shared:DatabaseConnectionCard
+            IsConnected="{Binding ActiveProfileId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+            ConnectionName="{Binding ActiveConnectionLabel}"
+            SelectedConnection="{Binding SelectedProfile}"
+            AvailableConnections="{Binding Profiles}"
+            AvailableDatabases="{Binding AvailableDatabases}"
+            DatabaseName="{Binding SelectedDatabase}"
+            ServerVersion="{Binding ActiveServerVersion}"
+            LatencyMs="{Binding ActiveLatencyMs}"
+            IsReloading="{Binding IsReloadingSchema}"
+            DisconnectCommand="{Binding DisconnectCommand}"
+            SwitchConnectionCommand="{Binding SwitchConnectionCommand}"
+            SwitchDatabaseCommand="{Binding SwitchDatabaseCommand}"/>
+      </Border>
+ -->
+      <!-- Body -->
+      <Grid Grid.Row="2" ColumnDefinitions="220,*">
+
+        <!-- LEFT column: saved connections list -->
+        <Border Grid.Column="0" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Padding="8,10">
+          <Grid RowDefinitions="Auto,*,Auto">
+
+            <TextBlock Grid.Row="0"
+                       Text="{Binding [connection.saved], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}" Foreground="{StaticResource TextMutedBrush}"
+                       Margin="8,0,0,8" LetterSpacing="1"/>
+
+            <!-- Connection list -->
+            <ListBox Grid.Row="1"
+                     ItemsSource="{Binding Profiles}"
+                     SelectedItem="{Binding SelectedProfile}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="connmodels:ConnectionProfile">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <TextBlock Grid.Column="0" Text="●" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource AccentPrimaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="{Binding Name}" FontSize="{StaticResource FontSizeBody}" Foreground="{StaticResource TextSecondaryBrush}"
+                                 TextTrimming="CharacterEllipsis"/>
+                      <TextBlock FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding Provider}"/>
+                        <Run Text=" · "/>
+                        <Run Text="{Binding Database}"/>
+                      </TextBlock>
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- New connection button -->
+            <Button Grid.Row="2" Classes="secondary" Command="{Binding NewProfileCommand}"
+                    HorizontalAlignment="Stretch" Margin="4,8,4,4">
+              <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                <mi:MaterialIcon Kind="Plus" Width="13" Height="13"/>
+                <TextBlock Text="{Binding [connection.new], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Border>
+
+        <!-- RIGHT column: edit form -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+          <Border Padding="20,16">
+          <StackPanel Spacing="0">
+
+            <!-- Placeholder when nothing is selected -->
+            <StackPanel IsVisible="{Binding !IsEditing}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Margin="0,60,0,0" Spacing="10">
+              <mi:MaterialIcon Kind="DatabaseOff" Width="40" Height="40"
+                               Foreground="{StaticResource BorderSubtleBrush}" HorizontalAlignment="Center"/>
+              <TextBlock Text="{Binding [connection.selectOrCreate], Source={x:Static loc:LocalizationService.Instance}}"
+                         FontSize="{StaticResource FontSizeBody}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Edit form -->
+            <StackPanel IsVisible="{Binding IsEditing}" Spacing="0">
+
+              <!-- Connection name -->
+              <TextBlock Classes="label" Text="{Binding [connection.name], Source={x:Static loc:LocalizationService.Instance}}"/>
+              <TextBox Classes="field" Text="{Binding EditName}" Margin="0,0,0,12"
+                       Watermark="{Binding [connection.watermark.name], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+              <!-- Import URL (Beekeeper-style quick setup) -->
+              <TextBlock Classes="label" Text="{Binding [connection.url], Source={x:Static loc:LocalizationService.Instance}}"
+                         IsVisible="{Binding !IsSqliteProvider}"/>
+              <Grid ColumnDefinitions="*,8,Auto" Margin="0,0,0,12" IsVisible="{Binding !IsSqliteProvider}">
+                <TextBox Grid.Column="0" Classes="field" Text="{Binding EditConnectionUrl}"
+                         Watermark="{Binding [connection.watermark.url], Source={x:Static loc:LocalizationService.Instance}}"/>
+                <Button Grid.Column="2" Classes="secondary" Command="{Binding ImportFromUrlCommand}"
+                        ToolTip.Tip="{Binding [connection.url.import], Source={x:Static loc:LocalizationService.Instance}}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <mi:MaterialIcon Kind="Link" Width="13" Height="13"/>
+                    <TextBlock Text="{Binding [connection.url.import], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                  </StackPanel>
+                </Button>
+              </Grid>
+
+              <!-- Provider -->
+              <TextBlock Classes="label" Text="{Binding [connection.provider], Source={x:Static loc:LocalizationService.Instance}}"/>
+              <Border Background="{StaticResource Bg1Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusSM}" Padding="8" Margin="0,0,0,12">
+                <ComboBox ItemsSource="{x:Static vm:ConnectionManagerViewModel.AvailableProviderOptions}"
+                          SelectedItem="{Binding SelectedProviderOption}"
+                          Background="{StaticResource Bg0Brush}" BorderBrush="{StaticResource AccentPrimaryBrush}" Foreground="{StaticResource TextSecondaryBrush}"
+                          FontSize="{StaticResource FontSizeBody}" Padding="10,6" CornerRadius="{StaticResource RadiusSM}"
+                          HorizontalAlignment="Stretch"
+                          MaxDropDownHeight="220">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <mi:MaterialIcon Kind="{Binding IconKind}" Width="14" Height="14" Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
+                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Border>
+
+              <!-- SQL Server integrated security -->
+              <CheckBox IsVisible="{Binding SupportsIntegratedSecurity}"
+                        IsChecked="{Binding EditUseIntegratedSecurity}"
+                        Margin="0,0,0,10"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Content="{Binding [connection.integratedSecurity], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+              <!-- Host + Port -->
+              <Grid IsVisible="{Binding !IsSqliteProvider}" ColumnDefinitions="*,12,100" Margin="0,0,0,12">
+                <StackPanel Grid.Column="0">
+                  <TextBlock Classes="label" Text="{Binding [connection.host], Source={x:Static loc:LocalizationService.Instance}}"/>
+                  <TextBox Classes="field" Text="{Binding EditHost}" Watermark="{Binding [connection.watermark.host], Source={x:Static loc:LocalizationService.Instance}}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                  <TextBlock Classes="label" Text="{Binding [connection.port], Source={x:Static loc:LocalizationService.Instance}}"/>
+                  <TextBox Classes="field" Text="{Binding EditPort}" Watermark="{Binding [connection.watermark.port], Source={x:Static loc:LocalizationService.Instance}}"/>
+                </StackPanel>
+              </Grid>
+
+              <!-- Database -->
+              <TextBlock Classes="label" Text="{Binding [connection.database], Source={x:Static loc:LocalizationService.Instance}}"
+                         IsVisible="{Binding !IsSqliteProvider}"/>
+              <TextBlock Classes="label" Text="{Binding [connection.sqlitePath], Source={x:Static loc:LocalizationService.Instance}}"
+                         IsVisible="{Binding IsSqliteProvider}"/>
+              <TextBox Classes="field" Text="{Binding EditDatabase}" Margin="0,0,0,12"
+                       Watermark="{Binding [connection.watermark.database], Source={x:Static loc:LocalizationService.Instance}}"
+                       IsVisible="{Binding !IsSqliteProvider}"/>
+              <Grid IsVisible="{Binding IsSqliteProvider}" ColumnDefinitions="*,8,Auto,8,Auto" Margin="0,0,0,12">
+                <TextBox Grid.Column="0" Classes="field" Text="{Binding EditDatabase}"
+                         Watermark="{Binding [connection.watermark.sqlitePath], Source={x:Static loc:LocalizationService.Instance}}"/>
+                <Button Grid.Column="2" Classes="secondary"
+                        Click="BrowseSqliteFile_Click"
+                        ToolTip.Tip="{Binding [connection.sqliteBrowse], Source={x:Static loc:LocalizationService.Instance}}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <mi:MaterialIcon Kind="FolderOpen" Width="13" Height="13"/>
+                    <TextBlock Text="{Binding [connection.sqliteBrowse], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                  </StackPanel>
+                </Button>
+                <Button Grid.Column="4" Classes="secondary"
+                        Click="CreateSqliteFile_Click"
+                        ToolTip.Tip="{Binding [connection.sqliteCreate], Source={x:Static loc:LocalizationService.Instance}}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <mi:MaterialIcon Kind="FilePlus" Width="13" Height="13"/>
+                    <TextBlock Text="{Binding [connection.sqliteCreate], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                  </StackPanel>
+                </Button>
+              </Grid>
+
+              <!-- Username + Password -->
+              <Grid IsVisible="{Binding ShowCredentials}" ColumnDefinitions="*,12,*" Margin="0,0,0,12">
+                <StackPanel Grid.Column="0">
+                  <TextBlock Classes="label" Text="{Binding [connection.username], Source={x:Static loc:LocalizationService.Instance}}"/>
+                  <TextBox Classes="field" Text="{Binding EditUsername}" Watermark="{Binding [connection.watermark.username], Source={x:Static loc:LocalizationService.Instance}}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                  <TextBlock Classes="label" Text="{Binding [connection.password], Source={x:Static loc:LocalizationService.Instance}}"/>
+                  <TextBox Classes="field" Text="{Binding EditPassword}"
+                           PasswordChar="●" Watermark="{Binding [connection.watermark.password], Source={x:Static loc:LocalizationService.Instance}}"/>
+                </StackPanel>
+              </Grid>
+
+              <CheckBox IsVisible="{Binding ShowCredentials}"
+                        IsChecked="{Binding EditRememberPassword}"
+                        Margin="0,0,0,12"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Content="{Binding [connection.rememberPassword], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+              <!-- SSL / trust options -->
+              <StackPanel IsVisible="{Binding SupportsSsl}" Margin="0,0,0,12" Spacing="8">
+                <CheckBox IsChecked="{Binding EditUseSsl}"
+                          Foreground="{StaticResource TextSecondaryBrush}"
+                          Content="{Binding [connection.ssl], Source={x:Static loc:LocalizationService.Instance}}"/>
+                <CheckBox IsVisible="{Binding SupportsIntegratedSecurity}"
+                          IsChecked="{Binding EditTrustServerCertificate}"
+                          Foreground="{StaticResource TextSecondaryBrush}"
+                          Content="{Binding [connection.trustServerCertificate], Source={x:Static loc:LocalizationService.Instance}}"/>
+              </StackPanel>
+
+              <!-- Timeout -->
+              <TextBlock Classes="label" Text="{Binding [connection.timeout], Source={x:Static loc:LocalizationService.Instance}}"/>
+              <TextBox Classes="field" Text="{Binding EditTimeout}" Margin="0,0,0,16"
+                       Watermark="{Binding [connection.watermark.timeout], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+              <!-- Test connection status -->
+              <Border IsVisible="{Binding TestStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                      Background="{StaticResource Bg0Brush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                      CornerRadius="{StaticResource RadiusSM}" Padding="10,8" Margin="0,0,0,14">
+                <TextBlock Text="{Binding TestStatus}" FontSize="{StaticResource FontSizeCaption}"
+                           Foreground="{Binding TestStatusColor}"
+                           TextWrapping="Wrap"/>
+              </Border>
+
+              <!-- Action buttons row -->
+              <Grid ColumnDefinitions="Auto,*,Auto,8,Auto,8,Auto">
+
+                <!-- Delete (only when editing existing) -->
+                <Button Grid.Column="0" Classes="danger"
+                        Command="{Binding DeleteProfileCommand}"
+                        IsVisible="{Binding SelectedProfile, Converter={x:Static ObjectConverters.IsNotNull}}"
+                  ToolTip.Tip="{Binding [tooltip.deleteConnection], Source={x:Static loc:LocalizationService.Instance}}"
+                        AutomationProperties.Name="{Binding [tooltip.deleteConnection], Source={x:Static loc:LocalizationService.Instance}}">
+                  <mi:MaterialIcon Kind="Delete" Width="14" Height="14"/>
+                </Button>
+
+                <!-- Test -->
+                <Button Grid.Column="2" Classes="secondary"
+                        Command="{Binding TestConnectionCommand}"
+                  ToolTip.Tip="{Binding [tooltip.testConnection], Source={x:Static loc:LocalizationService.Instance}}"
+                        AutomationProperties.Name="{Binding [tooltip.testConnection], Source={x:Static loc:LocalizationService.Instance}}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <mi:MaterialIcon Kind="LanConnect" Width="13" Height="13"
+                                     IsVisible="{Binding !IsTesting}"/>
+                    <mi:MaterialIcon Kind="Loading" Width="13" Height="13"
+                                     IsVisible="{Binding IsTesting}"/>
+                    <TextBlock Text="{Binding [connection.test], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                  </StackPanel>
+                </Button>
+
+                <!-- Save -->
+                <Button Grid.Column="4" Classes="secondary"
+                        Command="{Binding SaveProfileCommand}"
+                  ToolTip.Tip="{Binding [tooltip.saveConnection], Source={x:Static loc:LocalizationService.Instance}}"
+                        AutomationProperties.Name="{Binding [tooltip.saveConnection], Source={x:Static loc:LocalizationService.Instance}}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <mi:MaterialIcon Kind="ContentSave" Width="13" Height="13"/>
+                    <TextBlock Text="{Binding [connection.save], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                  </StackPanel>
+                </Button>
+
+                <!-- Connect -->
+                <Button Grid.Column="6" Classes="primary"
+                        Command="{Binding ConnectCommand}"
+                        IsVisible="{Binding !IsSelectedProfileActive}"
+                        ToolTip.Tip="{Binding [tooltip.activateConnection], Source={x:Static loc:LocalizationService.Instance}}"
+                        AutomationProperties.Name="{Binding [connection.connect], Source={x:Static loc:LocalizationService.Instance}}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <mi:MaterialIcon Kind="DatabaseArrowRight" Width="13" Height="13"/>
+                    <TextBlock Text="{Binding [connection.connect], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                  </StackPanel>
+                </Button>
+
+                <Button Grid.Column="6" Classes="danger"
+                        Command="{Binding DisconnectCommand}"
+                        IsVisible="{Binding IsSelectedProfileActive}"
+                        ToolTip.Tip="{Binding [connection.disconnect], Source={x:Static loc:LocalizationService.Instance}}"
+                        AutomationProperties.Name="{Binding [connection.disconnect], Source={x:Static loc:LocalizationService.Instance}}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <mi:MaterialIcon Kind="DatabaseOff" Width="13" Height="13"/>
+                    <TextBlock Text="{Binding [connection.disconnect], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                  </StackPanel>
+                </Button>
+              </Grid>
+
+            </StackPanel>
+          </StackPanel>
+          </Border>
+        </ScrollViewer>
+
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

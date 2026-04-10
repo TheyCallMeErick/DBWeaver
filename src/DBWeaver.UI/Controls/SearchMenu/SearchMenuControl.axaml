@@ -1,0 +1,245 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:canvas="using:DBWeaver.UI.ViewModels.Canvas"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.SearchMenuControl"
+             x:DataType="canvas:SearchMenuViewModel">
+
+  <UserControl.Styles>
+    <!-- Result item default -->
+    <Style Selector="Border.result-item">
+      <Setter Property="Background"    Value="Transparent"/>
+      <Setter Property="CornerRadius"  Value="{StaticResource RadiusSM}"/>
+      <Setter Property="Padding"       Value="10,7"/>
+      <Setter Property="Margin"        Value="4,1"/>
+      <Setter Property="Cursor"        Value="Hand"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.08"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.result-item:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg3Brush}"/>
+    </Style>
+    <Style Selector="Border.result-item.selected">
+      <Setter Property="Background" Value="{StaticResource PanelActiveBrush}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- ══ Floating panel ═════════════════════════════════════════════════════ -->
+  <Border Width="340"
+          CornerRadius="{StaticResource RadiusLG}"
+          Background="{StaticResource Bg1Brush}"
+          BorderBrush="{StaticResource BorderSubtleBrush}"
+          BorderThickness="1"
+          BoxShadow="{StaticResource ShadowXL}">
+
+    <StackPanel>
+
+      <!-- ── Search input ──────────────────────────────────────────────────── -->
+      <Border Background="{StaticResource Bg2Brush}"
+              CornerRadius="{StaticResource RadiusLGTop}"
+              Padding="12,10">
+
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+          <!-- Search icon -->
+          <mi:MaterialIcon Grid.Column="0"
+                           Kind="Magnify"
+                           Width="18" Height="18"
+                           Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
+
+          <!-- Text input -->
+          <TextBox Grid.Column="1"
+                   Text="{Binding Query, Mode=TwoWay}"
+                   Watermark="{Binding [search.watermark], Source={x:Static loc:LocalizationService.Instance}}"
+                   FontSize="{StaticResource FontSizeLabel}"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   CaretBrush="{StaticResource AccentPrimaryHoverBrush}"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   Name="SearchInput">
+            <TextBox.Styles>
+              <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+                <Setter Property="BorderBrush" Value="Transparent"/>
+              </Style>
+            </TextBox.Styles>
+          </TextBox>
+
+          <!-- Keyboard shortcut badge -->
+          <Border Grid.Column="2"
+                  Background="{StaticResource BorderSubtleBrush}"
+                  CornerRadius="{StaticResource RadiusXS}"
+                  Padding="5,2"
+                  VerticalAlignment="Center">
+            <TextBlock Text="{Binding [search.shortcut], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource TextMutedBrush}"/>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- Divider -->
+      <Border Height="1" Background="{StaticResource Bg3Brush}"/>
+
+      <!-- ── Snippets section (shown when snippets exist) ─────────────────── -->
+      <Border Padding="8,8,8,2"
+              IsVisible="{Binding HasSnippets}">
+        <StackPanel Spacing="4">
+          <!-- Header -->
+          <TextBlock Text="{Binding [search.snippets], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     FontWeight="{StaticResource FontWeightHeading}"
+                     Foreground="{StaticResource StatusWarningBrush}"
+                     LetterSpacing="1.5"
+                     Margin="6,0,0,2"/>
+          <ItemsControl ItemsSource="{Binding Snippets}" Name="SnippetsList">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="canvas:SnippetViewModel">
+                <Border Classes="result-item">
+                  <Grid ColumnDefinitions="34,*,Auto">
+                    <!-- Star icon badge -->
+                    <Border Grid.Column="0"
+                            Width="28" Height="28"
+                            CornerRadius="{StaticResource RadiusSM}"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0"
+                            Background="{StaticResource BtnWarningBgBrush}">
+                      <mi:MaterialIcon Kind="Bookmark"
+                                       Width="14" Height="14"
+                                       Foreground="{StaticResource StatusWarningBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                    </Border>
+                    <!-- Name + summary -->
+                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}"
+                                 FontSize="{StaticResource FontSizeBody}"
+                                 FontWeight="{StaticResource FontWeightLabel}"
+                                 Foreground="{StaticResource TextPrimaryBrush}"/>
+                      <TextBlock Text="{Binding Summary}"
+                                 FontSize="{StaticResource FontSizeCaption}"
+                                 Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                    <!-- Tags badge (optional) -->
+                    <Border Grid.Column="2"
+                            Background="{StaticResource BtnWarningBgBrush}"
+                            CornerRadius="{StaticResource RadiusXS}"
+                            Padding="5,2"
+                            Margin="4,0"
+                            IsVisible="{Binding HasTags}">
+                      <TextBlock Text="{Binding Tags}"
+                                 FontSize="{StaticResource FontSizeCaption}"
+                                 Foreground="{StaticResource StatusWarningBrush}"/>
+                    </Border>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Divider between snippets and node results -->
+      <Border Height="1" Background="{StaticResource Bg3Brush}"
+              IsVisible="{Binding HasSnippets}"/>
+
+      <!-- ── Results list ───────────────────────────────────────────────────── -->
+      <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Results}" Margin="0,4,0,4" Name="ResultsList">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="canvas:NodeSearchResultViewModel">
+
+              <Border Classes="result-item">
+
+                <Grid ColumnDefinitions="34,*,Auto">
+
+                  <!-- Category icon badge -->
+                  <Border Grid.Column="0"
+                          Width="28" Height="28"
+                          CornerRadius="{StaticResource RadiusSM}"
+                          VerticalAlignment="Center"
+                          Margin="0,0,8,0">
+                    <Border.Background>
+                      <SolidColorBrush Color="{Binding AccentColor}" Opacity="0.18"/>
+                    </Border.Background>
+                    <mi:MaterialIcon Kind="{Binding IconKind}"
+                                     Width="15" Height="15"
+                                     Foreground="{Binding AccentBrush}"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+                  </Border>
+
+                  <!-- Name + category -->
+                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               FontWeight="{StaticResource FontWeightLabel}"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="{Binding Category}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextMutedBrush}"/>
+                  </StackPanel>
+
+                  <!-- Accent dot -->
+                  <Ellipse Grid.Column="2"
+                           Width="6" Height="6"
+                           Fill="{Binding AccentBrush}"
+                           VerticalAlignment="Center"
+                           Margin="8,0"/>
+                </Grid>
+              </Border>
+
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <!-- Empty state -->
+      <Border Padding="16,20"
+              IsVisible="{Binding Results.Count, Converter={x:Static BoolConverters.Not}}">
+        <StackPanel HorizontalAlignment="Center" Spacing="6">
+          <TextBlock Text="{Binding [search.empty], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeLabel}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding [search.emptyHint], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextSecondaryBrush}"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+
+      <!-- ── Footer keyboard hints ─────────────────────────────────────────── -->
+      <Border Background="{StaticResource Bg1Brush}"
+              CornerRadius="{StaticResource RadiusLGBottom}"
+              Padding="12,7">
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Border Background="{StaticResource Bg3Brush}" CornerRadius="{StaticResource RadiusXS}" Padding="4,1">
+              <TextBlock Text="↑↓" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+            </Border>
+            <TextBlock Text="{Binding [common.navigate], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Border Background="{StaticResource Bg3Brush}" CornerRadius="{StaticResource RadiusXS}" Padding="4,1">
+              <TextBlock Text="↵" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+            </Border>
+            <TextBlock Text="{Binding [search.spawn], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Border Background="{StaticResource Bg3Brush}" CornerRadius="{StaticResource RadiusXS}" Padding="4,1">
+              <TextBlock Text="{Binding [common.esc], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+            </Border>
+            <TextBlock Text="{Binding [common.close], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Border>
+</UserControl>

@@ -1,4 +1,4 @@
-namespace VisualSqlArchitect.Tests.Integration.ManualPlan;
+namespace DBWeaver.Tests.Integration.ManualPlan;
 
 internal static class ManualPlanE2ESeedScripts
 {

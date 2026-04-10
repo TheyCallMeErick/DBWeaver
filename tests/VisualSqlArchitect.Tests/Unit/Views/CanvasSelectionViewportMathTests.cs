@@ -1,14 +1,14 @@
 using Avalonia;
-using VisualSqlArchitect.UI.Controls;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Controls;
 
-namespace VisualSqlArchitect.Tests.Unit.Views;
+
+namespace DBWeaver.Tests.Unit.Views;
 
 public class CanvasSelectionViewportMathTests
 {
     private static NodeViewModel Node(string name, double x, double y, double width = 220)
     {
-        return new NodeViewModel($"public.{name}", Array.Empty<(string n, VisualSqlArchitect.Nodes.PinDataType t)>(), new Point(x, y))
+        return new NodeViewModel($"public.{name}", Array.Empty<(string n, DataType t)>(), new Point(x, y))
         {
             Width = width,
         };

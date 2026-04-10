@@ -9,9 +9,9 @@
       "Bash(dotnet tool:*)",
       "Bash(dotnet csharpier:*)",
       "Bash(dotnet fsi:*)",
-      "Bash(grep -r MaterialIconKind. /home/erickazevedo/Downloads/files/src/VisualSqlArchitect.UI/ --include=*.cs)",
+      "Bash(grep -r MaterialIconKind. /home/erickazevedo/Downloads/files/src/lude=*.cs)",
       "Bash(python3 -c \":*)",
-      "Bash(grep -n \"InvalidateWires\\\\|Dispatcher\" /home/erickazevedo/Downloads/files/src/VisualSqlArchitect.UI/MainWindow.axaml.cs /home/erickazevedo/Downloads/files/src/VisualSqlArchitect.UI/Services/*.cs)",
+      "Bash(grep -n \"InvalidateWires\\\\|Dispatcher\" /home/erickazevedo/Downloads/files/src/ndow.axaml.cs /home/erickazevedo/Downloads/files/src/DBWeaver.U
       "WebFetch(domain:docs.avaloniaui.net)",
       "Bash(git fsck:*)",
       "Bash(find .git/objects -type f -empty -delete)",
@@ -25,16 +25,21 @@
       "Bash(find /c/Users/azeve/Documents/VisualSqlArchtect/tests -type f -name *.cs)",
       "Bash(grep -rn \"\\\\b[0-9]{3,}\\\\b\" /c/Users/azeve/Documents/VisualSqlArchtect/src --include=\"*.cs\")",
       "Bash(grep -v \"///\")",
-      "Bash(rm \"c:/Users/azeve/Documents/VisualSqlArchtect/src/VisualSqlArchitect.UI/Controls/BezierWireLayer.cs\")",
-      "Bash(rm \"c:/Users/azeve/Documents/VisualSqlArchtect/src/VisualSqlArchitect.UI/Controls/PinDragInteraction.cs\")",
+      "Bash(rm \"c:/Users/azeve/Documents/VisualSqlArchtect/src/ls/BezierWireLayer.cs\")",
+      "Bash(rm \"c:/Users/azeve/Documents/VisualSqlArchtect/src/ls/PinDragInteraction.cs\")",
       "Bash(grep -v \"private\\\\|//\")",
       "Bash(grep -v \"//\")",
-      "Bash(find \"c:\\\\Users\\\\azeve\\\\Documents\\\\VisualSqlArchtect/src/VisualSqlArchitect.UI/Controls/InfiniteCanvas\" -name \"*.cs\" -exec wc -l {} \\\\;)",
-      "Bash(wc -l /home/erickazevedo/Documentos/VisualSqlArchtect/src/VisualSqlArchitect/Providers/*.cs)",
+      "Bash(find \"c:\\\\Users\\\\azeve\\\\Documents\\\\VisualSqlArchtect/src/ls/InfiniteCanvas\" -name \"*.cs\" -exec wc -l {} \\\\;)",
+      "Bash(wc -l /home/erickazevedo/Documentos/VisualSqlArchtect/src//*.cs)",
       "Bash(grep -E \"\\\\.cs$\")",
-      "Bash(grep -n \"class NodeDefinitionRegistry\\\\|static class NodeDefinitionRegistry\" /home/erickazevedo/Documentos/VisualSqlArchtect/src/VisualSqlArchitect/Nodes/*.cs)",
+      "Bash(grep -n \"class NodeDefinitionRegistry\\\\|static class NodeDefinitionRegistry\" /home/erickazevedo/Documentos/VisualSqlArchtect/src/s)",
       "Read(//tmp/**)",
-      "Bash(sqlite3 --version)"
+      "Bash(sqlite3 --version)",
+      "Bash(/home/erickazevedo/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh --project-dir /home/erickazevedo/Documentos/VisualSqlArchtect)",
+      "Bash(git worktree:*)",
+      "Bash(git -C /home/erickazevedo/Documentos/VisualSqlArchtect/.worktrees/ui-design-system-overhaul commit -m ':*)",
+      "Bash(git stash:*)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

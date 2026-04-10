@@ -1,8 +1,4 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Ddl;
-using VisualSqlArchitect.Nodes;
-
-namespace VisualSqlArchitect.Tests.Integration;
+namespace Integration;
 
 public class DdlProviderRollbackIntegrationTests
 {

@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
 using System.ComponentModel;
-using VisualSqlArchitect.UI.Services.Localization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Services.Localization;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class CanvasAutoJoinMessagePresenterTests
 {

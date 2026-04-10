@@ -1,12 +1,12 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using Avalonia;
 using System.Text.Json;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Serialization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Serialization;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class ViewSubcanvasEditorTests
 {

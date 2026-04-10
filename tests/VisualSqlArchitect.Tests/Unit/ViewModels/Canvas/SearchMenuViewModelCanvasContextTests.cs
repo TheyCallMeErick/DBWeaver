@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
-using VisualSqlArchitect.Nodes;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
+using DBWeaver.Nodes;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class SearchMenuViewModelCanvasContextTests
 {

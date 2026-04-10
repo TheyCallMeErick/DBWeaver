@@ -1,4 +1,4 @@
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class SqlImporterOverlayRegressionTests
 {
@@ -9,7 +9,7 @@ public class SqlImporterOverlayRegressionTests
             Path.Combine(
                 AppContext.BaseDirectory,
                 "..", "..", "..", "..", "..",
-                "src", "VisualSqlArchitect.UI", "Controls", "SqlImporter", "SqlImporterOverlay.axaml"));
+                "src", "DBWeaver.UI", "Controls", "SqlImporter", "SqlImporterOverlay.axaml"));
 
         Assert.Contains("ResultCloseBtn", source, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding [common.close], Source={x:Static loc:LocalizationService.Instance}}\"", source, StringComparison.Ordinal);

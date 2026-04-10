@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.UndoRedo;
-using VisualSqlArchitect.UI.Services.Localization;
+﻿using DBWeaver.UI.Services.Benchmark;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.UndoRedo;
+using DBWeaver.UI.Services.Localization;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 /// <summary>
 /// Tests for UndoRedoStack to verify correct order preservation,
@@ -203,7 +203,7 @@ public class UndoRedoStackTests
             e =>
                 e.Name == expectedArea
                 && e.Details.Contains("Bulk Move", StringComparison.Ordinal)
-                && e.Status == EDiagnosticStatus.Warning
+                && e.Status == DiagnosticStatus.Warning
         );
     }
 

@@ -1,8 +1,8 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Metadata;
+namespace DBWeaver.Tests.Unit.Metadata;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers — in-memory DbMetadata builder for tests

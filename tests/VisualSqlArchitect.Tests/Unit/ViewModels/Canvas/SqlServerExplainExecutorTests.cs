@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.Core;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels.Canvas;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class SqlServerExplainExecutorTests
 {
@@ -104,6 +104,28 @@ public class SqlServerExplainExecutorTests
         Assert.Contains("SET STATISTICS XML OFF", actual);
     }
 
+    [Fact]
+    public async Task RunAsync_DoesNotFallback_WhenStatisticsIsCancelled()
+    {
+        var runner = new FakeRunner("<ShowPlanXML />")
+        {
+            ThrowCancellationOnStatistics = true
+        };
+        var sut = new SqlServerExplainExecutor(runner, new SqlServerExplainPlanParser());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            sut.RunAsync(
+                "SELECT * FROM orders",
+                DatabaseProvider.SqlServer,
+                BuildSqlServerConfig(),
+                new ExplainOptions(IncludeAnalyze: true),
+                ct: new CancellationToken(canceled: true))
+        );
+
+        Assert.Equal(0, runner.ShowPlanCalls);
+        Assert.Equal(1, runner.StatisticsCalls);
+    }
+
     private static ConnectionConfig BuildSqlServerConfig() =>
         new(
             Provider: DatabaseProvider.SqlServer,
@@ -118,6 +140,7 @@ public class SqlServerExplainExecutorTests
     {
         public int ShowPlanCalls { get; private set; }
         public int StatisticsCalls { get; private set; }
+        public bool ThrowCancellationOnStatistics { get; init; }
 
         public Task<string> ExecuteShowPlanXmlAsync(
             string sql,
@@ -136,8 +159,9 @@ public class SqlServerExplainExecutorTests
         )
         {
             StatisticsCalls++;
+            if (ThrowCancellationOnStatistics)
+                throw new OperationCanceledException(ct);
             return Task.FromResult(xml);
         }
     }
 }
-

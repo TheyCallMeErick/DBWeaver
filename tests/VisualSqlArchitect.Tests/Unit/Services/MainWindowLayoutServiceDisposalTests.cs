@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.Services;
+using DBWeaver.UI.Services;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class MainWindowLayoutServiceDisposalTests
 {

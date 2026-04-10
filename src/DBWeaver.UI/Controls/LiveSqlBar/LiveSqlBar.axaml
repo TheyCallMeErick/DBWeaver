@@ -1,0 +1,407 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:validation="using:DBWeaver.UI.Services.Validation"
+             xmlns:livesql="using:DBWeaver.UI.Services.LiveSqlBar"
+             xmlns:core="using:DBWeaver.Core"
+             xmlns:conv="using:DBWeaver.UI.Converters"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.LiveSqlBar"
+             x:DataType="vm:LiveSqlBarViewModel">
+
+  <UserControl.Resources>
+    <conv:SqlTokenKindConverter x:Key="KindConverter"/>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+
+    <!-- Keyword -->
+    <Style Selector="TextBlock.tok-Keyword">
+      <Setter Property="Foreground" Value="{StaticResource AccentSecondaryHoverBrush}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <!-- Identifier -->
+    <Style Selector="TextBlock.tok-Identifier">
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+    <!-- Literal string / number -->
+    <Style Selector="TextBlock.tok-Literal">
+      <Setter Property="Foreground" Value="{StaticResource StatusOkBrush}"/>
+    </Style>
+    <!-- Operator -->
+    <Style Selector="TextBlock.tok-Operator">
+      <Setter Property="Foreground" Value="{StaticResource StatusErrorBrush}"/>
+    </Style>
+    <!-- Punctuation -->
+    <Style Selector="TextBlock.tok-Punctuation">
+      <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+    </Style>
+    <!-- Function call -->
+    <Style Selector="TextBlock.tok-Function">
+      <Setter Property="Foreground" Value="{StaticResource StatusWarningBrush}"/>
+    </Style>
+    <!-- Comment -->
+    <Style Selector="TextBlock.tok-Comment">
+      <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+      <Setter Property="FontStyle"  Value="Italic"/>
+    </Style>
+    <!-- Plain / whitespace -->
+    <Style Selector="TextBlock.tok-Plain">
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    </Style>
+
+    <!-- Action button -->
+    <Style Selector="Button.sql-action">
+      <Setter Property="Background"       Value="Transparent"/>
+      <Setter Property="BorderThickness"  Value="0"/>
+      <Setter Property="Foreground"       Value="{StaticResource TextMutedBrush}"/>
+      <Setter Property="Padding"          Value="6,3"/>
+      <Setter Property="CornerRadius"     Value="5"/>
+      <Setter Property="FontSize"         Value="11"/>
+      <Setter Property="Cursor"           Value="Hand"/>
+    </Style>
+    <Style Selector="Button.sql-action:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg3Brush}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Button.sql-cta">
+      <Setter Property="MinWidth" Value="180"/>
+      <Setter Property="Padding" Value="12,9"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.14"/>
+          <BrushTransition Property="Foreground" Duration="0:0:0.14"/>
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.14"/>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.sql-cta:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.03)"/>
+    </Style>
+    <Style Selector="Button.sql-cta:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.98)"/>
+    </Style>
+    <Style Selector="Button.sql-cta.explain">
+      <Setter Property="Background" Value="{StaticResource BtnInfoBgBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="Foreground" Value="{StaticResource BtnInfoFgBrush}"/>
+    </Style>
+    <Style Selector="Button.sql-cta.explain:pointerover">
+      <Setter Property="Background" Value="{StaticResource PanelActiveBrush}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Button.sql-cta.benchmark">
+      <Setter Property="Background" Value="{StaticResource BtnWarningBgBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource StatusWarningBrush}"/>
+      <Setter Property="Foreground" Value="{StaticResource BtnWarningFgBrush}"/>
+    </Style>
+    <Style Selector="Button.sql-cta.benchmark:pointerover">
+      <Setter Property="Background" Value="{StaticResource BtnWarningBgBrush}"/>
+      <Setter Property="Foreground" Value="{StaticResource BtnWarningFgBrush}"/>
+    </Style>
+
+  </UserControl.Styles>
+
+  <!-- ══ Bar shell ══════════════════════════════════════════════════════════ -->
+  <Border Background="{StaticResource Bg0Brush}"
+          BorderBrush="{StaticResource BorderSubtleBrush}"
+          BorderThickness="0,1,0,0"
+          VerticalAlignment="Stretch">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="0">
+
+      <!-- ── Safe Preview blocked banner ──────────────────────────────────────── -->
+      <Border Grid.Row="0"
+              Background="{StaticResource BtnDangerBgBrush}"
+              BorderBrush="{StaticResource StatusErrorBrush}"
+              BorderThickness="0,0,0,1"
+              Padding="12,5"
+              IsVisible="{Binding IsMutatingCommand}">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Border CornerRadius="{StaticResource RadiusXS}" Background="{StaticResource StatusErrorBrush}" Padding="5,2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="Lock" Width="10" Height="10" Foreground="White" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding [liveSql.safePreview], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}" Foreground="White" LetterSpacing="0.8"/>
+            </StackPanel>
+          </Border>
+          <TextBlock Text="{Binding BlockedReason}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource StatusErrorBrush}"
+                     VerticalAlignment="Center"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <!-- ── Top strip: label + provider + actions ───────────────────────────── -->
+      <Grid Grid.Row="1"
+            ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto"
+            Margin="12,6,8,4">
+
+        <!-- Status dot -->
+        <Ellipse Grid.Column="0"
+                 Width="7" Height="7"
+                 Margin="0,0,8,0">
+          <Ellipse.Fill>
+            <SolidColorBrush Color="{StaticResource StatusOk}" Opacity="{Binding IsValid, Converter={x:Static BoolConverters.Not}, FallbackValue=0.3}"/>
+          </Ellipse.Fill>
+        </Ellipse>
+
+        <!-- "LIVE SQL" label -->
+        <TextBlock Grid.Column="1"
+                   Text="{Binding [liveSql.title], Source={x:Static loc:LocalizationService.Instance}}"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   FontWeight="{StaticResource FontWeightHeading}"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   LetterSpacing="1.5"
+                   VerticalAlignment="Center"
+                   Margin="0,0,10,0"/>
+
+        <!-- Safe Preview badge (shown when mutating command detected) -->
+        <Border Grid.Column="2"
+                Background="{StaticResource StatusErrorBrush}"
+                Padding="5,2"
+                Margin="0,0,8,0"
+                VerticalAlignment="Center"
+                IsVisible="{Binding IsMutatingCommand}"
+          ToolTip.Tip="{Binding [tooltip.liveSqlMutatingBlocked], Source={x:Static loc:LocalizationService.Instance}}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <mi:MaterialIcon Kind="Lock" Width="10" Height="10" Foreground="White" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding [liveSql.blocked], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}" Foreground="White"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Error hint (shown inline when invalid and not a mutating block) -->
+        <TextBlock Grid.Column="2"
+                   Text="{Binding CompileError}"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   Foreground="{StaticResource StatusErrorBrush}"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   IsVisible="{Binding IsValid, Converter={x:Static BoolConverters.Not}}"/>
+
+        <!-- Provider picker -->
+        <ComboBox Grid.Column="3"
+                  Background="{StaticResource Bg0Brush}"
+                  BorderBrush="{StaticResource BorderSubtleBrush}"
+                  Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                  FontSize="{StaticResource FontSizeCaption}"
+                  CornerRadius="{StaticResource RadiusXS}"
+                  Padding="7,2"
+                  Margin="4,0"
+                  VerticalAlignment="Center">
+          <ComboBox.Items>
+            <core:DatabaseProvider>Postgres</core:DatabaseProvider>
+            <core:DatabaseProvider>MySql</core:DatabaseProvider>
+            <core:DatabaseProvider>SqlServer</core:DatabaseProvider>
+            <core:DatabaseProvider>SQLite</core:DatabaseProvider>
+          </ComboBox.Items>
+        </ComboBox>
+
+        <!-- Copy SQL button -->
+        <Button Grid.Column="4"
+                Classes="sql-action"
+                Name="CopyBtn"
+          ToolTip.Tip="{Binding [tooltip.copySql], Source={x:Static loc:LocalizationService.Instance}}"
+                IsEnabled="{Binding HasSql}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <mi:MaterialIcon Kind="ContentCopy" Width="12" Height="12"/>
+            <TextBlock Text="{Binding [liveSql.copy], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
+          </StackPanel>
+        </Button>
+
+        <!-- Format / pretty-print -->
+        <Button Grid.Column="5"
+                Classes="sql-action"
+                Name="FormatBtn"
+          ToolTip.Tip="{Binding [tooltip.formatSql], Source={x:Static loc:LocalizationService.Instance}}"
+                IsEnabled="{Binding HasSql}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <mi:MaterialIcon Kind="FormatAlignLeft" Width="12" Height="12"/>
+            <TextBlock Text="{Binding [liveSql.format], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
+          </StackPanel>
+        </Button>
+
+        <!-- Recompile indicator (spinning when active) -->
+        <ProgressBar Grid.Column="6"
+                     Width="20" Height="2"
+                     IsIndeterminate="True"
+                     Foreground="{StaticResource AccentPrimaryBrush}"
+                     Background="Transparent"
+                     VerticalAlignment="Center"
+                     Margin="4,0"
+                     IsVisible="{Binding IsCompiling}"/>
+      </Grid>
+
+      <!-- ── SQL text display ───────────────────────────────────────────────── -->
+      <Border Grid.Row="2" Margin="12,0,12,4" Background="{StaticResource Bg0Brush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusSM}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      MinHeight="90"
+                      Margin="10,8">
+          <ItemsControl ItemsSource="{Binding Tokens}"
+                        HorizontalAlignment="Stretch">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="livesql:SqlToken">
+                <TextBlock Text="{Binding Text}"
+                           FontFamily="{StaticResource MonoFont}"
+                           FontSize="{StaticResource FontSizeBody}"
+                           Classes.tok-Keyword="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Keyword}"
+                           Classes.tok-Identifier="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Identifier}"
+                           Classes.tok-Literal="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Literal}"
+                           Classes.tok-Operator="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Operator}"
+                           Classes.tok-Punctuation="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Punctuation}"
+                           Classes.tok-Function="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Function}"
+                           Classes.tok-Comment="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Comment}"
+                           Classes.tok-Plain="{Binding Kind, Converter={StaticResource KindConverter}, ConverterParameter=Plain}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+
+      <!-- ── Preview diagnostics strip (click to focus node) ───────────────── -->
+      <ItemsControl Grid.Row="3"
+                    ItemsSource="{Binding DiagnosticItems}"
+                    IsVisible="{Binding HasDiagnostics}"
+                    Margin="12,2,12,1">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="livesql:LiveSqlDiagnosticItem">
+              <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,6,0">
+                <Button Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        Cursor="Hand"
+                        Command="{Binding FocusCommand}">
+                  <Border CornerRadius="{StaticResource RadiusXS}"
+                          Background="{StaticResource BtnDangerBgBrush}"
+                          BorderBrush="{StaticResource StatusErrorBrush}"
+                          BorderThickness="1"
+                          Padding="6,3">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                  <mi:MaterialIcon Kind="AlertCircleOutline"
+                                   Width="11" Height="11"
+                                   Foreground="{StaticResource StatusErrorBrush}"
+                                   VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding Message}"
+                             FontSize="{StaticResource FontSizeCaption}"
+                             Foreground="{StaticResource BtnDangerFgBrush}"
+                             VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Border>
+                </Button>
+
+                <Button IsVisible="{Binding HasQuickAction}"
+                        Command="{Binding QuickActionCommand}"
+                        Background="{StaticResource Bg3Brush}"
+                        BorderBrush="{StaticResource AccentPrimaryHoverBrush}"
+                        Foreground="{StaticResource BtnInfoFgBrush}"
+                        BorderThickness="1"
+                        Padding="6,1"
+                        FontSize="{StaticResource FontSizeCaption}"
+                        Content="{Binding QuickActionLabel}"/>
+              </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- ── Guardrail warnings strip ──────────────────────────────────────── -->
+      <ItemsControl Grid.Row="4"
+                    ItemsSource="{Binding GuardIssues}"
+                    IsVisible="{Binding HasGuardWarning}"
+                    Margin="12,2,12,5">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="validation:GuardIssue">
+            <Border CornerRadius="{StaticResource RadiusXS}"
+                    Background="{StaticResource BtnWarningBgBrush}"
+                    BorderBrush="{StaticResource StatusWarningBrush}"
+                    BorderThickness="1"
+                    Padding="6,3"
+                    Margin="0,2,6,0">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <mi:MaterialIcon Kind="Alert"
+                                 Width="11" Height="11"
+                                 Foreground="{StaticResource StatusWarningBrush}"
+                                 VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Message}"
+                           FontSize="{StaticResource FontSizeCaption}"
+                           Foreground="{StaticResource BtnWarningFgBrush}"
+                           VerticalAlignment="Center">
+                  <ToolTip.Tip>
+                    <StackPanel Spacing="3" MaxWidth="340">
+                      <TextBlock Text="{Binding Message}"  FontWeight="{StaticResource FontWeightHeading}" Foreground="White" FontSize="{StaticResource FontSizeCaption}"/>
+                      <TextBlock Text="{Binding Suggestion}" Foreground="{StaticResource AccentPrimaryHoverBrush}" FontSize="{StaticResource FontSizeCaption}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </ToolTip.Tip>
+                </TextBlock>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Border Grid.Row="5"
+              Margin="12,2,12,10"
+              Padding="10,10"
+              Background="{StaticResource Bg1Brush}"
+              BorderBrush="{StaticResource BorderBrush}"
+              BorderThickness="1"
+              CornerRadius="{StaticResource RadiusMD}">
+        <Grid ColumnDefinitions="*,Auto,Auto,*">
+          <TextBlock Grid.Column="0"
+                     Text="{Binding [liveSql.actionsHint], Source={x:Static loc:LocalizationService.Instance}, FallbackValue=Performance tools}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     VerticalAlignment="Center"/>
+          <Button Grid.Column="1"
+                  Name="ExplainBtn"
+                  Classes="sql-cta explain"
+                  Margin="0,0,8,0"
+                  ToolTip.Tip="{Binding [tooltip.openExplainPlan], Source={x:Static loc:LocalizationService.Instance}}"
+                  IsEnabled="{Binding HasSql}"
+                  AutomationProperties.Name="{Binding [tooltip.openExplainPlan], Source={x:Static loc:LocalizationService.Instance}}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <mi:MaterialIcon Kind="TableSearch" Width="14" Height="14"/>
+              <TextBlock Text="{Binding [liveSql.explain], Source={x:Static loc:LocalizationService.Instance}}"/>
+              <TextBlock Text="F4" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource BtnInfoFgBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="2"
+                  Name="BenchmarkBtn"
+                  Classes="sql-cta benchmark"
+                  ToolTip.Tip="{Binding [tooltip.openBenchmark], Source={x:Static loc:LocalizationService.Instance}}"
+                  IsEnabled="{Binding HasSql}"
+                  AutomationProperties.Name="{Binding [tooltip.openBenchmark], Source={x:Static loc:LocalizationService.Instance}}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <mi:MaterialIcon Kind="TimerOutline" Width="14" Height="14"/>
+              <TextBlock Text="{Binding [liveSql.benchmark], Source={x:Static loc:LocalizationService.Instance}}"/>
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+
+    </Grid>
+  </Border>
+</UserControl>

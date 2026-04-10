@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:startmodels="using:DBWeaver.UI.Services.Start.Models"
+             x:Class="DBWeaver.UI.Controls.Start.TemplateCard"
+             x:DataType="startmodels:StartTemplateItem">
+
+  <Grid RowDefinitions="Auto,Auto,*">
+    <TextBlock Text="{Binding Name}"
+               FontSize="{StaticResource FontSizeLabel}"
+               FontWeight="{StaticResource FontWeightTitle}"
+               Foreground="{StaticResource TextPrimaryBrush}"
+               TextTrimming="CharacterEllipsis"/>
+
+    <Border Grid.Row="1" Margin="0,6,0,0" Background="{StaticResource BtnInfoBgBrush}" BorderBrush="{StaticResource AccentPrimaryBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusPill}" Padding="7,2" HorizontalAlignment="Left">
+      <TextBlock Text="{Binding Category}"
+                 FontSize="{StaticResource FontSizeCaption}"
+                 Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
+    </Border>
+
+    <TextBlock Grid.Row="2"
+               Margin="0,6,0,0"
+               Text="{Binding Description}"
+               FontSize="{StaticResource FontSizeCaption}"
+               Foreground="{StaticResource TextSecondaryBrush}"
+               Opacity="0.92"
+               MaxLines="3"
+               TextWrapping="Wrap"
+               TextTrimming="CharacterEllipsis"/>
+  </Grid>
+</UserControl>

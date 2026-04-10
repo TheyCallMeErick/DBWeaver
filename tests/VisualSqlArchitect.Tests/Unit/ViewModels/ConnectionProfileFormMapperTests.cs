@@ -1,12 +1,12 @@
-﻿using VisualSqlArchitect.UI.Services.ConnectionManager;
-using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.ConnectionManager;
+using DBWeaver.UI.Services.Benchmark;
 using System.ComponentModel;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.Services.Localization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Core;
+using DBWeaver.UI.Services.Localization;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class ConnectionProfileFormMapperTests
 {

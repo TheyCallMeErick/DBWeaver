@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.Services.SqlImport.Mapping;
+using DBWeaver.UI.Services.SqlImport.Mapping;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services.SqlImport;
+namespace DBWeaver.Tests.Unit.Services.SqlImport;
 
 public class AstToImportModelMapperTests
 {

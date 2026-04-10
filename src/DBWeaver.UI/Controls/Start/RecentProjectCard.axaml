@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:startmodels="using:DBWeaver.UI.Services.Start.Models"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             x:Class="DBWeaver.UI.Controls.Start.RecentProjectCard"
+             x:DataType="startmodels:StartRecentProjectItem">
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+    <Border Grid.Row="0" Height="2" CornerRadius="{StaticResource RadiusXS}" Background="{StaticResource AccentPrimaryBrush}" Opacity="0.65" Margin="0,0,0,6"/>
+    <Border Grid.Row="1"
+            Height="52"
+            CornerRadius="{StaticResource RadiusSM}"
+            Background="{StaticResource Bg2Brush}"
+            BorderBrush="{StaticResource BorderSubtleBrush}"
+            BorderThickness="1"
+            Padding="8,6">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Text="{Binding [start.lastSnapshot], Source={x:Static loc:LocalizationService.Instance}}"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   Foreground="{StaticResource TextSecondaryBrush}"/>
+        <TextBlock Grid.Row="1"
+                   Text="{Binding SnapshotSummary}"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   FontWeight="{StaticResource FontWeightTitle}"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   VerticalAlignment="Bottom"
+                   TextTrimming="CharacterEllipsis"/>
+      </Grid>
+    </Border>
+
+    <TextBlock Grid.Row="2"
+               Margin="0,6,0,0"
+               Text="{Binding DisplayName}"
+               FontSize="{StaticResource FontSizeLabel}"
+               FontWeight="{StaticResource FontWeightTitle}"
+               Foreground="{StaticResource TextPrimaryBrush}"
+               TextTrimming="CharacterEllipsis"/>
+
+    <TextBlock Grid.Row="3"
+               Margin="0,4,0,0"
+               Text="{Binding LastOpenedLabel}"
+               FontSize="{StaticResource FontSizeCaption}"
+               Foreground="{StaticResource TextSecondaryBrush}"/>
+
+    <TextBlock Grid.Row="4"
+               Text="{Binding Provider}"
+               VerticalAlignment="Bottom"
+               Foreground="{StaticResource AccentPrimaryHoverBrush}"
+               FontSize="{StaticResource FontSizeCaption}"
+               FontWeight="{StaticResource FontWeightTitle}"/>
+  </Grid>
+</UserControl>

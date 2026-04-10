@@ -1,6 +1,6 @@
-using VisualSqlArchitect.UI.ViewModels.Validation.Conventions;
+using DBWeaver.UI.ViewModels.Validation.Conventions;
 
-namespace VisualSqlArchitect.Tests.Unit.Validation.Conventions;
+namespace DBWeaver.Tests.Unit.Validation.Conventions;
 
 public class AliasViolationTests
 {

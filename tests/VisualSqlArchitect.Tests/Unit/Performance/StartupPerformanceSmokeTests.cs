@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using VisualSqlArchitect.UI.ViewModels;
+
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Performance;
+namespace DBWeaver.Tests.Unit.Performance;
 
 public class StartupPerformanceSmokeTests
 {
@@ -10,7 +10,7 @@ public class StartupPerformanceSmokeTests
     public void ShellInitialization_StaysWithinStartupBudget()
     {
         var sw = Stopwatch.StartNew();
-        var shell = new ShellViewModel();
+        var shell = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
         sw.Stop();
 
         Assert.NotNull(shell);
@@ -21,7 +21,7 @@ public class StartupPerformanceSmokeTests
     [Fact]
     public void FirstCanvasInitialization_StaysWithinBaselineBudget()
     {
-        var shell = new ShellViewModel();
+        var shell = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         var sw = Stopwatch.StartNew();
         shell.EnterCanvas();

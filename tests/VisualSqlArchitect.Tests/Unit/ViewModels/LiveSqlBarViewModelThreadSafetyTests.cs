@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using System.Diagnostics;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 /// <summary>
 /// Tests for LiveSqlBarViewModel thread safety.

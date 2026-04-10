@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.ViewModels.Validation.Conventions;
-using VisualSqlArchitect.UI.ViewModels.Validation.Conventions.Implementations;
+using DBWeaver.UI.ViewModels.Validation.Conventions;
+using DBWeaver.UI.ViewModels.Validation.Conventions.Implementations;
 
-namespace VisualSqlArchitect.Tests.Unit.Validation.Conventions;
+namespace DBWeaver.Tests.Unit.Validation.Conventions;
 
 public class IAliasConventionDefaultMethodTests
 {

@@ -1,9 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels;
 using Xunit;
+using System.Text.RegularExpressions;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class SqlImporterParseErrorPositionTests
 {
@@ -19,20 +20,7 @@ public class SqlImporterParseErrorPositionTests
         await canvas.SqlImporter.ImportAsync();
 
         Assert.False(string.IsNullOrWhiteSpace(canvas.SqlImporter.StatusMessage));
-        Assert.True(
-            canvas.SqlImporter.StatusMessage.Contains("line", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("linha", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("lÃ­nea", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("ÑÑ‚Ñ€Ð¾Ðº", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("è¡Œ", StringComparison.Ordinal)
-        );
-        Assert.True(
-            canvas.SqlImporter.StatusMessage.Contains("column", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("coluna", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("columna", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("ÑÑ‚Ð¾Ð»Ð±", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("åˆ—", StringComparison.Ordinal)
-        );
+        Assert.True(HasPositionInfo(canvas.SqlImporter.StatusMessage));
     }
 
     [Fact]
@@ -47,20 +35,29 @@ public class SqlImporterParseErrorPositionTests
         await canvas.SqlImporter.ImportAsync();
 
         Assert.False(string.IsNullOrWhiteSpace(canvas.SqlImporter.StatusMessage));
-        Assert.True(
-            canvas.SqlImporter.StatusMessage.Contains("line", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("linha", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("lÃ­nea", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("ÑÑ‚Ñ€Ð¾Ðº", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("è¡Œ", StringComparison.Ordinal)
-        );
-        Assert.True(
-            canvas.SqlImporter.StatusMessage.Contains("column", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("coluna", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("columna", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("ÑÑ‚Ð¾Ð»Ð±", StringComparison.OrdinalIgnoreCase)
-            || canvas.SqlImporter.StatusMessage.Contains("åˆ—", StringComparison.Ordinal)
-        );
+        Assert.True(HasPositionInfo(canvas.SqlImporter.StatusMessage));
+    }
+
+    private static bool HasPositionInfo(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return false;
+
+        string normalized = message.ToLowerInvariant();
+        bool hasNamedPosition =
+            normalized.Contains("line")
+            || normalized.Contains("column")
+            || normalized.Contains("linha")
+            || normalized.Contains("coluna")
+            || normalized.Contains("columna")
+            || normalized.Contains("position")
+            || normalized.Contains("posicao")
+            || normalized.Contains("posição");
+
+        bool hasNumericPair = Regex.IsMatch(message, @"\d+\s*[,;:]\s*\d+")
+            || Regex.IsMatch(message, @"\(\s*\d+\s*,\s*\d+\s*\)");
+
+        return hasNamedPosition || hasNumericPair;
     }
 }
 

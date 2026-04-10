@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.Metadata;
+﻿using DBWeaver.UI.Services.Benchmark;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.Metadata;
 using Xunit;
 using System.Collections.Generic;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 /// <summary>
 /// Tests for AutoJoinOverlayViewModel card disposal and memory leak prevention.

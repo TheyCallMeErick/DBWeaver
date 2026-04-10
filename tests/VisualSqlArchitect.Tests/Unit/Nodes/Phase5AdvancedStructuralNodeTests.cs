@@ -1,7 +1,6 @@
-using VisualSqlArchitect.Nodes;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Nodes;
+namespace DBWeaver.Tests.Unit.Nodes;
 
 public class Phase5AdvancedStructuralNodeTests
 {

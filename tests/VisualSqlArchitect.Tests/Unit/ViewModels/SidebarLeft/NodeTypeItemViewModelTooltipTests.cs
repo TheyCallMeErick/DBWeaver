@@ -1,8 +1,9 @@
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.Nodes.PinTypes;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.Nodes.PinTypes;
+using DBWeaver.UI.Services.Node;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.SidebarLeft;
+namespace DBWeaver.Tests.Unit.ViewModels.SidebarLeft;
 
 public class NodeTypeItemViewModelTooltipTests
 {
@@ -38,5 +39,39 @@ public class NodeTypeItemViewModelTooltipTests
         NodePinTooltipItemViewModel tableDefPin = Assert.Single(vm.InputPins, p => p.TypeName == nameof(PinDataType.TableDef));
         Assert.Equal("■", tableDefPin.ShapeGlyph);
         Assert.Equal("Rounded Square", tableDefPin.ShapeName);
+    }
+
+    [Fact]
+    public void TooltipTags_AreResolvedWithColors()
+    {
+        NodeDefinition definition = NodeDefinitionRegistry.Get(NodeType.RawSqlQuery);
+        var vm = new NodeTypeItemViewModel(definition, "#FFFFFF", _ => { });
+
+        Assert.True(vm.HasTooltipTags);
+        Assert.Contains(vm.TooltipTags, t => t.Name == "report");
+        Assert.All(vm.TooltipTags, t =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(t.BackgroundColor));
+            Assert.False(string.IsNullOrWhiteSpace(t.BorderColor));
+        });
+    }
+
+    [Fact]
+    public void CardTags_AreLimitedToTwoItems()
+    {
+        NodeDefinition definition = NodeDefinitionRegistry.Get(NodeType.ResultOutput);
+        var vm = new NodeTypeItemViewModel(definition, "#FFFFFF", _ => { });
+
+        Assert.True(vm.CardTags.Count <= 2);
+        Assert.All(vm.CardTags, tag => Assert.Contains(vm.TooltipTags, t => t.Name == tag.Name));
+    }
+
+    [Fact]
+    public void IconKind_MatchesNodeIconCatalogForDefinitionCategory()
+    {
+        NodeDefinition definition = NodeDefinitionRegistry.Get(NodeType.Join);
+        var vm = new NodeTypeItemViewModel(definition, "#FFFFFF", _ => { });
+
+        Assert.Equal(NodeIconCatalog.GetKindForCategory(definition.Category), vm.IconKind);
     }
 }

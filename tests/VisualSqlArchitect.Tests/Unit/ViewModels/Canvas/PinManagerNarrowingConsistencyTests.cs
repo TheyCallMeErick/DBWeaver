@@ -1,17 +1,16 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
 using Avalonia;
-using System.Reflection;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class PinManagerNarrowingConsistencyTests
 {
     [Fact]
-    public void ClearNarrowingIfNeeded_DoesNotMutateLegacyNarrowingState()
+    public void EffectiveDataType_RemainsDeclaredType_WhenConnectionsChange()
     {
         var canvas = new CanvasViewModel();
 
@@ -30,18 +29,10 @@ public class PinManagerNarrowingConsistencyTests
         };
 
         canvas.Connections.Add(conn);
-        anyPin.NarrowedDataType = PinDataType.Number;
-
-        MethodInfo clearMethod = typeof(CanvasViewModel)
-            .GetMethod("ClearNarrowingIfNeeded", BindingFlags.Instance | BindingFlags.NonPublic)!;
-
-        clearMethod.Invoke(canvas, [new[] { equalsNode }]);
-        Assert.Equal(PinDataType.Number, anyPin.NarrowedDataType);
+        Assert.Equal(anyPin.DataType, anyPin.EffectiveDataType);
 
         canvas.Connections.Remove(conn);
-        clearMethod.Invoke(canvas, [new[] { equalsNode }]);
-        Assert.Equal(PinDataType.Number, anyPin.NarrowedDataType);
+        Assert.Equal(anyPin.DataType, anyPin.EffectiveDataType);
     }
 }
-
 

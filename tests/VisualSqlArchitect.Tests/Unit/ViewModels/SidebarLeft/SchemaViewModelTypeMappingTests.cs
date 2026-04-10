@@ -1,8 +1,8 @@
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.SidebarLeft;
+namespace DBWeaver.Tests.Unit.ViewModels.SidebarLeft;
 
 public class SchemaViewModelTypeMappingTests
 {

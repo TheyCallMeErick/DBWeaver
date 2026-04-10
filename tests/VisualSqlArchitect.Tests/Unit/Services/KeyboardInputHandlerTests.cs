@@ -1,9 +1,10 @@
-using VisualSqlArchitect.UI.Services;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.Nodes;
+using DBWeaver.UI.Services;
+using DBWeaver.UI.Services.Input.ShortcutRegistry;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.Nodes;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 /// <summary>
 /// Tests for KeyboardInputHandler to ensure keyboard shortcuts are properly integrated.
@@ -338,6 +339,31 @@ public class KeyboardInputHandlerTests
     }
 
     [Fact]
+    public void RegistryOverride_CtrlShiftK_OpensCommandPalette()
+    {
+        var canvas = new CanvasViewModel();
+        var commandPalette = new CommandPaletteViewModel();
+        var registry = new global::DBWeaver.UI.Services.Input.ShortcutRegistry.ShortcutRegistry(
+            customizationStore: new NoOpShortcutCustomizationStore());
+        ShortcutUpdateResult overrideResult = registry.TryOverride(
+            ShortcutActionIds.OpenCommandPalette,
+            "Ctrl+Shift+K");
+        Assert.True(overrideResult.Success);
+
+        var handler = new KeyboardInputHandler(
+            canvas,
+            commandPalette,
+            shortcutRegistry: registry);
+
+        bool handled = handler.HandleShortcut(
+            Avalonia.Input.Key.K,
+            Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Shift);
+
+        Assert.True(handled);
+        Assert.True(commandPalette.IsVisible);
+    }
+
+    [Fact]
     public void F4_OpensExplainPlan()
     {
         var canvas = new CanvasViewModel();
@@ -360,6 +386,51 @@ public class KeyboardInputHandlerTests
         Assert.True(canvas.DataPreview.IsVisible);
         Assert.True(handler.HandleShortcut(Avalonia.Input.Key.F3, Avalonia.Input.KeyModifiers.None));
         Assert.False(canvas.DataPreview.IsVisible);
+    }
+
+    [Fact]
+    public void F3_ExecutesCommandPaletteShortcut_WhenAvailable()
+    {
+        var canvas = new CanvasViewModel();
+        bool executed = false;
+        var commandPalette = new CommandPaletteViewModel();
+        commandPalette.SetCommands([
+            new PaletteCommandItem
+            {
+                Name = "Toggle Preview",
+                Shortcut = "F3",
+                Execute = () => executed = true,
+            },
+        ]);
+        var handler = new KeyboardInputHandler(canvas, commandPalette);
+
+        bool handled = handler.HandleShortcut(Avalonia.Input.Key.F3, Avalonia.Input.KeyModifiers.None);
+
+        Assert.True(handled);
+        Assert.True(executed);
+    }
+
+    [Fact]
+    public void F3_ExecutesCommandPaletteCommand_ByActionIdEvenWhenDisplayedShortcutDiffers()
+    {
+        var canvas = new CanvasViewModel();
+        bool executed = false;
+        var commandPalette = new CommandPaletteViewModel();
+        commandPalette.SetCommands([
+            new PaletteCommandItem
+            {
+                Name = "Toggle Preview",
+                ActionId = ShortcutActionIds.TogglePreview,
+                Shortcut = "Ctrl+Alt+P",
+                Execute = () => executed = true,
+            },
+        ]);
+        var handler = new KeyboardInputHandler(canvas, commandPalette);
+
+        bool handled = handler.HandleShortcut(Avalonia.Input.Key.F3, Avalonia.Input.KeyModifiers.None);
+
+        Assert.True(handled);
+        Assert.True(executed);
     }
 
     [Fact]
@@ -392,14 +463,59 @@ public class KeyboardInputHandlerTests
     }
 
     [Fact]
-    public void F5_IsHandled()
+    public void F5_IsNotHandled_WhenCommandPaletteWasNotInjected()
     {
         var canvas = new CanvasViewModel();
         var handler = new KeyboardInputHandler(canvas);
 
         bool handled = handler.HandleShortcut(Avalonia.Input.Key.F5, Avalonia.Input.KeyModifiers.None);
 
+        Assert.False(handled);
+    }
+
+    [Fact]
+    public void F5_ExecutesCommandPaletteShortcut_WhenAvailable()
+    {
+        var canvas = new CanvasViewModel();
+        bool executed = false;
+        var commandPalette = new CommandPaletteViewModel();
+        commandPalette.SetCommands([
+            new PaletteCommandItem
+            {
+                Name = "Run Preview",
+                Shortcut = "F5",
+                Execute = () => executed = true,
+            },
+        ]);
+        var handler = new KeyboardInputHandler(canvas, commandPalette);
+
+        bool handled = handler.HandleShortcut(Avalonia.Input.Key.F5, Avalonia.Input.KeyModifiers.None);
+
         Assert.True(handled);
+        Assert.True(executed);
+    }
+
+    [Fact]
+    public void F5_ExecutesCommandPaletteCommand_ByActionIdEvenWhenDisplayedShortcutDiffers()
+    {
+        var canvas = new CanvasViewModel();
+        bool executed = false;
+        var commandPalette = new CommandPaletteViewModel();
+        commandPalette.SetCommands([
+            new PaletteCommandItem
+            {
+                Name = "Run Preview",
+                ActionId = ShortcutActionIds.RunPreview,
+                Shortcut = "Ctrl+Alt+R",
+                Execute = () => executed = true,
+            },
+        ]);
+        var handler = new KeyboardInputHandler(canvas, commandPalette);
+
+        bool handled = handler.HandleShortcut(Avalonia.Input.Key.F5, Avalonia.Input.KeyModifiers.None);
+
+        Assert.True(handled);
+        Assert.True(executed);
     }
 
     [Fact]
@@ -600,6 +716,59 @@ public class KeyboardInputHandlerTests
         Assert.True(handled);
         Assert.Single(canvas.Nodes);
         Assert.Equal("b", canvas.Nodes[0].Title);
+    }
+
+    [Fact]
+    public void Delete_RemovesSelectedBreakpoint_BeforeDeletingSelectedWire()
+    {
+        var canvas = new CanvasViewModel();
+        canvas.InitializeDemoNodes();
+        ConnectionViewModel wire = canvas.Connections.First(c => c.ToPin is not null);
+        wire.RoutingMode = CanvasWireRoutingMode.Orthogonal;
+        wire.SetBreakpoints([new WireBreakpoint(new Avalonia.Point(220, 180))]);
+        canvas.SelectConnection(wire);
+        canvas.SelectWireBreakpoint(wire, 0);
+
+        var handler = new KeyboardInputHandler(canvas);
+        bool handled = handler.HandleShortcut(Avalonia.Input.Key.Delete, Avalonia.Input.KeyModifiers.None);
+
+        Assert.True(handled);
+        Assert.Empty(wire.Breakpoints);
+        Assert.Contains(canvas.Connections, c => ReferenceEquals(c, wire));
+        Assert.Same(wire, canvas.SelectedConnection);
+        Assert.False(canvas.HasSelectedBreakpoint);
+    }
+
+    [Fact]
+    public void CanvasShortcutsDisabled_OnlyHandlesGlobalShortcuts()
+    {
+        var canvas = new CanvasViewModel();
+        var commandPalette = new CommandPaletteViewModel();
+        bool openedConnectionManager = false;
+        var handler = new KeyboardInputHandler(
+            canvas,
+            commandPalette: commandPalette,
+            canHandleCanvasShortcuts: () => false,
+            openConnectionManagerAction: () => openedConnectionManager = true);
+
+        bool deleteHandled = handler.HandleShortcut(Avalonia.Input.Key.Delete, Avalonia.Input.KeyModifiers.None);
+        Assert.False(deleteHandled);
+
+        bool paletteHandled = handler.HandleShortcut(
+            Avalonia.Input.Key.P,
+            Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Shift);
+        Assert.True(paletteHandled);
+        Assert.True(commandPalette.IsVisible);
+
+        bool escapeHandled = handler.HandleShortcut(Avalonia.Input.Key.Escape, Avalonia.Input.KeyModifiers.None);
+        Assert.True(escapeHandled);
+        Assert.False(commandPalette.IsVisible);
+
+        bool openConnectionHandled = handler.HandleShortcut(
+            Avalonia.Input.Key.C,
+            Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Shift);
+        Assert.True(openConnectionHandled);
+        Assert.True(openedConnectionManager);
     }
 
     private static void Connect(

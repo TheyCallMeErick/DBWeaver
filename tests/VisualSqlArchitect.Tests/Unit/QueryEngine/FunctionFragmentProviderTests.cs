@@ -1,7 +1,6 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.QueryEngine;
+using DBWeaver.Nodes;
 
-namespace VisualSqlArchitect.Tests.Unit.QueryEngine;
+namespace DBWeaver.Tests.Unit.QueryEngine;
 
 public class FunctionFragmentProviderTests
 {

@@ -1,13 +1,14 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using System.Data;
 using Avalonia;
-using VisualSqlArchitect.Ddl;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
-using VisualSqlArchitect.UI.ViewModels.Canvas.Strategies;
+using DBWeaver.Ddl;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Services.QueryPreview.Models;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
+using DBWeaver.UI.ViewModels.Canvas.Strategies;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class AppDiagnosticsViewModelOverhaulTests
 {
@@ -192,6 +193,33 @@ public class AppDiagnosticsViewModelOverhaulTests
     }
 
     [Fact]
+    public void QueryOutputDetailedDiagnostics_IncludeCodeLocationAndFocusAction()
+    {
+        var canvas = new CanvasViewModel();
+        var vm = canvas.Diagnostics;
+        NodeViewModel node = canvas.SpawnNode(NodeDefinitionRegistry.Get(NodeType.Equals), new Point(40, 20));
+
+        canvas.LiveSql.Diagnostics.Add(
+            new PreviewDiagnostic(
+                PreviewDiagnosticSeverity.Warning,
+                PreviewDiagnosticCategory.General,
+                "W-TEST-900",
+                "Synthetic diagnostic",
+                node.Id,
+                "lhs"));
+
+        vm.RunChecksCommand.Execute(null);
+
+        AppDiagnosticCategoryViewModel output = Assert.Single(vm.Categories, c => c.Key == "output");
+        AppDiagnosticEntry detail = Assert.Single(output.SnapshotItems(), i => i.Code == "W-TEST-900");
+
+        Assert.True(detail.HasCode);
+        Assert.True(detail.HasLocation);
+        Assert.True(detail.HasFocusAction);
+        Assert.Equal(EDiagnosticStatus.Warning, detail.Status);
+    }
+
+    [Fact]
     public void OpenAndCloseCommands_ToggleVisibility()
     {
         var canvas = new CanvasViewModel();
@@ -230,4 +258,3 @@ public class AppDiagnosticsViewModelOverhaulTests
         Assert.Equal(EDiagnosticStatus.Ok, state.Status);
     }
 }
-

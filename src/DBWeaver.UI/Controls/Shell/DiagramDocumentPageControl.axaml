@@ -1,0 +1,157 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:ctrl="using:DBWeaver.UI.Controls"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.Shell.DiagramDocumentPageControl"
+             x:DataType="vm:CanvasViewModel">
+  <Panel ClipToBounds="True">
+    <ctrl:InfiniteCanvas Name="TheCanvas" ViewModel="{Binding}" ClipToBounds="True"/>
+
+    <Panel HorizontalAlignment="Center"
+           VerticalAlignment="Top"
+           Margin="0,70,0,0"
+           IsVisible="{Binding SearchMenu.IsVisible}">
+      <ctrl:SearchMenuControl DataContext="{Binding SearchMenu}" Name="SearchOverlay"/>
+    </Panel>
+
+    <Panel HorizontalAlignment="Center"
+           VerticalAlignment="Top"
+           Margin="0,60,0,0"
+           ZIndex="999"
+           IsVisible="{ReflectionBinding DataContext.CommandPalette.IsVisible, RelativeSource={RelativeSource AncestorType=Window}}">
+      <ctrl:CommandPaletteControl DataContext="{ReflectionBinding DataContext.CommandPalette, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Name="CommandPaletteOverlay"/>
+    </Panel>
+
+    <Panel Name="BenchmarkOverlayHost"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center"
+           ZIndex="999"
+           IsVisible="{Binding Benchmark.IsVisible}">
+      <ctrl:BenchmarkOverlay DataContext="{Binding Benchmark}" Name="BenchmarkOverlayCtrl"/>
+    </Panel>
+
+    <Panel Name="ExplainOverlayHost"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center"
+           ZIndex="999"
+           IsVisible="{Binding ExplainPlan.IsVisible}">
+      <ctrl:ExplainPlanOverlay DataContext="{Binding ExplainPlan}" Name="ExplainPlanOverlayCtrl"/>
+    </Panel>
+
+    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="999" IsVisible="{Binding SqlImporter.IsVisible}">
+      <ctrl:SqlImporterOverlay DataContext="{Binding SqlImporter}" Name="SqlImporterOverlayCtrl"/>
+    </Panel>
+
+    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="999" IsVisible="{Binding FlowVersions.IsVisible}">
+      <ctrl:FlowVersionOverlay DataContext="{Binding FlowVersions}" Name="FlowVersionsOverlayCtrl"/>
+    </Panel>
+
+    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="999" IsVisible="{Binding FileHistory.IsVisible}">
+      <ctrl:FileVersionHistoryOverlay DataContext="{Binding FileHistory}" Name="FileHistoryOverlayCtrl"/>
+    </Panel>
+
+    <Panel HorizontalAlignment="Stretch"
+           VerticalAlignment="Stretch"
+           Background="{StaticResource MacroScrimBrush}"
+           Opacity="0.4"
+           ZIndex="30"
+           IsVisible="{Binding IsCanvasDisabled}"
+           IsHitTestVisible="True"/>
+
+    <Panel HorizontalAlignment="Stretch"
+           VerticalAlignment="Stretch"
+           Background="{StaticResource MacroScrimBrush}"
+           Opacity="0.25"
+           ZIndex="29"
+           IsVisible="{Binding IsCanvasDimmedBySubcanvas}"
+           IsHitTestVisible="False"/>
+
+    <StackPanel HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="15"
+                ZIndex="31"
+                IsVisible="{Binding IsCanvasDisabled}">
+      <ProgressBar IsIndeterminate="True"
+                   Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                   Background="{StaticResource BorderSubtleBrush}"
+                   Width="200"
+                   Height="6"
+                   CornerRadius="{StaticResource RadiusXS}"/>
+      <TextBlock Text="{Binding [main.connectingDb], Source={x:Static loc:LocalizationService.Instance}}"
+                 FontSize="{StaticResource FontSizeBody}"
+                 Foreground="{StaticResource TextPrimaryBrush}"
+                 HorizontalAlignment="Center"
+                 FontWeight="{StaticResource FontWeightTitle}"/>
+    </StackPanel>
+
+    <StackPanel HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="10"
+                ZIndex="0"
+                IsVisible="{Binding IsCanvasEmpty}">
+      <TextBlock Text="{Binding [main.brand], Source={x:Static loc:LocalizationService.Instance}}"
+                 FontSize="{StaticResource FontSizeDisplay}"
+                 FontWeight="{StaticResource FontWeightBody}"
+                 Foreground="{StaticResource BorderSubtleBrush}"
+                 HorizontalAlignment="Center"/>
+      <TextBlock Text="{Binding [main.emptyHint], Source={x:Static loc:LocalizationService.Instance}}"
+                 FontSize="{StaticResource FontSizeLabel}"
+                 Foreground="{StaticResource TextSecondaryBrush}"
+                 HorizontalAlignment="Center"/>
+    </StackPanel>
+
+    <Border HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Margin="0,0,16,16"
+            Background="{StaticResource Bg1Brush}"
+            BorderBrush="{StaticResource BorderSubtleBrush}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource RadiusPill}"
+            Padding="5,3"
+            ZIndex="5">
+      <StackPanel Orientation="Horizontal" Spacing="2">
+        <Button Classes="tb"
+                Command="{Binding ZoomOutCommand}"
+                Width="26"
+                Height="26"
+                Padding="0"
+                HorizontalContentAlignment="Center"
+                ToolTip.Tip="{Binding [tooltip.zoomOut], Source={x:Static loc:LocalizationService.Instance}}"
+                AutomationProperties.Name="{Binding [zoom.out], Source={x:Static loc:LocalizationService.Instance}}">
+          <mi:MaterialIcon Kind="MagnifyMinus" Width="14" Height="14"/>
+        </Button>
+        <Border Width="38" VerticalAlignment="Center" HorizontalAlignment="Center">
+          <TextBlock Text="{Binding ZoomPercent}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     HorizontalAlignment="Center"
+                     AutomationProperties.Name="{Binding [zoom.level], Source={x:Static loc:LocalizationService.Instance}}"/>
+        </Border>
+        <Button Classes="tb"
+                Command="{Binding ZoomInCommand}"
+                Width="26"
+                Height="26"
+                Padding="0"
+                HorizontalContentAlignment="Center"
+                ToolTip.Tip="{Binding [tooltip.zoomIn], Source={x:Static loc:LocalizationService.Instance}}"
+                AutomationProperties.Name="{Binding [zoom.in], Source={x:Static loc:LocalizationService.Instance}}">
+          <mi:MaterialIcon Kind="MagnifyPlus" Width="14" Height="14"/>
+        </Button>
+        <Border Width="1" Height="14" Background="{StaticResource BorderSubtleBrush}" Margin="2,0"/>
+        <Button Classes="tb"
+                Command="{Binding FitToScreenCommand}"
+                Width="26"
+                Height="26"
+                Padding="0"
+                HorizontalContentAlignment="Center"
+                ToolTip.Tip="{Binding [tooltip.fitToScreen], Source={x:Static loc:LocalizationService.Instance}}"
+                AutomationProperties.Name="{Binding [zoom.fit], Source={x:Static loc:LocalizationService.Instance}}">
+          <mi:MaterialIcon Kind="FitToPageOutline" Width="14" Height="14"/>
+        </Button>
+      </StackPanel>
+    </Border>
+  </Panel>
+</UserControl>

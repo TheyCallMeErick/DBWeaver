@@ -1,9 +1,9 @@
-using VisualSqlArchitect.UI.Services;
+using DBWeaver.UI.Services;
 using Xunit;
 using Microsoft.Extensions.Logging.Abstractions;
 using System;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 /// <summary>
 /// Tests for DatabaseConnectionService IDisposable implementation.

@@ -1,9 +1,9 @@
 using System.Text;
 using System.Threading;
-using VisualSqlArchitect.UI.Serialization;
+using DBWeaver.UI.Serialization;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Serialization;
+namespace DBWeaver.Tests.Unit.Serialization;
 
 [Collection("StoreSerialization")]
 public class StoreCorruptionFallbackTests
@@ -30,7 +30,7 @@ public class StoreCorruptionFallbackTests
     public void SnippetStore_Load_WithCorruptJson_ReturnsEmptyAndRaisesWarning()
     {
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string dir = Path.Combine(appData, "VisualSqlArchitect");
+        string dir = Path.Combine(appData, "DBWeaver");
         string path = Path.Combine(dir, "snippets.json");
         string backup = path + ".bak-test-" + Guid.NewGuid().ToString("N");
 
@@ -74,7 +74,7 @@ public class StoreCorruptionFallbackTests
     public void FlowVersionStore_Load_WithCorruptJson_ReturnsEmptyAndRaisesWarning()
     {
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string dir = Path.Combine(appData, "VisualSqlArchitect");
+        string dir = Path.Combine(appData, "DBWeaver");
         string path = Path.Combine(dir, "flow_versions.json");
         string backup = path + ".bak-test-" + Guid.NewGuid().ToString("N");
 

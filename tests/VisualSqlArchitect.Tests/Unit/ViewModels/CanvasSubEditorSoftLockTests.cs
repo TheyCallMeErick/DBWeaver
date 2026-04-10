@@ -1,13 +1,13 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using System.Reflection;
 using System.Text.Json;
 using Avalonia;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Serialization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Serialization;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class CanvasSubEditorSoftLockTests
 {
@@ -84,7 +84,7 @@ public class CanvasSubEditorSoftLockTests
             Path.Combine(
                 AppContext.BaseDirectory,
                 "..", "..", "..", "..", "..",
-                "src", "VisualSqlArchitect.UI", "ViewModels", "CanvasViewModel.cs"));
+                "src", "DBWeaver.UI", "ViewModels", "CanvasViewModel.cs"));
 
         Assert.DoesNotContain(".GetAwaiter().GetResult()", source, StringComparison.Ordinal);
         Assert.DoesNotContain(".Result", source, StringComparison.Ordinal);

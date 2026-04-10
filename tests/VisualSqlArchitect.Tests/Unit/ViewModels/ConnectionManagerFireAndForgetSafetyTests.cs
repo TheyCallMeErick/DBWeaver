@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.ConnectionManager;
-using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.ConnectionManager;
+using DBWeaver.UI.Services.Benchmark;
 using Microsoft.Extensions.Logging.Abstractions;
-using VisualSqlArchitect.UI.ViewModels;
+
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class ConnectionManagerFireAndForgetSafetyTests
 {

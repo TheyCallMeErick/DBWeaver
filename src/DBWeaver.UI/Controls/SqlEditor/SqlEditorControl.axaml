@@ -1,0 +1,141 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             xmlns:ctrl="using:DBWeaver.UI.Controls.SqlEditor"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.SqlEditor.SqlEditorControl"
+             x:DataType="vm:SqlEditorViewModel">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.exec-status">
+      <Setter Property="Foreground" Value="{StaticResource StatusInfoBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.exec-status.error">
+      <Setter Property="Foreground" Value="{StaticResource StatusErrorBrush}"/>
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,*,Auto"
+        ClipToBounds="True">
+    <ctrl:SqlEditorTabBar Grid.Row="0"/>
+
+    <Grid Grid.Row="1" ClipToBounds="True">
+      <Border Margin="10,10,10,12"
+              Background="{StaticResource Bg0Brush}"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="1"
+              CornerRadius="{StaticResource RadiusLG}"
+              BoxShadow="{StaticResource PanelShadow}"
+              ClipToBounds="True">
+        <ae:TextEditor x:Name="SqlTextEditor"
+                       FontFamily="{StaticResource MonoFont}"
+                       FontSize="{StaticResource FontSizeLabel}"
+                       IsReadOnly="False"
+                       ShowLineNumbers="True"
+                       WordWrap="False"
+                       Background="{StaticResource Bg0Brush}"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+      </Border>
+
+        <Border VerticalAlignment="Bottom"
+                Margin="14"
+                IsVisible="{Binding ShouldShowResultsSheet}"
+                Height="{Binding ResultsSheetHeight}"
+                Background="{StaticResource Bg1Brush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusLG}"
+                BoxShadow="{StaticResource PanelShadow}"
+                ClipToBounds="True">
+          <Border.Transitions>
+            <Transitions>
+              <DoubleTransition Property="Height" Duration="0:0:0.22"/>
+              <DoubleTransition Property="Opacity" Duration="0:0:0.18"/>
+            </Transitions>
+          </Border.Transitions>
+
+          <Grid RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="10,8,10,6">
+              <Border Grid.Column="0"
+                      Width="38"
+                      Height="4"
+                      CornerRadius="{StaticResource RadiusPill}"
+                      VerticalAlignment="Center"
+                      Background="{StaticResource BorderSubtleBrush}"/>
+
+              <TextBlock Grid.Column="1"
+                         Text="Resultados"
+                         HorizontalAlignment="Center"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         FontWeight="{StaticResource FontWeightTitle}"
+                         FontSize="{StaticResource FontSizeBody}"/>
+
+              <Button Grid.Column="2"
+                      Width="24"
+                      Height="24"
+                      Padding="0"
+                      Command="{Binding CloseResultsSheetCommand}">
+                <mi:MaterialIcon Kind="ChevronDown" Width="14" Height="14"/>
+              </Button>
+            </Grid>
+
+            <ctrl:SqlEditorResultPanel Grid.Row="1" Margin="10,0,10,10"/>
+          </Grid>
+        </Border>
+    </Grid>
+
+    <Border Grid.Row="2"
+            Background="{StaticResource Bg1Brush}"
+            BorderBrush="{StaticResource BorderSubtleBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="10,6">
+      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <ProgressBar IsIndeterminate="True"
+                     Width="72"
+                     Height="3"
+                     IsVisible="{Binding IsExecuting}"/>
+        <TextBlock Classes.exec-status="True"
+                   Classes.error="{Binding HasExecutionError}"
+                   VerticalAlignment="Center"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   Text="{Binding ExecutionStatusText}"/>
+        <TextBlock VerticalAlignment="Center"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   Text="{Binding ResultSummaryText}"/>
+        <Button Content="Export Report"
+          IsVisible="{Binding CanExportReport}"
+          Click="ExportReportBtn_Click"
+          Padding="10,2"
+          MinHeight="24"
+          FontSize="{StaticResource FontSizeCaption}"/>
+      </StackPanel>
+    </Border>
+
+    <ctrl:MutationConfirmDialog Grid.Row="2"
+                                IsVisible="{Binding HasPendingMutationConfirmation}"
+                                Margin="0,30,0,0"/>
+
+    <Border Grid.Row="2"
+            IsVisible="{Binding HasPendingCloseTabConfirmation}"
+            Margin="0,30,0,0"
+            Padding="10,8"
+            Background="{StaticResource Bg0Brush}"
+            BorderBrush="{StaticResource StatusWarningBrush}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource RadiusMD}">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding PendingCloseTabMessage}"
+                   FontWeight="{StaticResource FontWeightTitle}"
+                   Foreground="{StaticResource TextPrimaryBrush}"/>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="{Binding [sqlEditor.tab.closeAnyway], Source={x:Static loc:LocalizationService.Instance}}"
+                  Classes="Danger"
+                  Command="{Binding ConfirmPendingCloseTabCommand}"/>
+          <Button Content="{Binding [sqlEditor.tab.keepTab], Source={x:Static loc:LocalizationService.Instance}}"
+                  Command="{Binding CancelPendingCloseTabCommand}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

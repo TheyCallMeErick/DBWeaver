@@ -1,9 +1,9 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.Metadata.Inspectors;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
+using DBWeaver.Metadata.Inspectors;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Metadata;
+namespace DBWeaver.Tests.Unit.Metadata;
 
 public sealed class DatabaseInspectorFactoryTests
 {

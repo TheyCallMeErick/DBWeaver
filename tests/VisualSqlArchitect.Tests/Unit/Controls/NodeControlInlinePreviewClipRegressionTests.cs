@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class NodeControlInlinePreviewClipRegressionTests
 {
@@ -10,10 +10,10 @@ public class NodeControlInlinePreviewClipRegressionTests
     {
         string xaml = ReadNodeControlXaml();
 
-        Assert.Contains("CornerRadius=\"24\"", xaml);
+        Assert.Contains("CornerRadius=\"{StaticResource RadiusXL}\"", xaml);
         Assert.Contains("ClipToBounds=\"True\"", xaml);
         Assert.Contains("<Border Grid.Row=\"4\"", xaml);
-        Assert.Contains("CornerRadius=\"0,0,23,23\"", xaml);
+        Assert.Contains("CornerRadius=\"{StaticResource RadiusLGBottom}\"", xaml);
     }
 
     private static string ReadNodeControlXaml()
@@ -24,7 +24,7 @@ public class NodeControlInlinePreviewClipRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "Node",
                 "NodeControl.axaml"

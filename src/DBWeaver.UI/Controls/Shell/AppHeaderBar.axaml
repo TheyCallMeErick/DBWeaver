@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             x:Class="DBWeaver.UI.Controls.Shell.AppHeaderBar"
+             x:Name="Root">
+  <Border Classes="app-header-shell"
+          PointerPressed="Header_PointerPressed">
+    <Grid ColumnDefinitions="*,Auto">
+      <StackPanel Grid.Column="0"
+                  Orientation="Horizontal"
+                  Spacing="8"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Left">
+        <Border Width="22"
+                Height="22"
+                CornerRadius="{StaticResource RadiusSM}"
+                Background="{StaticResource Bg2Brush}"
+                BorderBrush="{StaticResource AccentPrimaryHoverBrush}"
+                BorderThickness="1"
+                IsVisible="{Binding ShowBrandBadge, ElementName=Root}">
+          <TextBlock Text="{Binding [app.brandBadge], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     FontWeight="{StaticResource FontWeightHeading}"
+                     Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"/>
+        </Border>
+
+        <Button Classes="app-header-title-btn"
+          Content="{Binding Title, ElementName=Root}"
+          Click="TitleButton_Click"
+          VerticalAlignment="Center"/>
+
+        <ContentPresenter Content="{Binding CenterContent, ElementName=Root}"
+                          VerticalAlignment="Center"/>
+
+        <ContentPresenter Content="{Binding LeftContent, ElementName=Root}"
+                          VerticalAlignment="Center"/>
+      </StackPanel>
+
+      <StackPanel Grid.Column="1"
+                  Orientation="Horizontal"
+                  Spacing="4"
+                  VerticalAlignment="Center">
+        <ContentPresenter Content="{Binding RightContent, ElementName=Root}"
+                          VerticalAlignment="Center"/>
+
+        <StackPanel Orientation="Horizontal"
+                    Spacing="3"
+                    IsVisible="{Binding ShowWindowControls, ElementName=Root}">
+          <Button Classes="app-window-btn"
+                  Click="Minimize_Click"
+                  Width="28"
+                  Height="28"
+                  ToolTip.Tip="{Binding [window.minimize], Source={x:Static loc:LocalizationService.Instance}}">
+            <mi:MaterialIcon Kind="WindowMinimize" Width="14" Height="14"/>
+          </Button>
+
+          <Button Classes="app-window-btn"
+                  Click="Maximize_Click"
+                  Width="28"
+                  Height="28"
+                  ToolTip.Tip="{Binding [window.maximizeRestore], Source={x:Static loc:LocalizationService.Instance}}">
+            <mi:MaterialIcon Kind="WindowMaximize" Width="14" Height="14"/>
+          </Button>
+
+          <Button Classes="app-window-btn app-window-btn-danger"
+                  Click="Close_Click"
+                  Width="28"
+                  Height="28"
+                  ToolTip.Tip="{Binding [window.close], Source={x:Static loc:LocalizationService.Instance}}">
+            <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
+          </Button>
+        </StackPanel>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

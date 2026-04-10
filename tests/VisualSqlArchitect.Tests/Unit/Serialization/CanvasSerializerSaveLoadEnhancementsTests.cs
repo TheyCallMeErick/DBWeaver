@@ -1,11 +1,11 @@
 using Avalonia;
 using System.Text.Json;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Serialization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Serialization;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Serialization;
+namespace DBWeaver.Tests.Unit.Serialization;
 
 public class CanvasSerializerSaveLoadEnhancementsTests
 {
@@ -79,6 +79,7 @@ public class CanvasSerializerSaveLoadEnhancementsTests
             var vm = new CanvasViewModel();
             await CanvasSerializer.SaveToFileAsync(path, vm, description: "v1");
 
+            await Task.Delay(10);
             vm.Nodes.Add(new NodeViewModel("public.new_table", [], new Point(500, 260)));
             await CanvasSerializer.SaveToFileAsync(path, vm, description: "v2");
 

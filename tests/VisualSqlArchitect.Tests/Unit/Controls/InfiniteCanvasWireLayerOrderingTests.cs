@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class InfiniteCanvasWireLayerOrderingTests
 {
@@ -31,7 +31,7 @@ public class InfiniteCanvasWireLayerOrderingTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "InfiniteCanvas",
                 "InfiniteCanvas.cs"
@@ -54,7 +54,7 @@ public class InfiniteCanvasWireLayerOrderingTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "InfiniteCanvas",
                 "InfiniteCanvas.NodeDrag.cs"

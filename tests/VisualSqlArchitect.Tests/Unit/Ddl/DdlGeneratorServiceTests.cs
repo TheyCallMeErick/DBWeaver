@@ -1,7 +1,7 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Ddl;
+using DBWeaver.Core;
+using DBWeaver.Ddl;
 
-namespace VisualSqlArchitect.Tests.Unit.Ddl;
+namespace DBWeaver.Tests.Unit.Ddl;
 
 public class DdlGeneratorServiceTests
 {

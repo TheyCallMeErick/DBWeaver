@@ -1,0 +1,1069 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:ctrl="using:DBWeaver.UI.Controls"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.NodeControl"
+             x:DataType="vm:NodeViewModel">
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="ColumnSetPreviewItemTemplate" x:DataType="vm:ColumnSetPreviewItem">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,1">
+        <ctrl:PinShapeControl DataType="{Binding ScalarType}"
+                              Stroke="{StaticResource BorderBrush}"
+                              Fill="{StaticResource TextPrimaryBrush}"
+                              Width="9"
+                              Height="9"
+                              Scale="1"
+                              IsHitTestVisible="False"
+                              VerticalAlignment="Center"/>
+        <TextBlock Grid.Column="1"
+                   Text="{Binding ColumnName}"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   Margin="6,0,8,0"
+                   TextTrimming="CharacterEllipsis"/>
+        <Border Grid.Column="2"
+                Background="{StaticResource Bg3Brush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusXS}"
+                Padding="4,1"
+                Margin="0,0,6,0">
+          <TextBlock Text="{Binding ScalarLabel}" Foreground="{StaticResource AccentPrimaryHoverBrush}" FontSize="{StaticResource FontSizeMonoSmall}" FontWeight="{StaticResource FontWeightMonoStrong}"/>
+        </Border>
+        <TextBlock Grid.Column="3"
+                   Text="{Binding NullabilityLabel}"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   FontSize="{StaticResource FontSizeMonoSmall}"
+                   VerticalAlignment="Center"/>
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="DdlTableColumnRowTemplate" x:DataType="vm:DdlTableColumnRowViewModel">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,1">
+        <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" Margin="0,0,6,0">
+          <mi:MaterialIcon Kind="Key" Width="10" Height="10" Foreground="{StaticResource BtnWarningFgBrush}" IsVisible="{Binding IsPrimaryKey}"/>
+          <mi:MaterialIcon Kind="LinkVariant" Width="10" Height="10" Foreground="{StaticResource AccentPrimaryHoverBrush}" IsVisible="{Binding IsForeignKey}"/>
+          <mi:MaterialIcon Kind="CheckCircle" Width="10" Height="10" Foreground="{StaticResource StatusOkBrush}" IsVisible="{Binding IsUnique}"/>
+        </StackPanel>
+
+        <TextBlock Grid.Column="1"
+                   Text="{Binding Name}"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   FontWeight="{StaticResource FontWeightTitle}"
+                   TextTrimming="CharacterEllipsis"/>
+
+        <Border Grid.Column="2"
+                Background="{StaticResource Bg3Brush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusXS}"
+                Padding="4,1"
+                Margin="0,0,6,0">
+          <TextBlock Text="{Binding DataType}" Foreground="{StaticResource AccentPrimaryHoverBrush}" FontSize="{StaticResource FontSizeMonoSmall}" FontWeight="{StaticResource FontWeightMonoStrong}"/>
+        </Border>
+
+        <TextBlock Grid.Column="3"
+                   Text="{Binding NullabilityLabel}"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   FontSize="{StaticResource FontSizeMonoSmall}"
+                   VerticalAlignment="Center"/>
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="PinTooltipTemplate" x:DataType="vm:PinViewModel">
+      <StackPanel Spacing="2" MaxWidth="320">
+        <TextBlock Text="{Binding Name}" FontWeight="{StaticResource FontWeightHeading}" Foreground="White"/>
+        <TextBlock Text="{Binding DataTypeLabel}" FontSize="{StaticResource FontSizeMonoSmall}" Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
+        <TextBlock Text="{Binding TooltipTypeDetails}" FontSize="{StaticResource FontSizeMonoSmall}" Foreground="{StaticResource AccentSecondaryHoverBrush}" TextWrapping="Wrap"/>
+
+        <Border IsVisible="{Binding HasColumnSetPreview}"
+                Margin="0,4,0,0"
+                Padding="6,5"
+                Background="{StaticResource Bg1Brush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusSM}">
+          <StackPanel Spacing="4">
+            <TextBlock Text="{Binding [node.columnSetPreview], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusWarningBrush}" FontWeight="{StaticResource FontWeightTitle}"/>
+            <ItemsControl ItemsSource="{Binding ColumnSetPreviewItems}"
+                          ItemTemplate="{StaticResource ColumnSetPreviewItemTemplate}"/>
+            <TextBlock Text="{Binding ColumnSetPreviewOverflowLabel}"
+                       IsVisible="{Binding HasColumnSetPreviewOverflow}"
+                       FontSize="{StaticResource FontSizeMonoSmall}"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <!-- Pin row -->
+    <Style Selector="Border.pin-dot">
+      <Setter Property="Width"        Value="10"/>
+      <Setter Property="Height"       Value="10"/>
+      <Setter Property="CornerRadius" Value="{StaticResource PinRadius}"/>
+      <Setter Property="BorderThickness" Value="1.5"/>
+      <Setter Property="Background"   Value="Transparent"/>
+      <Setter Property="Cursor"       Value="Hand"/>
+      <Setter Property="BoxShadow"    Value="{StaticResource ShadowNone}"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.10"/>
+          <BoxShadowsTransition          Property="BoxShadow"       Duration="0:0:0.10"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.pin-dot:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.7)"/>
+      <Setter Property="BoxShadow"       Value="{StaticResource PinDotHoverShadow}"/>
+    </Style>
+
+    <Style Selector="Border.pin-dot[Tag=ColumnRef]">
+      <Setter Property="CornerRadius" Value="0"/>
+      <Setter Property="RenderTransform" Value="rotate(45deg)"/>
+    </Style>
+
+    <Style Selector="Border.pin-dot[Tag=ColumnSet]">
+      <Setter Property="CornerRadius" Value="0"/>
+      <Setter Property="RenderTransform" Value="rotate(45deg)"/>
+      <Setter Property="Width" Value="11"/>
+      <Setter Property="Height" Value="11"/>
+      <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+
+    <Style Selector="Border.pin-dot[Tag=RowSet]">
+      <Setter Property="CornerRadius" Value="0"/>
+      <Setter Property="RenderTransform" Value="rotate(45deg)"/>
+      <Setter Property="Width" Value="12"/>
+      <Setter Property="Height" Value="8"/>
+    </Style>
+
+    <Style Selector="Border.pin-dot[Tag=Expression]">
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+
+    <!-- Inline preview DataGrid compact styles -->
+    <Style Selector="DataGrid.node-preview">
+      <Setter Property="Background"          Value="{StaticResource Bg0Brush}"/>
+      <Setter Property="GridLinesVisibility" Value="All"/>
+      <Setter Property="BorderThickness"     Value="0"/>
+      <Setter Property="RowBackground"       Value="Transparent"/>
+      <Setter Property="Foreground"          Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="FontSize"            Value="10"/>
+      <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="VerticalGridLinesBrush"   Value="{StaticResource BorderSubtleBrush}"/>
+    </Style>
+    <Style Selector="DataGrid.node-preview DataGridColumnHeader">
+      <Setter Property="Background"      Value="{StaticResource Bg0Brush}"/>
+      <Setter Property="Foreground"      Value="{StaticResource AccentPrimaryHoverBrush}"/>
+      <Setter Property="FontSize"        Value="9"/>
+      <Setter Property="FontWeight"      Value="SemiBold"/>
+      <Setter Property="Padding"         Value="6,4"/>
+      <Setter Property="BorderBrush"     Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="0,0,1,1"/>
+    </Style>
+    <Style Selector="DataGrid.node-preview DataGridCell">
+      <Setter Property="Padding" Value="6,3"/>
+    </Style>
+    <!-- Preview toggle button styles -->
+    <Style Selector="Button.preview-toggle">
+      <Setter Property="Background"      Value="{StaticResource Bg1Brush}"/>
+      <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground"      Value="{StaticResource AccentPrimaryHoverBrush}"/>
+      <Setter Property="Padding"         Value="3"/>
+      <Setter Property="CornerRadius"    Value="4"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.preview-toggle:pointerover">
+      <Setter Property="Background" Value="{StaticResource PanelActiveBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="Foreground" Value="{StaticResource BtnInfoFgBrush}"/>
+    </Style>
+    <Style Selector="Button.preview-toggle.active">
+      <Setter Property="Background" Value="{StaticResource PanelActiveBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryHoverBrush}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- â•â• Node shell â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  <Border CornerRadius="{StaticResource RadiusXL}"
+          Background="{StaticResource PanelElevatedBrush}"
+          BorderBrush="{Binding NodeBorderBrush}"
+          BorderThickness="1"
+          BoxShadow="{Binding NodeShadow}"
+          Opacity="{Binding NodeOpacity}"
+          MinWidth="200"
+      ClipToBounds="True"
+          Cursor="SizeAll">
+
+    <Border.Transitions>
+      <Transitions>
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.15"/>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+      </Transitions>
+    </Border.Transitions>
+    <ToolTip.Tip>
+      <TextBlock Text="{Binding ValidationTooltip}"
+                 FontFamily="{StaticResource MonoFont}"
+                 FontSize="{StaticResource FontSizeMonoSmall}"
+                 FontWeight="{StaticResource FontWeightMono}"
+                 IsVisible="{Binding ValidationTooltip, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+    </ToolTip.Tip>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+      <!-- â•â• HEADER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+                  <Border Grid.Row="0"
+                    CornerRadius="{StaticResource RadiusLGTop}"
+              Background="{Binding HeaderGradient}"
+              Padding="10,8">
+
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+          <!-- Category icon badge -->
+          <Border Grid.Column="0"
+                  Width="26" Height="26"
+                  CornerRadius="{StaticResource RadiusSM}"
+                  Background="{StaticResource SelectedOverlayBrush}"
+                  Margin="0,0,8,0"
+                  VerticalAlignment="Center">
+            <mi:MaterialIcon Kind="{Binding CategoryIconKind}"
+                             Width="14" Height="14"
+                             Foreground="White"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
+          </Border>
+
+          <!-- Title + subtitle -->
+          <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Title}"
+                       FontFamily="{StaticResource NodeFont}"
+                       FontSize="{StaticResource FontSizeNodeTitle}"
+                       FontWeight="{StaticResource FontWeightNodeTitle}"
+                       Foreground="White"
+                       TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding Subtitle}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       TextTrimming="CharacterEllipsis"
+                       IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          </StackPanel>
+
+          <!-- Alias chip + validation badge -->
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
+                      VerticalAlignment="Center" Margin="4,0,0,0">
+
+            <!-- Inline preview toggle (TableSource only) -->
+            <Button Classes="preview-toggle"
+                    Name="PreviewToggleBtn"
+                    Classes.active="{Binding ShowInlinePreview}"
+                    IsVisible="{Binding IsTableSource}"
+                  ToolTip.Tip="{Binding [tooltip.toggleDataSamplePreview], Source={x:Static loc:LocalizationService.Instance}}"
+                    AutomationProperties.Name="{Binding [tooltip.toggleDataSamplePreview], Source={x:Static loc:LocalizationService.Instance}}">
+              <mi:MaterialIcon Kind="TableEye" Width="12" Height="12" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+            </Button>
+
+            <Button Classes="preview-toggle"
+                    Name="OpenViewSubcanvasBtn"
+                    IsVisible="{Binding CanOpenViewSubcanvas}"
+                  Content="{Binding [node.view], Source={x:Static loc:LocalizationService.Instance}}"
+                  FontSize="{StaticResource FontSizeMonoSmall}"
+                  FontWeight="{StaticResource FontWeightMonoStrong}"
+                    ToolTip.Tip="{Binding [context.editViewSubcanvas], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="{Binding [context.editViewSubcanvas], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+            <Button Classes="preview-toggle"
+                    Name="OpenSubquerySubcanvasBtn"
+                    IsVisible="{Binding CanOpenSubquerySubcanvas}"
+                  Content="subquery"
+                  FontSize="{StaticResource FontSizeMonoSmall}"
+                  FontWeight="{StaticResource FontWeightMonoStrong}"
+                    ToolTip.Tip="Editar subconsulta"
+                  AutomationProperties.Name="Editar subconsulta"/>
+
+            <!-- Alias chip (when set) -->
+            <Border CornerRadius="{StaticResource RadiusXS}"
+                    Background="{StaticResource SelectedOverlayBrush}"
+                    Padding="5,2"
+                    IsVisible="{Binding Alias, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <TextBlock Text="{Binding Alias}"
+                         FontSize="{StaticResource FontSizeMonoSmall}"
+                         FontFamily="{StaticResource MonoFont}"
+                         Foreground="{StaticResource TextPrimaryBrush}"/>
+            </Border>
+
+            <!-- Error badge -->
+            <Border Width="18" Height="18" CornerRadius="{StaticResource RadiusPill}"
+                    Background="{StaticResource StatusErrorBrush}"
+                    IsVisible="{Binding HasError}"
+                    VerticalAlignment="Center">
+              <ToolTip.Tip>
+                <TextBlock Text="{Binding ValidationTooltip}"
+                           FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSizeMonoSmall}" FontWeight="{StaticResource FontWeightMono}"
+                           MaxWidth="300"/>
+              </ToolTip.Tip>
+              <TextBlock Text="!" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
+                         Foreground="White"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- Warning badge -->
+            <Border Width="18" Height="18" CornerRadius="{StaticResource RadiusPill}"
+                    Background="{StaticResource StatusWarningBrush}"
+                    IsVisible="{Binding HasWarning}"
+                    VerticalAlignment="Center">
+              <ToolTip.Tip>
+                <TextBlock Text="{Binding ValidationTooltip}"
+                           FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSizeMonoSmall}" FontWeight="{StaticResource FontWeightMono}"
+                           MaxWidth="300"/>
+              </ToolTip.Tip>
+              <mi:MaterialIcon Kind="Alert" Width="10" Height="10"
+                               Foreground="{StaticResource TextInverseBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- â•â• SEPARATOR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      <Border Grid.Row="1" Height="1" Background="{StaticResource BorderBrush}"/>
+
+      <!-- â•â• PIN BODY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      <Grid Grid.Row="2" Margin="0,4,0,6" RowDefinitions="Auto,Auto,1,Auto">
+
+        <!-- TABLE DEFINITION (DDL): ERD card-like layout -->
+        <Border Grid.Row="1" Grid.RowSpan="3" IsVisible="{Binding UsesTableDefinitionLayout}" Background="{StaticResource Bg1Brush}" Padding="8,6,8,6" CornerRadius="{StaticResource RadiusLGBottom}" ClipToBounds="True">
+          <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="1" Margin="0,0,0,2">
+              <TextBlock Text="{Binding TableDefinitionDisplayName}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}" TextTrimming="CharacterEllipsis"/>
+              <TextBlock Text="{Binding [node.tableDefinition], Source={x:Static loc:LocalizationService.Instance}}" Foreground="{StaticResource AccentPrimaryHoverBrush}" FontSize="{StaticResource FontSizeCaption}"/>
+            </StackPanel>
+
+            <ItemsControl Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding TableDefinitionColumns}" ItemTemplate="{StaticResource DdlTableColumnRowTemplate}"/>
+
+            <ItemsControl Grid.Row="2" Grid.Column="0" ItemsSource="{Binding InputPins}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PinViewModel">
+                  <Grid ColumnDefinitions="20,*" Height="24" Margin="0,1">
+                    <Grid Grid.Column="0"
+                          Width="12" Height="12"
+                          Margin="8,0,0,0"
+                          Background="Transparent"
+                          Cursor="Hand"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center"
+                          Name="InputPinDotTableDefinition">
+                      <Grid.RenderTransform>
+                        <ScaleTransform ScaleX="{Binding VisualScale}" ScaleY="{Binding VisualScale}"/>
+                      </Grid.RenderTransform>
+
+                      <ctrl:PinShapeControl DataType="{Binding EffectiveDataType}"
+                                            Stroke="{Binding DropTargetBrush}"
+                                            Fill="{Binding PinFillBrush}"
+                                            IsDropTarget="{Binding IsDropTarget}"
+                                            Scale="1"
+                                            Opacity="{Binding VisualOpacity}"
+                                            Width="12" Height="12"
+                                            IsHitTestVisible="False"/>
+
+                      <ToolTip.Tip>
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PinTooltipTemplate}"/>
+                      </ToolTip.Tip>
+                    </Grid>
+
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding Name}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"
+                               Margin="4,0,4,0"
+                               TextTrimming="CharacterEllipsis"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <ItemsControl Grid.Row="2" Grid.Column="1" ItemsSource="{Binding OutputPins}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PinViewModel">
+                  <Grid ColumnDefinitions="*" Height="24" Margin="0,1">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Name}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right"
+                               Margin="4,0,24,0"
+                               TextTrimming="CharacterEllipsis"/>
+
+                    <Grid Grid.Column="0"
+                          Width="12" Height="12"
+                          Margin="0,0,8,0"
+                          Background="Transparent"
+                          Cursor="Hand"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Name="OutputPinDotTableDefinition">
+                      <Grid.RenderTransform>
+                        <ScaleTransform ScaleX="{Binding VisualScale}" ScaleY="{Binding VisualScale}"/>
+                      </Grid.RenderTransform>
+
+                      <ctrl:PinShapeControl DataType="{Binding EffectiveDataType}"
+                                            Stroke="{Binding DropTargetBrush}"
+                                            Fill="{Binding PinFillBrush}"
+                                            IsDropTarget="{Binding IsDropTarget}"
+                                            Scale="1"
+                                            Opacity="{Binding VisualOpacity}"
+                                            Width="12" Height="12"
+                                            IsHitTestVisible="False"/>
+
+                      <ToolTip.Tip>
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PinTooltipTemplate}"/>
+                      </ToolTip.Tip>
+                    </Grid>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+        </Border>
+
+        <!-- Inline JOIN type indicator (read-only; editable in Property Panel) -->
+        <Border Grid.Row="0"
+                Background="{StaticResource Bg1Brush}"
+                CornerRadius="{StaticResource RadiusSM}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                Padding="8,6"
+                Margin="8,0,8,4"
+                HorizontalAlignment="Stretch"
+                IsVisible="{Binding IsJoin}">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="{Binding [node.join], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       FontWeight="{StaticResource FontWeightTitle}"
+                       Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                       VerticalAlignment="Center"/>
+            <Border Background="{StaticResource Bg0Brush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource PinRadius}"
+                    Padding="8,4"
+                    MinWidth="110">
+              <TextBlock Text="{Binding JoinTypeSelection}"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         FontSize="{StaticResource FontSizeCaption}"
+                         FontWeight="{StaticResource FontWeightTitle}"
+                         HorizontalAlignment="Center"/>
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- Inline ScalarType label (read-only; parameters editable in Property Panel) -->
+        <Border Grid.Row="0"
+                Background="{StaticResource Bg1Brush}"
+                CornerRadius="{StaticResource RadiusSM}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                Padding="8,6"
+                Margin="8,0,8,4"
+                HorizontalAlignment="Stretch"
+                IsVisible="{Binding IsScalarTypeDefinition}">
+          <Border Background="{StaticResource Bg0Brush}"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  BorderThickness="1"
+                  CornerRadius="{StaticResource PinRadius}"
+                  Padding="8,4"
+                  HorizontalAlignment="Center">
+            <TextBlock Text="{Binding ScalarTypeInlineLabel}"
+                       Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       FontWeight="{StaticResource FontWeightTitle}"
+                       HorizontalAlignment="Center"/>
+          </Border>
+        </Border>
+
+        <!-- Inline ColumnDefinition summary (name + type + nullability) -->
+        <Border Grid.Row="0"
+                Background="{StaticResource Bg1Brush}"
+                CornerRadius="{StaticResource RadiusSM}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                Padding="8,6"
+                Margin="8,0,8,4"
+                HorizontalAlignment="Stretch"
+                IsVisible="{Binding IsDdlColumnDefinition}">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="{Binding ColumnDefinitionDisplayName}"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       FontWeight="{StaticResource FontWeightTitle}"
+                       MaxLines="1"
+                       TextTrimming="CharacterEllipsis"/>
+            <Border Background="{StaticResource Bg3Brush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource RadiusXS}"
+                    Padding="4,1">
+              <TextBlock Text="{Binding ColumnDefinitionTypeLabel}"
+                         Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                         FontSize="{StaticResource FontSizeCaption}"
+                         FontWeight="{StaticResource FontWeightTitle}"/>
+            </Border>
+            <TextBlock Text="{Binding ColumnDefinitionNullabilityLabel}"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+        </Border>
+
+        <!-- STANDARD NODES: INPUT BAND (top) + OUTPUT BAND (bottom) -->
+        <StackPanel Grid.Row="1" Grid.RowSpan="3" IsVisible="{Binding ShowStandardPins}" Spacing="0">
+
+          <!-- INPUT BAND -->
+          <Border Background="{StaticResource Bg1Brush}" Padding="3,4,3,2" IsVisible="{Binding ShowStandardInputBand}">
+            <Grid ColumnDefinitions="*,Auto">
+
+              <!-- INPUT PINS (left side) -->
+              <ItemsControl Grid.Column="0"
+                            ItemsSource="{Binding InputPins}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PinViewModel">
+                    <Grid ColumnDefinitions="20,*" Height="26" Margin="0,1">
+
+                      <!-- Pin dot (left edge) -->
+                      <Grid Grid.Column="0"
+                            Width="12" Height="12"
+                            Margin="8,0,0,0"
+                            Background="Transparent"
+                            Cursor="Hand"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Name="InputPinDot">
+                        <Grid.RenderTransform>
+                          <ScaleTransform ScaleX="{Binding VisualScale}" ScaleY="{Binding VisualScale}"/>
+                        </Grid.RenderTransform>
+
+                        <ctrl:PinShapeControl DataType="{Binding EffectiveDataType}"
+                                              Stroke="{Binding DropTargetBrush}"
+                                              Fill="{Binding PinFillBrush}"
+                                              IsDropTarget="{Binding IsDropTarget}"
+                                              Scale="1"
+                                              Opacity="{Binding VisualOpacity}"
+                                              Width="12" Height="12"
+                                              IsHitTestVisible="False"/>
+
+                        <ToolTip.Tip>
+                          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PinTooltipTemplate}"/>
+                        </ToolTip.Tip>
+                      </Grid>
+
+                      <!-- Pin label -->
+                      <TextBlock Grid.Column="1"
+                                 Text="{Binding Name}"
+                                 FontSize="{StaticResource FontSizeCaption}"
+                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                 VerticalAlignment="Center"
+                                 Margin="4,0,4,0"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- WindowFunction quick controls for explicit slot management -->
+              <StackPanel Grid.Column="1"
+                          Orientation="Horizontal"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Margin="0,2,6,0"
+                          Spacing="4"
+                          IsVisible="{Binding IsWindowFunction}">
+                <Button Classes="preview-toggle" Name="AddPartitionBtn" ToolTip.Tip="{Binding [node.window.addPartition], Source={x:Static loc:LocalizationService.Instance}}">
+                  <TextBlock Text="+P" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+                <Button Classes="preview-toggle"
+                        Name="RemovePartitionBtn"
+                        ToolTip.Tip="{Binding [node.window.removePartition], Source={x:Static loc:LocalizationService.Instance}}"
+                        IsVisible="{Binding CanRemoveWindowPartitionSlot}">
+                  <TextBlock Text="-P" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+                <Button Classes="preview-toggle" Name="AddOrderBtn" ToolTip.Tip="{Binding [node.window.addOrder], Source={x:Static loc:LocalizationService.Instance}}">
+                  <TextBlock Text="+O" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+                <Button Classes="preview-toggle"
+                        Name="RemoveOrderBtn"
+                        ToolTip.Tip="{Binding [node.window.removeOrder], Source={x:Static loc:LocalizationService.Instance}}"
+                        IsVisible="{Binding CanRemoveWindowOrderSlot}">
+                  <TextBlock Text="-O" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <!-- OUTPUT BAND -->
+          <Border Background="{StaticResource Bg1Brush}" Padding="3,2,3,4" CornerRadius="{StaticResource RadiusLGBottom}" ClipToBounds="True">
+            <Grid ColumnDefinitions="*,*">
+              <!-- OUTPUT PINS (right side) -->
+              <ItemsControl Grid.Column="1"
+                            ItemsSource="{Binding OutputPins}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PinViewModel">
+                    <Grid ColumnDefinitions="*" Height="26" Margin="0,1">
+
+                      <!-- Pin label -->
+                      <TextBlock Grid.Column="0"
+                                 Text="{Binding Name}"
+                                 FontSize="{StaticResource FontSizeCaption}"
+                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Right"
+                                 Margin="4,0,24,0"
+                                 TextTrimming="CharacterEllipsis"/>
+
+                      <!-- Pin dot (right edge) -->
+                                <Grid Grid.Column="0"
+                                Width="12" Height="12"
+                                  Margin="0,0,8,0"
+                                  Background="Transparent"
+                                  Cursor="Hand"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  Name="OutputPinDot">
+                                  <Grid.RenderTransform>
+                              <ScaleTransform ScaleX="{Binding VisualScale}" ScaleY="{Binding VisualScale}"/>
+                                  </Grid.RenderTransform>
+
+                                  <!-- Safety ring: unobtrusive fallback if typed renderer has issues -->
+                                  <Border Width="12" Height="12"
+                                    CornerRadius="{StaticResource RadiusSM}"
+                                    Background="Transparent"
+                                      BorderBrush="{Binding DropTargetBrush}"
+                                    BorderThickness="1.2"
+                                    Opacity="0.55"
+                                          IsVisible="{Binding ShowOutputFallbackVisual}"
+                                    IsHitTestVisible="False"/>
+
+                                  <!-- Typed layer: primary source of pin shape/color semantics -->
+                              <ctrl:PinShapeControl DataType="{Binding EffectiveDataType}"
+                                                    Stroke="{Binding DropTargetBrush}"
+                                                    Fill="{Binding PinFillBrush}"
+                                                    IsDropTarget="{Binding IsDropTarget}"
+                                      Scale="1"
+                                                    Opacity="{Binding VisualOpacity}"
+                                      Width="12" Height="12"
+                                                    IsHitTestVisible="False"/>
+
+                              <ToolTip.Tip>
+                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PinTooltipTemplate}"/>
+                              </ToolTip.Tip>
+                            </Grid>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Grid>
+          </Border>
+        </StackPanel>
+
+        <!-- VALUE NODES: editor body + output band -->
+        <Border Grid.Row="1" IsVisible="{Binding IsValueNode}" Background="{StaticResource Bg1Brush}" Padding="10,6,10,4">
+
+        <!-- VALUE NODE (literal value display/edit) - replaces pin body for value nodes -->
+        <StackPanel Spacing="6">
+
+          <!-- Value label + input for Number -->
+          <StackPanel IsVisible="{Binding IsValueNumber}" Spacing="3">
+            <TextBlock Text="{Binding [node.numericValue], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                       FontWeight="{StaticResource FontWeightTitle}"/>
+            <TextBox Text="{Binding ValueNodeText, Mode=TwoWay}"
+                     Background="{StaticResource Bg0Brush}"
+                     BorderBrush="{StaticResource BorderBrush}"
+                     BorderThickness="1"
+                     Foreground="{StaticResource TextPrimaryBrush}"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="{StaticResource FontSizeMonoBody}"
+                     CornerRadius="{StaticResource PinRadius}"
+                     Padding="8,6"
+                     Watermark="0"/>
+          </StackPanel>
+
+          <!-- Value label + input for String -->
+          <StackPanel IsVisible="{Binding IsValueString}" Spacing="3">
+            <TextBlock Text="{Binding [node.stringValue], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                       FontWeight="{StaticResource FontWeightTitle}"/>
+            <TextBox Text="{Binding ValueNodeText, Mode=TwoWay}"
+                     Background="{StaticResource Bg0Brush}"
+                     BorderBrush="{StaticResource BorderBrush}"
+                     BorderThickness="1"
+                     Foreground="{StaticResource TextPrimaryBrush}"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="{StaticResource FontSizeMonoBody}"
+                     CornerRadius="{StaticResource PinRadius}"
+                     Padding="8,6"
+                     Watermark="{Binding [node.enterText], Source={x:Static loc:LocalizationService.Instance}}"/>
+          </StackPanel>
+
+          <!-- Value label + input for DateTime -->
+          <StackPanel IsVisible="{Binding IsValueDateTime}" Spacing="3">
+            <TextBlock Text="{Binding [node.datetimeValue], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                       FontWeight="{StaticResource FontWeightTitle}"/>
+            <TextBox Text="{Binding ValueNodeText, Mode=TwoWay}"
+                     Background="{StaticResource Bg0Brush}"
+                     BorderBrush="{StaticResource BorderBrush}"
+                     BorderThickness="1"
+                     Foreground="{StaticResource TextPrimaryBrush}"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="{StaticResource FontSizeMonoBody}"
+                     CornerRadius="{StaticResource PinRadius}"
+                     Padding="8,6"
+                     Watermark="{Binding [node.datetimeFormat], Source={x:Static loc:LocalizationService.Instance}}"/>
+          </StackPanel>
+
+          <!-- Value label + input for Boolean -->
+          <StackPanel IsVisible="{Binding IsValueBoolean}" Spacing="4"
+                      Orientation="Horizontal">
+            <TextBlock Text="{Binding [node.valueLabel], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                       FontWeight="{StaticResource FontWeightTitle}"
+                       VerticalAlignment="Center"/>
+            <ComboBox SelectedItem="{Binding ValueNodeText, Mode=TwoWay}"
+                      Background="{StaticResource Bg0Brush}"
+                      BorderBrush="{StaticResource BorderBrush}"
+                      Foreground="{StaticResource TextPrimaryBrush}"
+                      FontSize="{StaticResource FontSizeCaption}"
+                      CornerRadius="{StaticResource PinRadius}"
+                      Padding="8,5"
+                      Width="110">
+              <ComboBoxItem>true</ComboBoxItem>
+              <ComboBoxItem>false</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+
+        </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Height="1" Background="{StaticResource BorderBrush}" IsVisible="{Binding IsValueNode}"/>
+
+        <!-- OUTPUT PINS FOR VALUE NODES (right side only) -->
+        <Border Grid.Row="3" IsVisible="{Binding IsValueNode}" Background="{StaticResource Bg1Brush}" Padding="3,2,3,4" CornerRadius="{StaticResource RadiusLGBottom}" ClipToBounds="True">
+        <ItemsControl Grid.Column="1"
+                      ItemsSource="{Binding OutputPins}"
+                      IsVisible="{Binding IsValueNode}"
+                      Margin="0,0,0,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PinViewModel">
+              <Grid ColumnDefinitions="*" Height="28" Margin="0,2">
+
+                <!-- Pin label -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Name}"
+                           FontSize="{StaticResource FontSizeCaption}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontWeight="{StaticResource FontWeightLabel}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="4,0,24,0"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <!-- Pin dot (right edge) -->
+                        <Grid Grid.Column="0"
+                        Width="12" Height="12"
+                          Margin="0,0,8,0"
+                          Background="Transparent"
+                          Cursor="Hand"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Name="OutputPinDotValueNode">
+                          <Grid.RenderTransform>
+                      <ScaleTransform ScaleX="{Binding VisualScale}" ScaleY="{Binding VisualScale}"/>
+                          </Grid.RenderTransform>
+
+                          <Border Width="12" Height="12"
+                            CornerRadius="{StaticResource RadiusSM}"
+                            Background="Transparent"
+                              BorderBrush="{Binding DropTargetBrush}"
+                            BorderThickness="1.2"
+                            Opacity="0.55"
+                                  IsVisible="{Binding ShowOutputFallbackVisual}"
+                            IsHitTestVisible="False"/>
+
+                      <ctrl:PinShapeControl DataType="{Binding EffectiveDataType}"
+                                            Stroke="{Binding DropTargetBrush}"
+                                            Fill="{Binding PinFillBrush}"
+                                            IsDropTarget="{Binding IsDropTarget}"
+                              Scale="1"
+                                            Opacity="{Binding VisualOpacity}"
+                              Width="12" Height="12"
+                                            IsHitTestVisible="False"/>
+
+                      <ToolTip.Tip>
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PinTooltipTemplate}"/>
+                      </ToolTip.Tip>
+                    </Grid>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        </Border>
+      </Grid>
+
+      <!-- No-pin placeholder - shown only for source nodes without inputs -->
+      <TextBlock Grid.Row="1" Text="{Binding [node.noInputs], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" Margin="12,8" IsVisible="{Binding ShouldShowNoInputsPlaceholder}"/>
+
+      <!-- ──── RESULT OUTPUT - Simplified (where/columns inputs) ──────────────────────── -->
+      <Border Grid.Row="1"
+              IsVisible="{Binding IsResultOutput}"
+              Background="{StaticResource Bg1Brush}"
+              CornerRadius="{StaticResource RadiusLGBottom}"
+              Padding="10,6,7,6">
+        <StackPanel Spacing="4">
+          <!-- INPUT PINS for ResultOutput (where, columns inputs shown here) -->
+          <ItemsControl ItemsSource="{Binding InputPins}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PinViewModel">
+                <Grid ColumnDefinitions="20,*" Height="26" Margin="0,1">
+
+                  <!-- Pin dot (left edge) -->
+                  <Grid Grid.Column="0"
+                        Width="12" Height="12"
+                        Margin="8,0,0,0"
+                    Background="Transparent"
+                    Cursor="Hand"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Name="InputPinDotResultOutput">
+                    <Grid.RenderTransform>
+                      <ScaleTransform ScaleX="{Binding VisualScale}" ScaleY="{Binding VisualScale}"/>
+                    </Grid.RenderTransform>
+
+                    <ctrl:PinShapeControl DataType="{Binding EffectiveDataType}"
+                                          Stroke="{Binding DropTargetBrush}"
+                                          Fill="{Binding PinFillBrush}"
+                                          IsDropTarget="{Binding IsDropTarget}"
+                                          Scale="1"
+                                          Opacity="{Binding VisualOpacity}"
+                                          Width="12" Height="12"
+                                          IsHitTestVisible="False"/>
+
+                    <ToolTip.Tip>
+                      <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PinTooltipTemplate}"/>
+                    </ToolTip.Tip>
+                  </Grid>
+
+                  <!-- Pin label -->
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding Name}"
+                             FontSize="{StaticResource FontSizeCaption}"
+                             Foreground="{StaticResource TextSecondaryBrush}"
+                             VerticalAlignment="Center"
+                             Margin="4,0,4,0"
+                             TextTrimming="CharacterEllipsis"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+        </StackPanel>
+      </Border>
+
+      <!-- ──── COLUMN LIST - dynamic col_N inputs (left) + result output (right) ────── -->
+            <Border Grid.Row="2"
+              IsVisible="{Binding IsColumnList}"
+              Background="{StaticResource Bg1Brush}"
+              CornerRadius="{StaticResource RadiusLGBottom}"
+              ClipToBounds="True">
+        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,6">
+
+          <!-- LEFT: dynamic col_N input pins -->
+          <ItemsControl Grid.Column="0" ItemsSource="{Binding InputPins}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PinViewModel">
+                <Grid ColumnDefinitions="20,*" Height="26" Margin="0,1">
+                  <Grid Grid.Column="0"
+                        Width="12" Height="12"
+                        Margin="8,0,0,0"
+                    Background="Transparent"
+                    Cursor="Hand"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Name="InputPinDotColumnList">
+                    <Grid.RenderTransform>
+                      <ScaleTransform ScaleX="{Binding VisualScale}" ScaleY="{Binding VisualScale}"/>
+                    </Grid.RenderTransform>
+
+                    <ctrl:PinShapeControl DataType="{Binding EffectiveDataType}"
+                                          Stroke="{Binding DropTargetBrush}"
+                                          Fill="{Binding PinFillBrush}"
+                                          IsDropTarget="{Binding IsDropTarget}"
+                                          Scale="1"
+                                          Opacity="{Binding VisualOpacity}"
+                                          Width="12" Height="12"
+                                          IsHitTestVisible="False"/>
+
+                    <ToolTip.Tip>
+                      <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PinTooltipTemplate}"/>
+                    </ToolTip.Tip>
+                  </Grid>
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding Name}"
+                             FontSize="{StaticResource FontSizeCaption}"
+                             Foreground="{StaticResource TextSecondaryBrush}"
+                             VerticalAlignment="Center"
+                             Margin="4,0,4,0"
+                             TextTrimming="CharacterEllipsis"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <!-- RIGHT: output "result" pin -->
+          <ItemsControl Grid.Column="1" ItemsSource="{Binding OutputPins}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PinViewModel">
+                <Grid ColumnDefinitions="*" Height="26" Margin="0,1">
+                  <TextBlock Grid.Column="0"
+                             Text="{Binding Name}"
+                             FontSize="{StaticResource FontSizeCaption}"
+                             Foreground="{StaticResource TextSecondaryBrush}"
+                             VerticalAlignment="Center"
+                             HorizontalAlignment="Right"
+                             Margin="4,0,24,0"
+                             TextTrimming="CharacterEllipsis"/>
+                        <Grid Grid.Column="0"
+                        Width="12" Height="12"
+                          Margin="0,0,8,0"
+                          Background="Transparent"
+                          Cursor="Hand"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Name="OutputPinDotColumnList">
+                          <Grid.RenderTransform>
+                      <ScaleTransform ScaleX="{Binding VisualScale}" ScaleY="{Binding VisualScale}"/>
+                          </Grid.RenderTransform>
+
+                          <Border Width="12" Height="12"
+                            CornerRadius="{StaticResource RadiusSM}"
+                            Background="Transparent"
+                              BorderBrush="{Binding DropTargetBrush}"
+                            BorderThickness="1.2"
+                            Opacity="0.55"
+                                  IsVisible="{Binding ShowOutputFallbackVisual}"
+                            IsHitTestVisible="False"/>
+
+                      <ctrl:PinShapeControl DataType="{Binding EffectiveDataType}"
+                                            Stroke="{Binding DropTargetBrush}"
+                                            Fill="{Binding PinFillBrush}"
+                                            IsDropTarget="{Binding IsDropTarget}"
+                              Scale="1"
+                                            Opacity="{Binding VisualOpacity}"
+                              Width="12" Height="12"
+                                            IsHitTestVisible="False"/>
+
+                      <ToolTip.Tip>
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PinTooltipTemplate}"/>
+                      </ToolTip.Tip>
+                    </Grid>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+        </Grid>
+      </Border>
+
+      <!-- ── INLINE DATA PREVIEW (Row 3+4, TableSource only) ──────────────── -->
+
+      <!-- Separator -->
+      <Border Grid.Row="3"
+              Height="1"
+              Background="{StaticResource BorderBrush}"
+              IsVisible="{Binding ShowInlinePreview}"/>
+
+      <!-- Preview panel -->
+      <Border Grid.Row="4"
+          IsVisible="{Binding ShowInlinePreview}"
+          Background="{StaticResource Bg0Brush}"
+          CornerRadius="{StaticResource RadiusLGBottom}"
+          ClipToBounds="True"
+          MinHeight="60">
+
+      <Grid>
+
+        <!-- Loading -->
+        <StackPanel IsVisible="{Binding IsPreviewLoading}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="6"
+                    Margin="12,10">
+          <ProgressBar IsIndeterminate="True"
+                       Width="120" Height="2"
+                       Background="{StaticResource Bg3Brush}"
+                       Foreground="{StaticResource StatusInfoBrush}"
+                       CornerRadius="{StaticResource RadiusXS}"/>
+          <TextBlock Text="{Binding [node.loadingSample], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Error -->
+        <StackPanel IsVisible="{Binding HasInlinePreviewError}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="4"
+                    Margin="10,8">
+          <TextBlock Text="{Binding [node.previewFailed], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     FontWeight="{StaticResource FontWeightTitle}"
+                     Foreground="{StaticResource StatusErrorBrush}"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding InlinePreviewError}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     TextWrapping="Wrap"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Data grid -->
+        <StackPanel IsVisible="{Binding HasInlinePreviewData}" Spacing="0">
+          <DataGrid Classes="node-preview"
+                    ItemsSource="{Binding InlinePreviewData}"
+                    AutoGenerateColumns="True"
+                    IsReadOnly="True"
+                    CanUserResizeColumns="False"
+                    CanUserSortColumns="False"
+                    MaxHeight="140"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto"/>
+          <!-- Footer hint -->
+          <Border Background="{StaticResource Bg1Brush}" Padding="8,4">
+            <TextBlock Text="{Binding [node.sampleRowsHint], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       HorizontalAlignment="Right"/>
+          </Border>
+        </StackPanel>
+
+      </Grid>
+      </Border>
+
+    </Grid>
+  </Border>
+</UserControl>

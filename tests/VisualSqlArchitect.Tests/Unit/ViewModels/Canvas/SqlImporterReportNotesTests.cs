@@ -1,19 +1,19 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class SqlImporterReportNotesTests
 {
     [Fact]
     public void ImportReportItem_PartialOrSkippedWithoutNote_AddsDefaultJustification()
     {
-        var partial = new ImportReportItem("partial", EImportItemStatus.Partial);
-        var skipped = new ImportReportItem("skipped", EImportItemStatus.Skipped, " ");
-        var imported = new ImportReportItem("imported", EImportItemStatus.Imported);
+        var partial = new ImportReportItem("partial", ImportItemStatus.Partial);
+        var skipped = new ImportReportItem("skipped", ImportItemStatus.Skipped, " ");
+        var imported = new ImportReportItem("imported", ImportItemStatus.Imported);
 
         Assert.False(string.IsNullOrWhiteSpace(partial.Note));
         Assert.False(string.IsNullOrWhiteSpace(skipped.Note));
@@ -28,7 +28,7 @@ public class SqlImporterReportNotesTests
         canvas.SqlImporter.ImportStartDelayMs = 0;
         canvas.SqlImporter.ImportTimeout = TimeSpan.FromSeconds(5);
         canvas.SqlImporter.SqlInput =
-            "SELECT unknown_col FROM public.orders";
+            "SELECT id FROM public.orders UNION SELECT id FROM public.customers";
 
         await canvas.SqlImporter.ImportAsync();
 
@@ -56,7 +56,7 @@ public class SqlImporterReportNotesTests
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, item =>
-            item.Status == EImportItemStatus.Partial
+            item.Status == ImportItemStatus.Partial
             && item.Label.Contains("GROUP BY conflict", StringComparison.OrdinalIgnoreCase)
             && (item.Note ?? string.Empty).Contains("neither grouped nor aggregated", StringComparison.OrdinalIgnoreCase));
     }
@@ -78,5 +78,4 @@ public class SqlImporterReportNotesTests
             item.Label.Contains("GROUP BY conflict", StringComparison.OrdinalIgnoreCase));
     }
 }
-
 

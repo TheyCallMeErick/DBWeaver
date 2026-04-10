@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <AssemblyName>DBWeaver.Tests</AssemblyName>
+    <RootNamespace>DBWeaver.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <PackageReference Include="Testcontainers.MySql" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/DBWeaver/DBWeaver.csproj" />
+    <ProjectReference Include="../../src/DBWeaver.Canvas/DBWeaver.Canvas.csproj" />
+    <ProjectReference Include="../../src/DBWeaver.UI/DBWeaver.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures\Snapshots\*.snap">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

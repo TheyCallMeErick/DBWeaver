@@ -1,10 +1,10 @@
 using System.Data.Common;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.Providers.Dialects;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
+using DBWeaver.Providers.Dialects;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Core;
+namespace DBWeaver.Tests.Unit.Core;
 
 public class BaseDbOrchestratorExceptionStrategyTests
 {

@@ -1,10 +1,6 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.QueryEngine;
-using VisualSqlArchitect.Registry;
 
-namespace VisualSqlArchitect.Tests.Fixtures;
+
+namespace Fixtures;
 
 /// <summary>
 /// Shared test fixtures used across all test suites

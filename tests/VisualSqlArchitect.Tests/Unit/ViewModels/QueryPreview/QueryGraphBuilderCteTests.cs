@@ -1,14 +1,14 @@
 ﻿
 using System.Text.RegularExpressions;
 using Avalonia;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Serialization;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.QueryPreview;
-using static VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview.QueryPreviewTestNodeFactory;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Serialization;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.Services.QueryPreview;
+using static DBWeaver.Tests.Unit.ViewModels.QueryPreview.QueryPreviewTestNodeFactory;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 public class QueryGraphBuilderCteTests
 {
     [Fact]
@@ -579,13 +579,7 @@ public class QueryGraphBuilderCteTests
 
         (string sql, List<string> errors) = sut.BuildSql();
 
-        Assert.Empty(errors);
-        Assert.Contains("WITH", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("SELECT DISTINCT", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("JOIN", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("ROW_NUMBER() OVER", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("STRING_AGG", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("HAVING", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(errors, error => error.Contains("explicit GROUP BY", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string BuildPersistedCteSubgraphJson()

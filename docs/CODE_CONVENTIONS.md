@@ -1,6 +1,4 @@
-# Convenções de Código — VisualSqlArchitect
-
-Data: 2026-04-01
+# Convenções de Código — 2026-04-01
 
 ## Objetivo
 

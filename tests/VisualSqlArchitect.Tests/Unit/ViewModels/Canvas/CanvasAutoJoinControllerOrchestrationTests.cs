@@ -1,12 +1,12 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
 using System.Collections.ObjectModel;
 using Avalonia;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Services.Localization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Services.Localization;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class CanvasAutoJoinControllerOrchestrationTests
 {
@@ -23,7 +23,7 @@ public class CanvasAutoJoinControllerOrchestrationTests
 
         Assert.True(ctx.ManualJoinDialog.IsVisible);
         Assert.True(ctx.Toasts.IsVisible);
-        Assert.Equal(EToastSeverity.Warning, ctx.Toasts.Severity);
+        Assert.Equal(ToastSeverity.Warning, ctx.Toasts.Severity);
         Assert.DoesNotContain(ctx.Nodes, n => n.Type == NodeType.Join);
     }
 
@@ -40,7 +40,7 @@ public class CanvasAutoJoinControllerOrchestrationTests
 
         Assert.Single(ctx.Nodes, n => n.Type == NodeType.Join);
         Assert.True(ctx.Toasts.IsVisible);
-        Assert.Equal(EToastSeverity.Success, ctx.Toasts.Severity);
+        Assert.Equal(ToastSeverity.Success, ctx.Toasts.Severity);
         Assert.False(ctx.ManualJoinDialog.IsVisible);
     }
 
@@ -58,7 +58,7 @@ public class CanvasAutoJoinControllerOrchestrationTests
 
         Assert.Single(ctx.Nodes, n => n.Type == NodeType.Join);
         Assert.True(ctx.ManualJoinDialog.IsVisible);
-        Assert.Equal(EToastSeverity.Warning, ctx.Toasts.Severity);
+        Assert.Equal(ToastSeverity.Warning, ctx.Toasts.Severity);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class CanvasAutoJoinControllerOrchestrationTests
         ctx.Controller.RunSelectedAutoJoin();
 
         Assert.True(ctx.ManualJoinDialog.IsVisible);
-        Assert.Equal(EToastSeverity.Warning, ctx.Toasts.Severity);
+        Assert.Equal(ToastSeverity.Warning, ctx.Toasts.Severity);
         Assert.DoesNotContain(ctx.Nodes, n => n.Type == NodeType.Join);
     }
 

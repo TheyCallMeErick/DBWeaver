@@ -1,15 +1,15 @@
-using VisualSqlArchitect;
-using VisualSqlArchitect.Core;
+using DBWeaver;
+using DBWeaver.Core;
 
-namespace VisualSqlArchitect.Tests.Unit.Core;
+namespace DBWeaver.Tests.Unit.Core;
 
 public class DbOrchestratorFactoryTests
 {
     [Theory]
-    [InlineData(DatabaseProvider.SqlServer, typeof(VisualSqlArchitect.Providers.SqlServerOrchestrator))]
-    [InlineData(DatabaseProvider.MySql, typeof(VisualSqlArchitect.Providers.MySqlOrchestrator))]
-    [InlineData(DatabaseProvider.Postgres, typeof(VisualSqlArchitect.Providers.PostgresOrchestrator))]
-    [InlineData(DatabaseProvider.SQLite, typeof(VisualSqlArchitect.Providers.SqliteOrchestrator))]
+    [InlineData(DatabaseProvider.SqlServer, typeof(DBWeaver.Providers.SqlServerOrchestrator))]
+    [InlineData(DatabaseProvider.MySql, typeof(DBWeaver.Providers.MySqlOrchestrator))]
+    [InlineData(DatabaseProvider.Postgres, typeof(DBWeaver.Providers.PostgresOrchestrator))]
+    [InlineData(DatabaseProvider.SQLite, typeof(DBWeaver.Providers.SqliteOrchestrator))]
     public void Create_ReturnsRegisteredDefaultOrchestrator(DatabaseProvider provider, Type expectedType)
     {
         IDbOrchestratorFactory factory = DbOrchestratorFactory.CreateDefault();

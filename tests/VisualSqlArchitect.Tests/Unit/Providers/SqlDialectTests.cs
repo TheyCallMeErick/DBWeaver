@@ -1,7 +1,6 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Providers.Dialects;
+using DBWeaver.Providers.Dialects;
 
-namespace VisualSqlArchitect.Tests.Unit.Providers;
+namespace DBWeaver.Tests.Unit.Providers;
 
 /// <summary>
 /// Tests for ISqlDialect implementations (PostgreSQL, MySQL, SQL Server).

@@ -1,0 +1,723 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:canvas="using:DBWeaver.UI.ViewModels.Canvas"
+             xmlns:explain="using:DBWeaver.UI.Services.Explain"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.ExplainPlanOverlay"
+             x:DataType="canvas:ExplainPlanViewModel"
+             Width="1220">
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize"   Value="11"/>
+      <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+      <Setter Property="Margin"     Value="0,0,0,4"/>
+    </Style>
+    <Style Selector="Button.close-btn">
+      <Setter Property="Background"      Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground"      Value="{StaticResource TextMutedBrush}"/>
+      <Setter Property="Padding"         Value="6"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusXS}"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.close-btn:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg3Brush}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Button.run-btn">
+      <Setter Property="Background"      Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="Foreground"      Value="{StaticResource BtnPrimaryFgBrush}"/>
+      <Setter Property="Padding"         Value="10,6"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="FontSize"        Value="12"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.run-btn:pointerover">
+      <Setter Property="Background" Value="{StaticResource AccentPrimaryPressedBrush}"/>
+    </Style>
+    <Style Selector="Button.export-btn">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="Padding" Value="8,4"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.export-btn:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg3Brush}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- ══ Card shell ════════════════════════════════════════════════════════ -->
+    <Border Background="{StaticResource Bg0Brush}"
+          BorderBrush="{StaticResource BorderActiveBrush}"
+          BorderThickness="1"
+          CornerRadius="{StaticResource RadiusLG}"
+          BoxShadow="{StaticResource ShadowXL}"
+          Width="1220"
+          Height="820"
+          MinHeight="660"
+          MaxHeight="860"
+          Padding="0">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+      <!-- ── Header ──────────────────────────────────────────────────────── -->
+      <Border Grid.Row="0"
+              Background="{StaticResource Bg2Brush}"
+              BorderBrush="{StaticResource BorderActiveBrush}"
+              BorderThickness="0,0,0,1"
+              CornerRadius="{StaticResource RadiusLGTop}"
+              Padding="0,2,0,0">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto"
+            Margin="0"
+            Height="54">
+        <Border Grid.Column="0"
+                Background="{StaticResource Bg1Brush}"
+                CornerRadius="{StaticResource RadiusSM}"
+                Padding="8"
+                Margin="16,0,0,0"
+                VerticalAlignment="Center">
+          <mi:MaterialIcon Kind="TableSearch" Width="16" Height="16" Foreground="{StaticResource AccentPrimaryBrush}"/>
+        </Border>
+
+        <StackPanel Grid.Column="1" Spacing="2" Margin="12,0,0,0" VerticalAlignment="Center">
+          <TextBlock Text="{Binding [explain.title], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeTitle}" FontWeight="{StaticResource FontWeightTitle}" Foreground="{StaticResource TextPrimaryBrush}"/>
+          <TextBlock Text="{Binding ExplainHeader}"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+        </StackPanel>
+
+        <!-- Provider badge -->
+        <Border Grid.Column="2"
+                HorizontalAlignment="Left"
+                Margin="14,0,0,0"
+                VerticalAlignment="Center"
+                Background="{StaticResource Bg1Brush}"
+                BorderBrush="{StaticResource BorderActiveBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusXS}"
+                Padding="7,3">
+          <TextBlock Text="{Binding ProviderLabel}"
+                     FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource AccentPrimaryBrush}"/>
+        </Border>
+
+        <Border Grid.Column="2"
+                HorizontalAlignment="Left"
+                Margin="88,0,0,0"
+                VerticalAlignment="Center"
+                Background="{StaticResource BtnWarningBgBrush}"
+                BorderBrush="{StaticResource StatusWarningBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusXS}"
+                Padding="7,3"
+                IsVisible="{Binding IsSimulated}">
+          <TextBlock Text="SIMULATED"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     FontWeight="{StaticResource FontWeightTitle}"
+                     Foreground="{StaticResource StatusWarningBrush}"/>
+        </Border>
+
+        <!-- Close -->
+        <Button Grid.Column="3"
+                Classes="close-btn"
+                Name="CloseBtn"
+                Margin="0,0,12,0"
+                VerticalAlignment="Center">
+          <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
+        </Button>
+      </Grid>
+      </Border>
+
+      <!-- ── SQL preview ──────────────────────────────────────────────────── -->
+      <Border Grid.Row="1"
+              Background="{StaticResource Bg1Brush}"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="0,1,0,1"
+              Padding="16,10">
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+          <TextBlock Grid.Column="0"
+                     Text="{Binding [explain.sql], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
+                     Foreground="{StaticResource AccentSecondaryBrush}"
+                     VerticalAlignment="Center"
+                     Margin="0,0,10,0"/>
+          <SelectableTextBlock Grid.Column="1"
+                               Text="{Binding Sql}"
+                               FontFamily="{StaticResource MonoFont}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="2"
+                               VerticalAlignment="Center">
+            <ToolTip.Tip>
+              <TextBlock Text="{Binding SqlTooltipText}"
+                         FontFamily="{StaticResource MonoFont}"
+                         FontSize="{StaticResource FontSizeCaption}"
+                         MaxWidth="920"
+                         TextWrapping="Wrap"/>
+            </ToolTip.Tip>
+          </SelectableTextBlock>
+          <StackPanel Grid.Column="2"
+                      Orientation="Horizontal"
+                      Spacing="10"
+                      VerticalAlignment="Center"
+                      Margin="10,0,0,0"
+                      IsVisible="{Binding CanUseAnalyzeOptions}">
+            <CheckBox IsChecked="{Binding IncludeAnalyze}"
+                      VerticalAlignment="Center"
+                      Foreground="{StaticResource TextSecondaryBrush}"
+                      FontSize="{StaticResource FontSizeCaption}"
+                      Content="Analyze"/>
+            <CheckBox IsChecked="{Binding IncludeBuffers}"
+                      IsVisible="{Binding CanUseBuffersOption}"
+                      IsEnabled="{Binding IncludeAnalyze}"
+                      VerticalAlignment="Center"
+                      Foreground="{StaticResource TextSecondaryBrush}"
+                      FontSize="{StaticResource FontSizeCaption}"
+                      Content="Buffers"/>
+          </StackPanel>
+
+          <Button Grid.Column="3"
+                  Classes="export-btn"
+                  Name="SnapshotBtn"
+                  IsEnabled="{Binding HasData}"
+                  Margin="12,0,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <mi:MaterialIcon Kind="Camera" Width="12" Height="12" VerticalAlignment="Center"/>
+              <TextBlock Text="Snapshot" FontSize="{StaticResource FontSizeCaption}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+
+          <!-- Re-run -->
+          <Button Grid.Column="4"
+                  Classes="run-btn"
+                  Name="RunBtn"
+                  IsEnabled="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"
+                  Margin="12,0,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <mi:MaterialIcon Kind="Refresh" Width="12" Height="12" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding [explain.rerun], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+          </Grid>
+          <Border Background="{StaticResource Bg2Brush}"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  BorderThickness="1"
+                  CornerRadius="{StaticResource RadiusSM}"
+                  Padding="8,6"
+                  IsVisible="{Binding HasTimingData}">
+            <Grid ColumnDefinitions="Auto,*,Auto,*">
+              <TextBlock Grid.Column="0" Text="Planning:" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+              <TextBlock Grid.Column="1" Margin="6,0,0,0" Text="{Binding PlanningTimeText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusInfoBrush}"/>
+              <TextBlock Grid.Column="2" Margin="12,0,0,0" Text="Execution:" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+              <TextBlock Grid.Column="3" Margin="6,0,0,0" Text="{Binding ExecutionTimeText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusInfoBrush}"/>
+            </Grid>
+          </Border>
+          <Border Background="{StaticResource BtnWarningBgBrush}"
+                  BorderBrush="{StaticResource StatusWarningBrush}"
+                  BorderThickness="1"
+                  CornerRadius="{StaticResource RadiusSM}"
+                  Padding="8,6"
+                  IsVisible="{Binding HasAnalyzeDmlWarning}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <mi:MaterialIcon Kind="Alert" Width="12" Height="12" Foreground="{StaticResource StatusWarningBrush}"/>
+              <TextBlock Text="{Binding AnalyzeDmlWarningText}"
+                         FontSize="{StaticResource FontSizeCaption}"
+                         Foreground="{StaticResource BtnWarningFgBrush}"
+                         TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+
+      <!-- ── Alert summary bar ───────────────────────────────────────────── -->
+      <Border Grid.Row="2"
+              Background="{StaticResource BtnWarningBgBrush}"
+              BorderBrush="{StaticResource StatusWarningBrush}"
+              BorderThickness="0,0,0,1"
+              Padding="16,7"
+              IsVisible="{Binding HasAlerts}">
+        <Grid ColumnDefinitions="Auto,*">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+          <mi:MaterialIcon Kind="AlertCircleOutline" Width="14" Height="14"
+                           Foreground="{StaticResource StatusWarningBrush}" VerticalAlignment="Center"/>
+          <TextBlock FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource StatusWarningBrush}"
+                     VerticalAlignment="Center"
+                     Text="{Binding AlertSummaryText}"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+          <Button Name="ListModeBtn" Classes="export-btn">
+            <TextBlock Text="Lista"/>
+          </Button>
+          <Button Name="TreeModeBtn" Classes="export-btn">
+            <TextBlock Text="Arvore"/>
+          </Button>
+        </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- ── Content area ────────────────────────────────────────────────── -->
+      <Grid Grid.Row="3" MinHeight="420">
+
+        <Grid IsVisible="{Binding ShowListView}"
+              ColumnDefinitions="3*,2*"
+              Margin="0">
+          <!-- Main plan list -->
+          <Border Grid.Column="0"
+                  Margin="12,8,6,10"
+                  Padding="0"
+                  CornerRadius="{StaticResource RadiusSM}"
+                  Background="{StaticResource Bg1Brush}"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  BorderThickness="1">
+            <Grid RowDefinitions="Auto,*,Auto">
+              <Grid Grid.Row="0"
+                    ColumnDefinitions="*,86,88,72,84,128"
+                    Margin="12,10,12,8">
+                <TextBlock Grid.Column="0" Text="{Binding [explain.header.operation], Source={x:Static loc:LocalizationService.Instance}}"
+                           FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
+                           Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1"/>
+                <TextBlock Grid.Column="1" Text="{Binding [explain.header.cost], Source={x:Static loc:LocalizationService.Instance}}"
+                           FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
+                           Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1"
+                           HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="2" Text="{Binding [explain.header.rows], Source={x:Static loc:LocalizationService.Instance}}"
+                           FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
+                           Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1"
+                           HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="3" Text="%"
+                           FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
+                           Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1"
+                           HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="4" Text="ERR"
+                           FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
+                           Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1"
+                           HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="5" Text="{Binding [explain.header.alert], Source={x:Static loc:LocalizationService.Instance}}"
+                           FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
+                           Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1"
+                           HorizontalAlignment="Right"/>
+              </Grid>
+
+              <Border Grid.Row="0" Background="{StaticResource BorderSubtleBrush}" Height="1" Margin="12,32,12,0" VerticalAlignment="Bottom"/>
+
+              <ScrollViewer Grid.Row="1"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled"
+                            Margin="0,4,0,0">
+                <ItemsControl ItemsSource="{Binding Steps}" Margin="0,0,0,8">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="explain:ExplainStep">
+                      <Button Margin="0,1,0,0"
+                              Padding="12,8"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              HorizontalContentAlignment="Stretch"
+                              Click="OnStepRowClick">
+                        <Button.Styles>
+                          <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+                          </Style>
+                        </Button.Styles>
+                        <Grid ColumnDefinitions="*,86,88,72,84,128">
+                          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                            <Border Width="{Binding IndentMargin}" Height="1"/>
+                            <Ellipse Width="4" Height="4"
+                                     Fill="{StaticResource BorderSubtleBrush}"
+                                     VerticalAlignment="Center"
+                                     IsVisible="{Binding IndentLevel, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            <StackPanel Spacing="2">
+                              <TextBlock Text="{Binding Operation}"
+                                         FontFamily="{StaticResource MonoFont}"
+                                         FontSize="{StaticResource FontSizeBody}"
+                                         Foreground="{StaticResource TextSecondaryBrush}"
+                                         TextWrapping="NoWrap"/>
+                              <TextBlock Text="{Binding Detail}"
+                                         FontFamily="{StaticResource MonoFont}"
+                                         FontSize="{StaticResource FontSizeCaption}"
+                                         Foreground="{StaticResource TextMutedBrush}"
+                                         TextWrapping="NoWrap"
+                                         IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                              <Border Width="96"
+                                      Height="4"
+                                      CornerRadius="{StaticResource RadiusXS}"
+                                      Background="{StaticResource Bg3Brush}"
+                                      IsVisible="{Binding HasCostBar}">
+                                <Border Width="{Binding CostBarWidth}"
+                                        Height="4"
+                                        HorizontalAlignment="Left"
+                                        CornerRadius="{StaticResource RadiusXS}">
+                                  <Border.Background>
+                                    <SolidColorBrush Color="{Binding CostBarFill}"/>
+                                  </Border.Background>
+                                </Border>
+                              </Border>
+                            </StackPanel>
+                          </StackPanel>
+
+                          <TextBlock Grid.Column="1"
+                                     Text="{Binding CostText}"
+                                     FontFamily="{StaticResource MonoFont}"
+                                     FontSize="{StaticResource FontSizeCaption}"
+                                     Foreground="{StaticResource TextMutedBrush}"
+                                     HorizontalAlignment="Right"
+                                     VerticalAlignment="Center"/>
+
+                          <TextBlock Grid.Column="2"
+                                     Text="{Binding RowsText}"
+                                     FontFamily="{StaticResource MonoFont}"
+                                     FontSize="{StaticResource FontSizeCaption}"
+                                     Foreground="{StaticResource TextMutedBrush}"
+                                     HorizontalAlignment="Right"
+                                     VerticalAlignment="Center"/>
+
+                          <TextBlock Grid.Column="3"
+                                     Text="{Binding CostFractionText}"
+                                     FontFamily="{StaticResource MonoFont}"
+                                     FontSize="{StaticResource FontSizeCaption}"
+                                     Foreground="{StaticResource TextMutedBrush}"
+                                     HorizontalAlignment="Right"
+                                     VerticalAlignment="Center"/>
+
+                          <TextBlock Grid.Column="4"
+                                     Text="{Binding RowsErrorText}"
+                                     FontFamily="{StaticResource MonoFont}"
+                                     FontSize="{StaticResource FontSizeCaption}"
+                                     Foreground="{Binding RowsErrorColor}"
+                                     HorizontalAlignment="Right"
+                                     VerticalAlignment="Center"
+                                     IsVisible="{Binding HasRowsError}"/>
+
+                          <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                            <Border CornerRadius="{StaticResource RadiusXS}"
+                                    Padding="5,2"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding HasStaleStatsBadge}">
+                              <Border.Background>
+                                <SolidColorBrush Color="{StaticResource AccentSecondary}"/>
+                              </Border.Background>
+                              <TextBlock Text="{Binding StaleStatsLabel}"
+                                         FontSize="{StaticResource FontSizeCaption}"
+                                         FontWeight="{StaticResource FontWeightHeading}"
+                                         Foreground="{StaticResource TextInverseBrush}"
+                                         LetterSpacing="0.5"/>
+                            </Border>
+                            <Border CornerRadius="{StaticResource RadiusXS}"
+                                    Padding="5,2"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding HasAlert}">
+                              <Border.Background>
+                                <SolidColorBrush Color="{Binding AlertColor}"/>
+                              </Border.Background>
+                              <TextBlock Text="{Binding AlertLabel}"
+                                         FontSize="{StaticResource FontSizeCaption}"
+                                         FontWeight="{StaticResource FontWeightHeading}"
+                                         Foreground="{StaticResource TextInverseBrush}"
+                                         LetterSpacing="0.5"/>
+                            </Border>
+                          </StackPanel>
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Grid>
+          </Border>
+
+          <!-- Technical side panel -->
+          <Border Grid.Column="1"
+                  Margin="6,8,12,10"
+                  Padding="0"
+                  CornerRadius="{StaticResource RadiusSM}"
+                  Background="{StaticResource Bg1Brush}"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  BorderThickness="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Margin="0">
+              <StackPanel Margin="10" Spacing="8">
+                <Border Padding="10,8"
+                        CornerRadius="{StaticResource RadiusSM}"
+                        Background="{StaticResource Bg2Brush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        IsVisible="{Binding CanCompareSnapshots}">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="Comparacao de snapshots"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource StatusInfoBrush}"/>
+                    <Grid ColumnDefinitions="Auto,*,Auto,*">
+                      <TextBlock Grid.Column="0" Text="A" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                      <ComboBox Grid.Column="1"
+                                Margin="0,0,6,0"
+                                ItemsSource="{Binding Snapshots}"
+                                SelectedItem="{Binding SelectedSnapshotA}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="explain:ExplainSnapshot">
+                            <TextBlock Text="{Binding Label}" FontSize="{StaticResource FontSizeCaption}"/>
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <TextBlock Grid.Column="2" Margin="0,0,6,0" Text="B" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                      <ComboBox Grid.Column="3"
+                                ItemsSource="{Binding Snapshots}"
+                                SelectedItem="{Binding SelectedSnapshotB}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="explain:ExplainSnapshot">
+                            <TextBlock Text="{Binding Label}" FontSize="{StaticResource FontSizeCaption}"/>
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding ComparisonRows}" IsVisible="{Binding HasComparisonRows}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="explain:ExplainComparisonRow">
+                          <Grid ColumnDefinitions="*,74,74,64,76" Margin="0,1">
+                            <TextBlock Grid.Column="0" Text="{Binding Operation}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding CostAText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                            <TextBlock Grid.Column="2" Text="{Binding CostBText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                            <TextBlock Grid.Column="3" Text="{Binding DeltaText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{Binding DeltaColor}" HorizontalAlignment="Right"/>
+                            <TextBlock Grid.Column="4" Text="{Binding StatusLabel}" FontSize="{StaticResource FontSizeCaption}" Foreground="{Binding DeltaColor}" HorizontalAlignment="Right"/>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+
+                <Border Padding="10,8"
+                        CornerRadius="{StaticResource RadiusSM}"
+                        Background="{StaticResource Bg2Brush}"
+                        BorderBrush="{StaticResource BorderFocusBrush}"
+                        BorderThickness="1"
+                        IsVisible="{Binding HasIndexSuggestions}">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="Recomendacoes de indice"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource StatusInfoBrush}"/>
+                    <ItemsControl ItemsSource="{Binding IndexSuggestions}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="explain:ExplainIndexSuggestion">
+                          <Button Background="{StaticResource Bg1Brush}"
+                                  BorderBrush="{StaticResource BorderBrush}"
+                                  BorderThickness="1"
+                                  CornerRadius="{StaticResource RadiusSM}"
+                                  Padding="8,6"
+                                  Margin="0,2,0,0"
+                                  HorizontalContentAlignment="Stretch"
+                                  Click="OnIndexSuggestionClick">
+                            <StackPanel Spacing="4">
+                              <TextBlock Text="{Binding BadgeText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
+                              <TextBlock Text="{Binding Table}" FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                              <TextBlock Text="{Binding ColumnsText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusInfoBrush}"/>
+                              <TextBlock Text="{Binding Reason}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource AccentSecondaryHoverBrush}" TextWrapping="Wrap"/>
+                              <TextBlock Text="{Binding Sql}" FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+
+                <Border Padding="10,8"
+                        CornerRadius="{StaticResource RadiusSM}"
+                        Background="{StaticResource Bg2Brush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        IsVisible="{Binding HasHistory}">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="Historico"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource StatusInfoBrush}"/>
+                    <ItemsControl ItemsSource="{Binding History}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="explain:ExplainHistoryItem">
+                          <Grid ColumnDefinitions="48,*,66,66" Margin="0,1">
+                            <TextBlock Grid.Column="0" Text="{Binding TimeText}" FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding TopOperation}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding CostText}" FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                            <TextBlock Grid.Column="3" Text="{Binding AlertText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource AccentSecondaryHoverBrush}" HorizontalAlignment="Right"/>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+
+                <Border Padding="10,8"
+                        CornerRadius="{StaticResource RadiusSM}"
+                        Background="{StaticResource Bg2Brush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        IsVisible="{Binding HasSelectedStep}">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding SelectedStepTitle}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="{Binding SelectedStepDetailText}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto">
+                      <TextBlock Grid.Row="0" Grid.Column="0" Text="Estimadas" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                      <TextBlock Grid.Row="0" Grid.Column="1" Margin="6,0,0,0" Text="{Binding SelectedStepEstimatedRowsText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                      <TextBlock Grid.Row="0" Grid.Column="2" Margin="12,0,0,0" Text="Atuais" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                      <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding SelectedStepActualRowsText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                      <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,4,0,0" Text="Erro" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                      <TextBlock Grid.Row="1" Grid.Column="1" Margin="6,4,0,0" Text="{Binding SelectedStepRowsErrorText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource AccentSecondaryHoverBrush}"/>
+                      <TextBlock Grid.Row="1" Grid.Column="2" Margin="12,4,0,0" Text="Tempo" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                      <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding SelectedStepActualTimeText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusInfoBrush}"/>
+
+                      <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,4,0,0" Text="Loops" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                      <TextBlock Grid.Row="2" Grid.Column="1" Margin="6,4,0,0" Text="{Binding SelectedStepLoopsText}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </Grid>
+                    <TextBlock Text="{Binding SelectedStepSuggestionText}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource StatusInfoBrush}"
+                               TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+
+        <Border IsVisible="{Binding ShowTreeView}"
+                Margin="12,8,12,10"
+                Padding="8"
+                CornerRadius="{StaticResource RadiusSM}"
+                Background="{StaticResource Bg1Brush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1">
+          <ScrollViewer VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Auto">
+            <Canvas Name="TreeCanvas"
+                    Width="{Binding TreeCanvasWidth}"
+                    Height="{Binding TreeCanvasHeight}"/>
+          </ScrollViewer>
+        </Border>
+
+        <!-- Loading state -->
+        <StackPanel IsVisible="{Binding IsLoading}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="12">
+          <ProgressBar IsIndeterminate="True"
+                       Width="180" Height="3"
+                       Background="{StaticResource BorderSubtleBrush}"
+                       Foreground="{StaticResource AccentPrimaryBrush}"
+                       CornerRadius="{StaticResource RadiusXS}"/>
+          <TextBlock Text="{Binding [explain.running], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeBody}" Foreground="{StaticResource TextMutedBrush}"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Error state -->
+        <Border IsVisible="{Binding HasError}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{StaticResource BtnDangerBgBrush}"
+                BorderBrush="{StaticResource StatusErrorBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusSM}"
+                Padding="16,12"
+                MaxWidth="460">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{Binding [explain.failed], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeBody}" FontWeight="{StaticResource FontWeightTitle}"
+                       Foreground="{StaticResource StatusErrorBrush}"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding ErrorMessage}"
+                       FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusErrorBrush}"
+                       TextWrapping="Wrap" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Empty / no SQL -->
+        <StackPanel IsVisible="{Binding HasData, Converter={x:Static BoolConverters.Not}}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8">
+          <TextBlock Text="{Binding [explain.noPlan], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeLabel}" Foreground="{StaticResource TextMutedBrush}"
+                     HorizontalAlignment="Center"
+                     IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
+          <TextBlock Text="{Binding [explain.rerunHint], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"
+                     HorizontalAlignment="Center"
+                     IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- ── Footer hint ─────────────────────────────────────────────────── -->
+      <Border Grid.Row="4"
+              Background="{StaticResource Bg1Brush}"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="0,1,0,0"
+              Padding="16,8">
+        <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <Border Background="{StaticResource StatusWarningBrush}" CornerRadius="{StaticResource RadiusXS}" Width="10" Height="10" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding [explain.legend.seqscan], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <Border Background="{StaticResource BtnWarningFgBrush}" CornerRadius="{StaticResource RadiusXS}" Width="10" Height="10" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding [explain.legend.sort], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <Border Background="{StaticResource AccentPrimaryHoverBrush}" CornerRadius="{StaticResource RadiusXS}" Width="10" Height="10" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding [explain.legend.hash], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+          </StackPanel>
+          <TextBlock Text="{Binding [explain.escClose], Source={x:Static loc:LocalizationService.Instance}}"
+                     FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"
+                     HorizontalAlignment="Right"
+                     Margin="0"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+          <Button Name="CopyJsonBtn"
+                  Classes="export-btn"
+                  IsEnabled="{Binding HasRawOutput}">
+            <TextBlock Text="Copiar JSON"/>
+          </Button>
+          <Button Name="CopyTextBtn"
+                  Classes="export-btn">
+            <TextBlock Text="Copiar texto"/>
+          </Button>
+          <Button Name="SaveJsonBtn"
+                  Classes="export-btn"
+                  IsEnabled="{Binding HasRawOutput}">
+            <TextBlock Text="Salvar .json"/>
+          </Button>
+          <Button Name="OpenDaliboBtn"
+                  Classes="export-btn"
+                  IsVisible="{Binding CanOpenDalibo}">
+            <TextBlock Text="Abrir no Dalibo"/>
+          </Button>
+        </StackPanel>
+        </Grid>
+      </Border>
+
+    </Grid>
+  </Border>
+</UserControl>

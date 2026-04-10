@@ -1,0 +1,341 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:benchmark="using:DBWeaver.UI.Services.Benchmark"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.BenchmarkOverlay"
+             x:DataType="vm:BenchmarkViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize"   Value="{StaticResource FontSizeCaption}"/>
+      <Setter Property="FontWeight" Value="{StaticResource FontWeightCaption}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="Margin"     Value="0,0,0,4"/>
+    </Style>
+    <Style Selector="TextBox.field">
+      <Setter Property="Background"      Value="{StaticResource CanvasBgBrush}"/>
+      <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
+      <Setter Property="Foreground"      Value="{StaticResource TextPrimaryBrush}"/>
+      <Setter Property="FontSize"        Value="{StaticResource FontSizeBody}"/>
+      <Setter Property="Padding"         Value="7,5"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background"      Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="Foreground"      Value="{StaticResource BtnPrimaryFgBrush}"/>
+      <Setter Property="Padding"         Value="12,7"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="FontSize"        Value="{StaticResource FontSizeBody}"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background"      Value="{StaticResource Bg1Brush}"/>
+      <Setter Property="Foreground"      Value="{StaticResource TextPrimaryBrush}"/>
+      <Setter Property="Padding"         Value="10,7"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="FontSize"        Value="{StaticResource FontSizeBody}"/>
+      <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Cursor"          Value="Hand"/>
+    </Style>
+    <Style Selector="Border.stat-card">
+      <Setter Property="Background"      Value="{StaticResource CanvasBgBrush}"/>
+      <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
+      <Setter Property="Padding"         Value="12,10"/>
+    </Style>
+    <Style Selector="Border.hist-row">
+      <Setter Property="Background"   Value="Transparent"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+      <Setter Property="Padding"      Value="8,5"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.07"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.hist-row:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <!-- ══ Benchmark overlay card ═══════════════════════════════════════════════ -->
+  <Border Width="680"
+          MaxHeight="620"
+          CornerRadius="{StaticResource RadiusLG}"
+          Background="{StaticResource Bg0Brush}"
+          BorderBrush="{StaticResource BorderActiveBrush}"
+          BorderThickness="1"
+          BoxShadow="{StaticResource ShadowXL}">
+
+    <Grid RowDefinitions="Auto,*">
+
+      <!-- Header -->
+      <Border Grid.Row="0"
+              Background="{StaticResource Bg2Brush}"
+              BorderBrush="{StaticResource BorderActiveBrush}"
+              BorderThickness="0,0,0,1"
+              CornerRadius="{StaticResource RadiusLGTop}"
+              Padding="20,14">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <Border Width="30" Height="30" CornerRadius="{StaticResource RadiusSM}"
+                    Background="{StaticResource Bg2Brush}" BorderBrush="{StaticResource BorderActiveBrush}" BorderThickness="1">
+              <mi:MaterialIcon Kind="TimerOutline" Width="16" Height="16" Foreground="{StaticResource AccentPrimaryBrush}"/>
+            </Border>
+            <StackPanel VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="{Binding [benchmark.title], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeTitle}" FontWeight="{StaticResource FontWeightTitle}" Foreground="{StaticResource TextPrimaryBrush}"/>
+              <TextBlock Text="{Binding [benchmark.subtitle], Source={x:Static loc:LocalizationService.Instance}}"
+                         FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+            </StackPanel>
+          </StackPanel>
+
+          <Button Grid.Column="2" Classes="secondary" Command="{Binding CloseCommand}"
+                  Width="28" Height="28" Padding="0"
+                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+              ToolTip.Tip="{Binding [tooltip.closeEsc], Source={x:Static loc:LocalizationService.Instance}}"
+                  AutomationProperties.Name="{Binding [benchmark.close], Source={x:Static loc:LocalizationService.Instance}}">
+            <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
+          </Button>
+        </Grid>
+      </Border>
+
+      <!-- Body -->
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <Border Padding="20,16">
+          <StackPanel Spacing="16">
+
+            <!-- SQL preview (read-only) -->
+            <StackPanel Spacing="4">
+              <TextBlock Classes="label" Text="{Binding [benchmark.sql], Source={x:Static loc:LocalizationService.Instance}}"/>
+              <Border Background="{StaticResource CanvasBgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                      CornerRadius="{StaticResource RadiusSM}" Padding="10,8">
+                <TextBlock Text="{Binding Sql}" FontFamily="{StaticResource MonoFont}"
+                           FontSize="{StaticResource FontSizeMonoSmall}" Foreground="{StaticResource StatusInfoBrush}" TextWrapping="Wrap"
+                           MaxLines="4" TextTrimming="CharacterEllipsis"/>
+              </Border>
+            </StackPanel>
+
+            <!-- Config row -->
+            <Grid ColumnDefinitions="*,12,*,12,*,12,*">
+              <StackPanel Grid.Column="0">
+                <TextBlock Classes="label" Text="{Binding [benchmark.runLabel], Source={x:Static loc:LocalizationService.Instance}}"/>
+                <TextBox Classes="field" Text="{Binding RunLabel}" Watermark="{Binding [benchmark.runLabelWatermark], Source={x:Static loc:LocalizationService.Instance}}"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Classes="label" Text="{Binding [benchmark.iterations], Source={x:Static loc:LocalizationService.Instance}}"/>
+                <TextBox Classes="field" Text="{Binding Iterations}" Watermark="10"/>
+              </StackPanel>
+              <StackPanel Grid.Column="4">
+                <TextBlock Classes="label" Text="{Binding [benchmark.warmup], Source={x:Static loc:LocalizationService.Instance}}"/>
+                <TextBox Classes="field" Text="{Binding WarmupIterations}" Watermark="2"/>
+              </StackPanel>
+              <StackPanel Grid.Column="6">
+                <TextBlock Classes="label" Text="{Binding [benchmark.interval], Source={x:Static loc:LocalizationService.Instance}}"/>
+                <TextBox Classes="field" Text="{Binding IntervalMs}" Watermark="0"/>
+              </StackPanel>
+            </Grid>
+
+            <!-- Progress bar -->
+            <StackPanel Spacing="5" IsVisible="{Binding IsRunning}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding Progress}"
+                           FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                <TextBlock Grid.Column="1" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}">
+                  <Run Text="{Binding ProgressFraction, StringFormat={}{0:P0}}"/>
+                </TextBlock>
+              </Grid>
+              <ProgressBar Value="{Binding ProgressFraction}"
+                           Minimum="0" Maximum="1"
+                           Height="4" CornerRadius="{StaticResource RadiusXS}"
+                           Foreground="{StaticResource AccentPrimaryBrush}" Background="{StaticResource BorderSoftBrush}"/>
+            </StackPanel>
+
+            <!-- Non-running status -->
+            <TextBlock Text="{Binding Progress}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"
+                       IsVisible="{Binding !IsRunning}"
+                       IsEnabled="{Binding Progress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- Action buttons -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="primary" Command="{Binding RunCommand}"
+                      AutomationProperties.Name="{Binding [benchmark.run], Source={x:Static loc:LocalizationService.Instance}}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <mi:MaterialIcon Kind="Play" Width="14" Height="14"
+                                   IsVisible="{Binding !IsRunning}"/>
+                  <mi:MaterialIcon Kind="Loading" Width="14" Height="14"
+                                   IsVisible="{Binding IsRunning}"/>
+                  <TextBlock Text="{Binding [benchmark.run], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="secondary" Command="{Binding CancelCommand}"
+                      IsVisible="{Binding IsRunning}"
+                      AutomationProperties.Name="{Binding [benchmark.cancel], Source={x:Static loc:LocalizationService.Instance}}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <mi:MaterialIcon Kind="Stop" Width="14" Height="14"/>
+                  <TextBlock Text="{Binding [benchmark.cancel], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="secondary" Command="{Binding ClearHistoryCommand}"
+                      IsVisible="{Binding HasResult}"
+                      AutomationProperties.Name="{Binding [benchmark.clearHistory], Source={x:Static loc:LocalizationService.Instance}}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <mi:MaterialIcon Kind="DeleteSweep" Width="13" Height="13"/>
+                  <TextBlock Text="{Binding [benchmark.clearHistory], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+
+            <!-- Latest result stats -->
+            <StackPanel IsVisible="{Binding HasResult}" Spacing="10">
+              <TextBlock Text="{Binding [benchmark.latest], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}"
+                         Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1"/>
+
+              <Grid ColumnDefinitions="*,8,*,8,*,8,*,8,*">
+                <!-- Avg -->
+                <Border Grid.Column="0" Classes="stat-card">
+                  <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding [benchmark.avg], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1" HorizontalAlignment="Center"/>
+                    <TextBlock FontSize="{StaticResource FontSizeHeading}" FontWeight="{StaticResource FontWeightBody}" Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center">
+                      <Run Text="{Binding LatestResult.AvgMs, StringFormat={}{0:0.0}}"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Median -->
+                <Border Grid.Column="2" Classes="stat-card">
+                  <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding [benchmark.median], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1" HorizontalAlignment="Center"/>
+                    <TextBlock FontSize="{StaticResource FontSizeHeading}" FontWeight="{StaticResource FontWeightBody}" Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center">
+                      <Run Text="{Binding LatestResult.MedianMs, StringFormat={}{0:0.0}}"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- P95 -->
+                <Border Grid.Column="4" Classes="stat-card">
+                  <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding [benchmark.p95], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource StatusWarningBrush}" LetterSpacing="1" HorizontalAlignment="Center"/>
+                    <TextBlock FontSize="{StaticResource FontSizeHeading}" FontWeight="{StaticResource FontWeightBody}" Foreground="{StaticResource StatusWarningBrush}"
+                               HorizontalAlignment="Center">
+                      <Run Text="{Binding LatestResult.P95Ms, StringFormat={}{0:0.0}}"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Min -->
+                <Border Grid.Column="6" Classes="stat-card">
+                  <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding [benchmark.min], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource StatusOkBrush}" LetterSpacing="1" HorizontalAlignment="Center"/>
+                    <TextBlock FontSize="{StaticResource FontSizeHeading}" FontWeight="{StaticResource FontWeightBody}" Foreground="{StaticResource StatusOkBrush}"
+                               HorizontalAlignment="Center">
+                      <Run Text="{Binding LatestResult.MinMs, StringFormat={}{0:0.0}}"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Max -->
+                <Border Grid.Column="8" Classes="stat-card">
+                  <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding [benchmark.max], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}"
+                               Foreground="{StaticResource StatusErrorBrush}" LetterSpacing="1" HorizontalAlignment="Center"/>
+                    <TextBlock FontSize="{StaticResource FontSizeHeading}" FontWeight="{StaticResource FontWeightBody}" Foreground="{StaticResource StatusErrorBrush}"
+                               HorizontalAlignment="Center">
+                      <Run Text="{Binding LatestResult.MaxMs, StringFormat={}{0:0.0}}"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+              </Grid>
+
+              <!-- Iterations info -->
+              <TextBlock FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}">
+                <Run Text="{Binding LatestResult.Iterations}"/>
+                <Run Text="{Binding [benchmark.iterationsAt], Source={x:Static loc:LocalizationService.Instance}}"/>
+                <Run Text="{Binding LatestResult.RunAt, StringFormat={}{0:HH:mm:ss}}"/>
+              </TextBlock>
+            </StackPanel>
+
+            <!-- History table -->
+            <StackPanel IsVisible="{Binding HasResult}" Spacing="8">
+              <TextBlock Text="{Binding [benchmark.history], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightTitle}"
+                         Foreground="{StaticResource TextMutedBrush}" LetterSpacing="1"/>
+
+              <!-- Column headers -->
+              <Grid ColumnDefinitions="*,70,70,70,70,70,80">
+                <TextBlock Grid.Column="0" Text="{Binding [benchmark.header.label], Source={x:Static loc:LocalizationService.Instance}}" Classes="label" Margin="8,0,0,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding [benchmark.header.avg], Source={x:Static loc:LocalizationService.Instance}}" Classes="label" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="2" Text="{Binding [benchmark.header.median], Source={x:Static loc:LocalizationService.Instance}}" Classes="label" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="3" Text="{Binding [benchmark.p95], Source={x:Static loc:LocalizationService.Instance}}" Classes="label" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="4" Text="{Binding [benchmark.header.min], Source={x:Static loc:LocalizationService.Instance}}" Classes="label" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="5" Text="{Binding [benchmark.header.max], Source={x:Static loc:LocalizationService.Instance}}" Classes="label" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="6" Text="{Binding [benchmark.n], Source={x:Static loc:LocalizationService.Instance}}" Classes="label" HorizontalAlignment="Right" Margin="0,0,8,0"/>
+              </Grid>
+
+              <ItemsControl ItemsSource="{Binding History}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="benchmark:BenchmarkRunResult">
+                    <Border Classes="hist-row">
+                      <Grid ColumnDefinitions="*,70,70,70,70,70,80">
+                        <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                   FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" Margin="8,0,0,0"/>
+                        <TextBlock Grid.Column="1" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center">
+                          <Run Text="{Binding AvgMs, StringFormat={}{0:0.0}}"/>
+                          <Run Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" Foreground="{StaticResource TextMutedBrush}"/>
+                        </TextBlock>
+                        <TextBlock Grid.Column="2" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center">
+                          <Run Text="{Binding MedianMs, StringFormat={}{0:0.0}}"/>
+                          <Run Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" Foreground="{StaticResource TextMutedBrush}"/>
+                        </TextBlock>
+                        <TextBlock Grid.Column="3" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusWarningBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center">
+                          <Run Text="{Binding P95Ms, StringFormat={}{0:0.0}}"/>
+                          <Run Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" Foreground="{StaticResource TextMutedBrush}"/>
+                        </TextBlock>
+                        <TextBlock Grid.Column="4" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusOkBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center">
+                          <Run Text="{Binding MinMs, StringFormat={}{0:0.0}}"/>
+                          <Run Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" Foreground="{StaticResource TextMutedBrush}"/>
+                        </TextBlock>
+                        <TextBlock Grid.Column="5" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource StatusErrorBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center">
+                          <Run Text="{Binding MaxMs, StringFormat={}{0:0.0}}"/>
+                          <Run Text="{Binding [common.ms], Source={x:Static loc:LocalizationService.Instance}}" Foreground="{StaticResource TextMutedBrush}"/>
+                        </TextBlock>
+                        <TextBlock Grid.Column="6" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0">
+                          <Run Text="{Binding Iterations}"/>
+                          <Run Text="{Binding [benchmark.itersSuffix], Source={x:Static loc:LocalizationService.Instance}}"/>
+                        </TextBlock>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+    </Grid>
+  </Border>
+</UserControl>

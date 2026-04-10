@@ -1,8 +1,8 @@
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.Nodes.PinTypes;
+using DBWeaver.Nodes;
+using DBWeaver.Nodes.PinTypes;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Nodes;
+namespace DBWeaver.Tests.Unit.Nodes;
 
 public class PinTypeRegistryTests
 {
@@ -25,6 +25,7 @@ public class PinTypeRegistryTests
     [InlineData(PinDataType.TypeDef)]
     [InlineData(PinDataType.SequenceDef)]
     [InlineData(PinDataType.AlterOp)]
+    [InlineData(PinDataType.ReportQuery)]
     [InlineData(PinDataType.Expression)]
     public void EnumToTypeToEnum_RoundTrip_PreservesValue(PinDataType type)
     {

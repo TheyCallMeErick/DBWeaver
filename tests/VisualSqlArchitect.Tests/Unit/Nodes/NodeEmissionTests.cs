@@ -1,11 +1,11 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.QueryEngine;
-using VisualSqlArchitect.Registry;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.QueryEngine;
+using DBWeaver.Registry;
 using Xunit;
 using System.Text.RegularExpressions;
 
-namespace VisualSqlArchitect.Tests.Unit.Nodes;
+namespace DBWeaver.Tests.Unit.Nodes;
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
 
@@ -1196,7 +1196,7 @@ public class QueryGeneratorServiceTests
     {
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
         var graph = new NodeGraph();
-        GeneratedQuery result = svc.Generate("users", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "users", graph);
         Assert.Contains("SELECT", result.Sql.ToUpper());
         Assert.Contains("users", result.Sql);
     }
@@ -1206,7 +1206,7 @@ public class QueryGeneratorServiceTests
     {
         var svc = QueryGeneratorService.Create(DatabaseProvider.SQLite);
         var graph = new NodeGraph();
-        GeneratedQuery result = svc.Generate("users", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "users", graph);
         Assert.Contains("SELECT", result.Sql.ToUpperInvariant());
         Assert.Contains("users", result.Sql, StringComparison.OrdinalIgnoreCase);
     }
@@ -1238,7 +1238,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         Assert.Contains("CAST", result.Sql);
         Assert.Contains("TEXT", result.Sql);
@@ -1248,7 +1248,7 @@ public class QueryGeneratorServiceTests
     public void Generate_DebugTree_ContainsSelectSection()
     {
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("users", new NodeGraph());
+        GeneratedQuery result = GenerateGraphFirst(svc, "users", new NodeGraph());
         Assert.Contains("SELECT", result.DebugTree);
     }
 
@@ -1271,7 +1271,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         Assert.Contains("SELECT DISTINCT", result.Sql.ToUpperInvariant());
     }
@@ -1316,7 +1316,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         Assert.Contains("HAVING", result.Sql.ToUpperInvariant());
         Assert.Contains(">", result.Sql);
@@ -1350,13 +1350,13 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         Assert.Contains("'COMPLETED'", result.Sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Generate_AggregatesWithoutExplicitGroupBy_InferGroupByFromNonAggregateSelects()
+    public void Generate_AggregatesWithoutExplicitGroupBy_ThrowsWhenNonAggregateSelectIsPresent()
     {
         var tbl = new NodeInstance(
             "tbl",
@@ -1393,10 +1393,144 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => GenerateGraphFirst(svc, "orders", graph));
+        Assert.Contains("explicit GROUP BY", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 
-        Assert.Contains("GROUP BY", result.Sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("status", result.Sql, StringComparison.OrdinalIgnoreCase);
+    [Fact]
+    public void Generate_CountStarWithoutExplicitGroupBy_RemainsValid()
+    {
+        var count = new NodeInstance(
+            "count",
+            NodeType.CountStar,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>()
+        );
+
+        var graph = new NodeGraph
+        {
+            Nodes = [count],
+            SelectOutputs = [new SelectBinding("count", "count", "total")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
+
+        Assert.Contains("COUNT(*)", result.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("GROUP BY", result.Sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Generate_FromTableEmpty_UsesPlannerDerivedTableSource()
+    {
+        var table = new NodeInstance(
+            "tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            Alias: "orders",
+            TableFullName: "public.orders",
+            ColumnPins: new Dictionary<string, string> { ["id"] = "id" },
+            ColumnPinTypes: new Dictionary<string, PinDataType> { ["id"] = PinDataType.Integer }
+        );
+
+        var output = new NodeInstance(
+            "out",
+            NodeType.ResultOutput,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>());
+
+        var graph = new NodeGraph
+        {
+            Nodes = [table, output],
+            Connections = [new Connection("tbl", "id", "out", "column")],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = GenerateGraphFirst(svc, string.Empty, graph);
+
+        Assert.Contains("FROM", result.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("public", result.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("orders", result.Sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Generate_JoinNodeInGraphWithoutExternalJoins_UsesPlannerDerivedJoin()
+    {
+        var left = new NodeInstance(
+            "orders_tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            Alias: "orders",
+            TableFullName: "public.orders",
+            ColumnPins: new Dictionary<string, string>
+            {
+                ["id"] = "id",
+                ["customer_id"] = "customer_id",
+            },
+            ColumnPinTypes: new Dictionary<string, PinDataType>
+            {
+                ["id"] = PinDataType.Integer,
+                ["customer_id"] = PinDataType.Integer,
+            }
+        );
+
+        var right = new NodeInstance(
+            "customers_tbl",
+            NodeType.TableSource,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>(),
+            Alias: "customers",
+            TableFullName: "public.customers",
+            ColumnPins: new Dictionary<string, string>
+            {
+                ["id"] = "id",
+                ["name"] = "name",
+            },
+            ColumnPinTypes: new Dictionary<string, PinDataType>
+            {
+                ["id"] = PinDataType.Integer,
+                ["name"] = PinDataType.Text,
+            }
+        );
+
+        var eq = new NodeInstance(
+            "eq",
+            NodeType.Equals,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>());
+        var join = new NodeInstance(
+            "join",
+            NodeType.Join,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["join_type"] = "INNER" });
+        var output = new NodeInstance(
+            "out",
+            NodeType.ResultOutput,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>());
+
+        var graph = new NodeGraph
+        {
+            Nodes = [left, right, eq, join, output],
+            Connections =
+            [
+                new Connection("orders_tbl", "customer_id", "eq", "left"),
+                new Connection("customers_tbl", "id", "eq", "right"),
+                new Connection("eq", "result", "join", "condition"),
+                new Connection("orders_tbl", "customer_id", "join", "left"),
+                new Connection("customers_tbl", "id", "join", "right"),
+                new Connection("orders_tbl", "id", "out", "column"),
+                new Connection("customers_tbl", "name", "out", "column"),
+            ],
+        };
+
+        var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
+        GeneratedQuery result = GenerateGraphFirst(svc, "public.orders", graph);
+
+        Assert.Contains("JOIN", result.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("customers", result.Sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -1416,15 +1550,15 @@ public class QueryGeneratorServiceTests
         };
 
         var svcPg = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery pgSql = svcPg.Generate("orders", graph);
+        GeneratedQuery pgSql = GenerateGraphFirst(svcPg, "orders", graph);
         Assert.Contains("CURRENT_TIMESTAMP", pgSql.Sql.ToUpperInvariant());
 
         var svcMy = QueryGeneratorService.Create(DatabaseProvider.MySql);
-        GeneratedQuery mySql = svcMy.Generate("orders", graph);
+        GeneratedQuery mySql = GenerateGraphFirst(svcMy, "orders", graph);
         Assert.Contains("NOW()", mySql.Sql.ToUpperInvariant());
 
         var svcSs = QueryGeneratorService.Create(DatabaseProvider.SqlServer);
-        GeneratedQuery ssSql = svcSs.Generate("orders", graph);
+        GeneratedQuery ssSql = GenerateGraphFirst(svcSs, "orders", graph);
         Assert.Contains("GETDATE()", ssSql.Sql.ToUpperInvariant());
     }
 
@@ -1458,15 +1592,15 @@ public class QueryGeneratorServiceTests
         };
 
         var svcPg = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery pgSql = svcPg.Generate("orders", graph);
+        GeneratedQuery pgSql = GenerateGraphFirst(svcPg, "orders", graph);
         Assert.Contains("INTERVAL", pgSql.Sql.ToUpperInvariant());
 
         var svcMy = QueryGeneratorService.Create(DatabaseProvider.MySql);
-        GeneratedQuery mySql = svcMy.Generate("orders", graph);
+        GeneratedQuery mySql = GenerateGraphFirst(svcMy, "orders", graph);
         Assert.Contains("DATE_ADD", mySql.Sql.ToUpperInvariant());
 
         var svcSs = QueryGeneratorService.Create(DatabaseProvider.SqlServer);
-        GeneratedQuery ssSql = svcSs.Generate("orders", graph);
+        GeneratedQuery ssSql = GenerateGraphFirst(svcSs, "orders", graph);
         Assert.Contains("DATEADD", ssSql.Sql.ToUpperInvariant());
     }
 
@@ -1530,17 +1664,17 @@ public class QueryGeneratorServiceTests
         };
 
         var svcPg = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery pgSql = svcPg.Generate("orders", graph);
+        GeneratedQuery pgSql = GenerateGraphFirst(svcPg, "orders", graph);
         Assert.Contains("EXTRACT", pgSql.Sql.ToUpperInvariant());
         Assert.Contains("TO_CHAR", pgSql.Sql.ToUpperInvariant());
 
         var svcMy = QueryGeneratorService.Create(DatabaseProvider.MySql);
-        GeneratedQuery mySql = svcMy.Generate("orders", graph);
+        GeneratedQuery mySql = GenerateGraphFirst(svcMy, "orders", graph);
         Assert.Contains("TIMESTAMPDIFF", mySql.Sql.ToUpperInvariant());
         Assert.Contains("DATE_FORMAT", mySql.Sql.ToUpperInvariant());
 
         var svcSs = QueryGeneratorService.Create(DatabaseProvider.SqlServer);
-        GeneratedQuery ssSql = svcSs.Generate("orders", graph);
+        GeneratedQuery ssSql = GenerateGraphFirst(svcSs, "orders", graph);
         Assert.Contains("DATEDIFF", ssSql.Sql.ToUpperInvariant());
         Assert.Contains("DATEPART", ssSql.Sql.ToUpperInvariant());
         Assert.Contains("FORMAT", ssSql.Sql.ToUpperInvariant());
@@ -1582,13 +1716,13 @@ public class QueryGeneratorServiceTests
         };
 
         var svcPg = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery pgSql = svcPg.Generate("orders", graph);
+        GeneratedQuery pgSql = GenerateGraphFirst(svcPg, "orders", graph);
         Assert.Contains("STRING_AGG", pgSql.Sql.ToUpperInvariant());
         Assert.Contains("DISTINCT", pgSql.Sql.ToUpperInvariant());
         Assert.Contains("ORDER BY", pgSql.Sql.ToUpperInvariant());
 
         var svcMy = QueryGeneratorService.Create(DatabaseProvider.MySql);
-        GeneratedQuery mySql = svcMy.Generate("orders", graph);
+        GeneratedQuery mySql = GenerateGraphFirst(svcMy, "orders", graph);
         Assert.Contains("GROUP_CONCAT", mySql.Sql.ToUpperInvariant());
         Assert.Contains("DISTINCT", mySql.Sql.ToUpperInvariant());
         Assert.Contains("ORDER BY", mySql.Sql.ToUpperInvariant());
@@ -1625,7 +1759,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         Assert.Contains("ROW_NUMBER() OVER", result.Sql.ToUpperInvariant());
         Assert.Contains("PARTITION BY", result.Sql.ToUpperInvariant());
@@ -1659,7 +1793,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         Assert.Contains("DENSE_RANK() OVER", result.Sql.ToUpperInvariant());
     }
@@ -1700,7 +1834,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         string sql = result.Sql.ToUpperInvariant();
         Assert.Contains("LEAD(", sql);
@@ -1739,7 +1873,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         string sql = result.Sql.ToUpperInvariant();
         Assert.Contains("NTILE(5) OVER", sql);
@@ -1781,7 +1915,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders", graph);
 
         string sql = result.Sql.ToUpperInvariant();
         Assert.Contains("LAST_VALUE(", sql);
@@ -1809,7 +1943,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("processos_elegiveis", graph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "processos_elegiveis", graph);
 
         Assert.Contains("FROM", result.Sql.ToUpperInvariant());
         Assert.Contains("processos_elegiveis", result.Sql);
@@ -1852,7 +1986,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders_cte", mainGraph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders_cte", mainGraph);
 
         string sql = result.Sql.ToUpperInvariant();
         Assert.Contains("WITH", sql);
@@ -1898,7 +2032,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("orders_cte", mainGraph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders_cte", mainGraph);
 
         Assert.Contains("WITH RECURSIVE", result.Sql.ToUpperInvariant());
     }
@@ -1939,7 +2073,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.SqlServer);
-        GeneratedQuery result = svc.Generate("orders_cte", mainGraph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "orders_cte", mainGraph);
 
         string sql = result.Sql.ToUpperInvariant();
         Assert.Contains("WITH", sql);
@@ -1995,7 +2129,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("cte_b", mainGraph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "cte_b", mainGraph);
 
         Match aDef = Regex.Match(
             result.Sql,
@@ -2075,7 +2209,7 @@ public class QueryGeneratorServiceTests
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => svc.Generate("cte_a", mainGraph)
+            () => GenerateGraphFirst(svc, "cte_a", mainGraph)
         );
         Assert.Contains("Cycle", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -2107,7 +2241,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("cte_b", mainGraph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "cte_b", mainGraph);
 
         Match aDef = Regex.Match(
             result.Sql,
@@ -2149,7 +2283,7 @@ public class QueryGeneratorServiceTests
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => svc.Generate("cte_self", mainGraph)
+            () => GenerateGraphFirst(svc, "cte_self", mainGraph)
         );
         Assert.Contains("not marked recursive", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -2181,7 +2315,7 @@ public class QueryGeneratorServiceTests
         };
 
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
-        GeneratedQuery result = svc.Generate("cte_b", mainGraph);
+        GeneratedQuery result = GenerateGraphFirst(svc, "cte_b", mainGraph);
 
         Match aDef = Regex.Match(
             result.Sql,
@@ -2223,9 +2357,148 @@ public class QueryGeneratorServiceTests
         var svc = QueryGeneratorService.Create(DatabaseProvider.Postgres);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => svc.Generate("cte_self", mainGraph)
+            () => GenerateGraphFirst(svc, "cte_self", mainGraph)
         );
         Assert.Contains("not marked recursive", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static GeneratedQuery GenerateGraphFirst(
+        QueryGeneratorService service,
+        string fromTable,
+        NodeGraph graph,
+        IReadOnlyList<JoinDefinition>? joins = null,
+        SetOperationDefinition? setOperation = null)
+    {
+        ArgumentNullException.ThrowIfNull(service);
+        ArgumentNullException.ThrowIfNull(graph);
+
+        NodeGraph normalizedGraph = NormalizeLegacyBindingsForGraphFirst(graph, fromTable);
+        bool hasExplicitOutputSink = graph.Nodes.Any(node => node.Type is NodeType.ResultOutput or NodeType.SelectOutput);
+        QueryGenerationStructure? structure = (string.IsNullOrWhiteSpace(fromTable) && joins is null) || (hasExplicitOutputSink && joins is null)
+            ? null
+            : new QueryGenerationStructure(fromTable, joins);
+
+        return service.Generate(normalizedGraph, structure, setOperation);
+    }
+
+    private static NodeGraph NormalizeLegacyBindingsForGraphFirst(NodeGraph graph, string fallbackFromTable)
+    {
+        IReadOnlyList<CteBinding> normalizedCtes = graph.Ctes
+            .Select(cte => cte with { Graph = NormalizeLegacyBindingsForGraphFirst(cte.Graph, cte.FromTable) })
+            .ToList();
+
+        bool hasOutputNode = graph.Nodes.Any(node => node.Type is NodeType.ResultOutput or NodeType.SelectOutput);
+        if (hasOutputNode)
+        {
+            return new NodeGraph
+            {
+                Nodes = graph.Nodes,
+                Connections = graph.Connections,
+                Ctes = normalizedCtes,
+                SelectOutputs = graph.SelectOutputs,
+                WhereConditions = graph.WhereConditions,
+                Havings = graph.Havings,
+                Qualifies = graph.Qualifies,
+                QueryHints = graph.QueryHints,
+                PivotMode = graph.PivotMode,
+                PivotConfig = graph.PivotConfig,
+                OrderBys = graph.OrderBys,
+                GroupBys = graph.GroupBys,
+                Distinct = graph.Distinct,
+                Limit = graph.Limit,
+                Offset = graph.Offset,
+            };
+        }
+
+        List<NodeInstance> nodes = graph.Nodes.ToList();
+        List<Connection> connections = graph.Connections.ToList();
+
+        bool hasDatasetSourceNode = nodes.Any(node =>
+            node.Type is NodeType.TableSource or NodeType.CteSource or NodeType.Subquery or NodeType.SubqueryReference);
+
+        if (!hasDatasetSourceNode && !string.IsNullOrWhiteSpace(fallbackFromTable))
+        {
+            nodes.Add(new NodeInstance(
+                "auto_src",
+                NodeType.TableSource,
+                new Dictionary<string, string>(),
+                new Dictionary<string, string>(),
+                Alias: "src",
+                TableFullName: fallbackFromTable,
+                ColumnPins: new Dictionary<string, string> { ["*"] = "*" },
+                ColumnPinTypes: new Dictionary<string, PinDataType> { ["*"] = PinDataType.RowSet }));
+        }
+
+        string outputNodeId = BuildUniqueNodeId(nodes, "auto_result");
+        nodes.Add(new NodeInstance(
+            outputNodeId,
+            NodeType.ResultOutput,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string>()));
+
+        foreach (SelectBinding select in graph.SelectOutputs)
+        {
+            string outputPin = select.PinName == "*" ? "columns" : "column";
+            connections.Add(new Connection(select.NodeId, select.PinName, outputNodeId, outputPin));
+        }
+
+        foreach (WhereBinding where in graph.WhereConditions)
+            connections.Add(new Connection(where.NodeId, where.PinName, outputNodeId, "where"));
+
+        foreach (HavingBinding having in graph.Havings)
+            connections.Add(new Connection(having.NodeId, having.PinName, outputNodeId, "having"));
+
+        foreach (QualifyBinding qualify in graph.Qualifies)
+            connections.Add(new Connection(qualify.NodeId, qualify.PinName, outputNodeId, "qualify"));
+
+        foreach (GroupByBinding groupBy in graph.GroupBys)
+            connections.Add(new Connection(groupBy.NodeId, groupBy.PinName, outputNodeId, "group_by"));
+
+        foreach (OrderBinding order in graph.OrderBys)
+            connections.Add(new Connection(order.NodeId, order.PinName, outputNodeId, order.Descending ? "order_by_desc" : "order_by"));
+
+        bool hasSelectBindings = graph.SelectOutputs.Count > 0;
+        if (!hasSelectBindings && !connections.Any(connection => connection.ToNodeId == outputNodeId && connection.ToPinName is "column" or "columns"))
+        {
+            NodeInstance? source = nodes.FirstOrDefault(node => node.Type == NodeType.TableSource);
+            if (source is not null)
+                connections.Add(new Connection(source.Id, "*", outputNodeId, "columns"));
+        }
+
+        return new NodeGraph
+        {
+            Nodes = nodes,
+            Connections = connections,
+            Ctes = normalizedCtes,
+            SelectOutputs = [],
+            WhereConditions = [],
+            Havings = [],
+            Qualifies = [],
+            QueryHints = graph.QueryHints,
+            PivotMode = graph.PivotMode,
+            PivotConfig = graph.PivotConfig,
+            OrderBys = [],
+            GroupBys = [],
+            Distinct = graph.Distinct,
+            Limit = graph.Limit,
+            Offset = graph.Offset,
+        };
+    }
+
+    private static string BuildUniqueNodeId(IEnumerable<NodeInstance> nodes, string baseId)
+    {
+        HashSet<string> ids = nodes.Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
+        if (!ids.Contains(baseId))
+            return baseId;
+
+        for (int index = 1; index < 10_000; index++)
+        {
+            string candidate = $"{baseId}_{index}";
+            if (!ids.Contains(candidate))
+                return candidate;
+        }
+
+        throw new InvalidOperationException("Unable to allocate a unique node id for test graph normalization.");
     }
 }
 

@@ -1,8 +1,8 @@
 using Avalonia;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 
 internal static class QueryPreviewTestNodeFactory
 {

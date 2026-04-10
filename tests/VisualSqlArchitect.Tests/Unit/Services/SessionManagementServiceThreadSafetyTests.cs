@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using VisualSqlArchitect.UI.Services;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Services;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 /// <summary>
 /// Tests for SessionManagementService thread safety.

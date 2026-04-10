@@ -1,9 +1,9 @@
 using Avalonia;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas.Strategies;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas.Strategies;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Shell;
+namespace DBWeaver.Tests.Unit.ViewModels.Shell;
 
 public class OutputPreviewModalViewModelTests
 {
@@ -25,6 +25,7 @@ public class OutputPreviewModalViewModelTests
         Assert.True(vm.IsVisible);
         Assert.True(vm.IsDdlMode);
         Assert.False(vm.HasDdlSql);
+        Assert.True(vm.HasDiagnostics);
     }
 
     [Fact]
@@ -47,5 +48,20 @@ public class OutputPreviewModalViewModelTests
         Assert.True(vm.IsVisible);
         Assert.True(vm.IsDdlMode);
         Assert.False(vm.HasDdlSql);
+        Assert.True(vm.HasDiagnostics);
+    }
+
+    [Fact]
+    public void OpenUnavailable_UsesExplicitUnavailableSurfaceWithoutDiagnostics()
+    {
+        var vm = new OutputPreviewModalViewModel();
+
+        vm.OpenUnavailable("Preview", "Preview", "Preview indisponível para este documento.");
+
+        Assert.True(vm.IsVisible);
+        Assert.True(vm.IsUnavailableMode);
+        Assert.True(vm.ShowUnavailablePrimaryContent);
+        Assert.False(vm.HasDiagnostics);
+        Assert.Equal("Preview indisponível para este documento.", vm.UnavailableMessage);
     }
 }

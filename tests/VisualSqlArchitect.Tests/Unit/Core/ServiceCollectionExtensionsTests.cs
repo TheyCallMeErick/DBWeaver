@@ -1,20 +1,20 @@
 using Microsoft.Extensions.DependencyInjection;
-using VisualSqlArchitect;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.QueryEngine;
-using VisualSqlArchitect.Registry;
+using DBWeaver;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
+using DBWeaver.QueryEngine;
+using DBWeaver.Registry;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Core;
+namespace DBWeaver.Tests.Unit.Core;
 
 public sealed class ServiceCollectionExtensionsTests
 {
     [Fact]
-    public async Task AddVisualSqlArchitect_Default_RegistersCoreServices()
+    public async Task AddDBWeaver_Default_RegistersCoreServices()
     {
         var services = new ServiceCollection();
-        services.AddVisualSqlArchitect();
+        services.AddDBWeaver();
 
         await using ServiceProvider provider = services.BuildServiceProvider();
 
@@ -28,10 +28,10 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddVisualSqlArchitect_AllowsOverridingCanvasTableTrackerFactory()
+    public async Task AddDBWeaver_AllowsOverridingCanvasTableTrackerFactory()
     {
         var services = new ServiceCollection();
-        services.AddVisualSqlArchitect(options =>
+        services.AddDBWeaver(options =>
         {
             options.CanvasTableTrackerFactory = () => new StubCanvasTableTracker();
         });
@@ -43,10 +43,10 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddVisualSqlArchitect_AllowsOverridingInspectorRegistrations()
+    public async Task AddDBWeaver_AllowsOverridingInspectorRegistrations()
     {
         var services = new ServiceCollection();
-        services.AddVisualSqlArchitect(options =>
+        services.AddDBWeaver(options =>
         {
             options.InspectorRegistrations =
             [

@@ -1,8 +1,8 @@
-﻿using VisualSqlArchitect.UI.Services.QueryPreview;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.Nodes;
+﻿using DBWeaver.UI.Services.QueryPreview;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.Nodes;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 
 public class QueryCompilationValidationStageTests
 {
@@ -15,6 +15,8 @@ public class QueryCompilationValidationStageTests
         int predicateCalls = 0;
         int comparisonCalls = 0;
         int notJsonCalls = 0;
+        int outputReachabilityCalls = 0;
+        int sourceConflictCalls = 0;
         int paginationCalls = 0;
         int hintsCalls = 0;
         int pivotCalls = 0;
@@ -26,6 +28,8 @@ public class QueryCompilationValidationStageTests
             (resultNode, errors) => predicateCalls++,
             (resultNode, errors) => comparisonCalls++,
             (resultNode, errors) => notJsonCalls++,
+            (resultNode, errors) => outputReachabilityCalls++,
+            (resultNode, joins, errors) => sourceConflictCalls++,
             (resultNode, errors) => paginationCalls++,
             (resultNode, errors) => hintsCalls++,
             (resultNode, errors) => pivotCalls++);
@@ -34,6 +38,7 @@ public class QueryCompilationValidationStageTests
         var errors = new List<string>();
 
         stage.Execute(new QueryCompilationValidationStageInput(
+            [],
             resultNode,
             [],
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
@@ -45,6 +50,8 @@ public class QueryCompilationValidationStageTests
         Assert.Equal(1, predicateCalls);
         Assert.Equal(1, comparisonCalls);
         Assert.Equal(1, notJsonCalls);
+        Assert.Equal(1, outputReachabilityCalls);
+        Assert.Equal(1, sourceConflictCalls);
         Assert.Equal(1, paginationCalls);
         Assert.Equal(1, hintsCalls);
         Assert.Equal(1, pivotCalls);
@@ -60,6 +67,8 @@ public class QueryCompilationValidationStageTests
             (resultNode, errors) => errors.Add("predicate-error"),
             (resultNode, errors) => errors.Add("comparison-error"),
             (resultNode, errors) => errors.Add("not-json-error"),
+            (resultNode, errors) => errors.Add("output-reachability-error"),
+            (resultNode, joins, errors) => errors.Add("source-conflict-error"),
             (resultNode, errors) => errors.Add("pagination-error"),
             (resultNode, errors) => errors.Add("hints-error"),
             (resultNode, errors) => errors.Add("pivot-error"));
@@ -68,6 +77,7 @@ public class QueryCompilationValidationStageTests
         var errors = new List<string> { "seed-error" };
 
         stage.Execute(new QueryCompilationValidationStageInput(
+            [],
             resultNode,
             [],
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
@@ -80,10 +90,11 @@ public class QueryCompilationValidationStageTests
         Assert.Contains("predicate-error", errors);
         Assert.Contains("comparison-error", errors);
         Assert.Contains("not-json-error", errors);
+        Assert.Contains("output-reachability-error", errors);
+        Assert.Contains("source-conflict-error", errors);
         Assert.Contains("pagination-error", errors);
         Assert.Contains("hints-error", errors);
         Assert.Contains("pivot-error", errors);
     }
 
 }
-

@@ -1,4 +1,0 @@
-﻿namespace VisualSqlArchitect.UI.Services.ConnectionManager;
-
-public readonly record struct ConnectionStatusViewState(string Message, string Color);
-

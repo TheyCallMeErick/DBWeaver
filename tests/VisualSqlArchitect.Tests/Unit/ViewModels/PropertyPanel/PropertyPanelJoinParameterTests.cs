@@ -1,8 +1,8 @@
 using Avalonia;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.PropertyPanel;
+namespace DBWeaver.Tests.Unit.ViewModels.PropertyPanel;
 
 public class PropertyPanelJoinParameterTests
 {

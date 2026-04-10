@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class SidebarControlCodeBehindRegressionTests
 {
@@ -42,7 +42,7 @@ public class SidebarControlCodeBehindRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "SidebarLeft",
                 "SidebarControl.axaml.cs"

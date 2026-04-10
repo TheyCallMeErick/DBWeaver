@@ -1,6 +1,6 @@
 # Theme JSON Schema (Fase 5)
 
-Arquivo padrao: `src/VisualSqlArchitect.UI/Assets/Themes/user-theme.json`
+Arquivo padrao: `src//Themes/user-theme.json`
 
 Objetivo:
 - Permitir customizacao de tokens macro sem editar AXAML.

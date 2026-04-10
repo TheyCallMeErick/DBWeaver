@@ -1,0 +1,319 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Graph Energy v1 -->
+
+  <!-- Base colors -->
+  <Color x:Key="Bg0">#090B14</Color>
+  <Color x:Key="Bg1">#0F1220</Color>
+  <Color x:Key="Bg2">#151A2C</Color>
+  <Color x:Key="Bg3">#1C2338</Color>
+  <Color x:Key="Bg4">#252F49</Color>
+
+  <Color x:Key="CanvasBg">#090B14</Color>
+  <Color x:Key="CanvasGrid">#2A3554</Color>
+  <Color x:Key="CanvasDot">#1D2740</Color>
+
+  <Color x:Key="Panel">#101629</Color>
+  <Color x:Key="PanelElevated">#171E34</Color>
+  <Color x:Key="PanelHover">#1E2740</Color>
+  <Color x:Key="PanelActive">#243150</Color>
+  <Color x:Key="NodeSelectedFill">#202D48</Color>
+  <Color x:Key="TabActiveBg">#263556</Color>
+  <Color x:Key="ControlActiveBg">#2A3B5F</Color>
+  <Color x:Key="SelectedOverlay">#7C96FF22</Color>
+
+  <Color x:Key="TextPrimary">#E7ECFF</Color>
+  <Color x:Key="TextSecondary">#AEB9D9</Color>
+  <Color x:Key="TextMuted">#7F8AAE</Color>
+  <Color x:Key="TextDisabled">#66708F</Color>
+  <Color x:Key="TextInverse">#0B0F1D</Color>
+  <Color x:Key="TextAccent">#8FA7FF</Color>
+  <Color x:Key="TextLink">#8FA7FF</Color>
+
+  <Color x:Key="IconPrimary">#B9C6EA</Color>
+  <Color x:Key="IconMuted">#7E8BB1</Color>
+  <Color x:Key="IconDisabled">#616A86</Color>
+
+  <Color x:Key="BorderSubtle">#2A3554</Color>
+  <Color x:Key="Border">#334164</Color>
+  <Color x:Key="BorderStrong">#42527B</Color>
+  <Color x:Key="BorderFocus">#6B8CFF</Color>
+  <Color x:Key="BorderDisabled">#2C3348</Color>
+
+  <Color x:Key="AccentPrimary">#5B7CFA</Color>
+  <Color x:Key="AccentPrimaryHover">#6C8CFF</Color>
+  <Color x:Key="AccentPrimaryPressed">#4E6EE8</Color>
+  <Color x:Key="AccentSecondary">#8A63F6</Color>
+  <Color x:Key="AccentSecondaryHover">#9A76FF</Color>
+  <Color x:Key="AccentSecondaryPressed">#7752DD</Color>
+
+  <Color x:Key="StatusOk">#2FBF84</Color>
+  <Color x:Key="StatusWarning">#D9A441</Color>
+  <Color x:Key="StatusError">#E16174</Color>
+  <Color x:Key="StatusInfo">#4D9BFF</Color>
+
+  <Color x:Key="BgDisabled">#1A2031</Color>
+  <Color x:Key="ButtonDisabledBg">#252C40</Color>
+  <Color x:Key="ButtonDisabledFg">#7D87A5</Color>
+
+  <!-- Legacy accent aliases (compat) -->
+  <Color x:Key="AccentTeal">#5B7CFA</Color>
+  <Color x:Key="AccentTealMid">#4E6EE8</Color>
+  <Color x:Key="AccentTealGlow">#666B8CFF</Color>
+  <Color x:Key="AccentTealLight">#6C8CFF</Color>
+  <Color x:Key="AccentBlue">#5B7CFA</Color>
+  <Color x:Key="AccentBlueMid">#4E6EE8</Color>
+
+  <!-- Buttons -->
+  <Color x:Key="BtnPrimaryBg">#5B7CFA</Color>
+  <Color x:Key="BtnPrimaryFg">#EAF0FF</Color>
+  <Color x:Key="BtnSecondaryBg">#1C2338</Color>
+  <Color x:Key="BtnSecondaryFg">#D0DAF5</Color>
+  <Color x:Key="BtnInfoBg">#1D2E52</Color>
+  <Color x:Key="BtnInfoFg">#CAE1FF</Color>
+  <Color x:Key="BtnSuccessBg">#153A2C</Color>
+  <Color x:Key="BtnSuccessFg">#C5F6E5</Color>
+  <Color x:Key="BtnWarningBg">#3A2A12</Color>
+  <Color x:Key="BtnWarningFg">#F8DEB0</Color>
+  <Color x:Key="BtnDangerBg">#41202A</Color>
+  <Color x:Key="BtnDangerFg">#FFD2DB</Color>
+  <Color x:Key="BtnGhostBg">#151A2C</Color>
+  <Color x:Key="BtnGhostFg">#C5D2F0</Color>
+
+  <!-- Node categories -->
+  <Color x:Key="CatDataSource">#4F78F4</Color>
+  <Color x:Key="CatDataSourceLight">#6B93FF</Color>
+  <Color x:Key="CatString">#7E66E8</Color>
+  <Color x:Key="CatStringLight">#9C89FF</Color>
+  <Color x:Key="CatMath">#B38B5E</Color>
+  <Color x:Key="CatMathLight">#D0AC7A</Color>
+  <Color x:Key="CatCast">#946EF0</Color>
+  <Color x:Key="CatCastLight">#B094FF</Color>
+  <Color x:Key="CatComparison">#D36A7B</Color>
+  <Color x:Key="CatComparisonLight">#E48C99</Color>
+  <Color x:Key="CatLogic">#8E9BC2</Color>
+  <Color x:Key="CatLogicLight">#A8B4D6</Color>
+  <Color x:Key="CatJson">#7A87BC</Color>
+  <Color x:Key="CatJsonLight">#97A3CF</Color>
+  <Color x:Key="CatAggregate">#B38B5E</Color>
+  <Color x:Key="CatAggregateLight">#C8A275</Color>
+  <Color x:Key="CatConditional">#7B90C7</Color>
+  <Color x:Key="CatConditionalLight">#9AB0E0</Color>
+  <Color x:Key="CatOutput">#A486E8</Color>
+  <Color x:Key="CatOutputLight">#B8A1F1</Color>
+  <Color x:Key="CatJoin">#6F86D9</Color>
+  <Color x:Key="CatDdl">#7EA6FF</Color>
+
+  <!-- Pins -->
+  <Color x:Key="PinText">#8FB9FF</Color>
+  <Color x:Key="PinNumber">#B98BFF</Color>
+  <Color x:Key="PinBoolean">#D36A7B</Color>
+  <Color x:Key="PinDateTime">#7AB6FF</Color>
+  <Color x:Key="PinJson">#7E8CC3</Color>
+  <Color x:Key="PinAny">#97A4C8</Color>
+  <Color x:Key="PinExpression">#CDA35A</Color>
+  <Color x:Key="PinRowset">#E1B24F</Color>
+  <Color x:Key="PinColumn">#73A7FF</Color>
+  <Color x:Key="PinQuery">#CDA35A</Color>
+  <Color x:Key="PinReport">#A878FF</Color>
+
+  <!-- Derived brushes -->
+  <SolidColorBrush x:Key="Bg0Brush" Color="{StaticResource Bg0}"/>
+  <SolidColorBrush x:Key="Bg1Brush" Color="{StaticResource Bg1}"/>
+  <SolidColorBrush x:Key="Bg2Brush" Color="{StaticResource Bg2}"/>
+  <SolidColorBrush x:Key="Bg3Brush" Color="{StaticResource Bg3}"/>
+  <SolidColorBrush x:Key="Bg4Brush" Color="{StaticResource Bg4}"/>
+  <SolidColorBrush x:Key="CanvasBgBrush" Color="{StaticResource CanvasBg}"/>
+  <SolidColorBrush x:Key="CanvasGridBrush" Color="{StaticResource CanvasGrid}"/>
+  <SolidColorBrush x:Key="CanvasDotBrush" Color="{StaticResource CanvasDot}"/>
+
+  <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource Panel}"/>
+  <SolidColorBrush x:Key="PanelElevatedBrush" Color="{StaticResource PanelElevated}"/>
+  <SolidColorBrush x:Key="PanelHoverBrush" Color="{StaticResource PanelHover}"/>
+  <SolidColorBrush x:Key="PanelActiveBrush" Color="{StaticResource PanelActive}"/>
+  <SolidColorBrush x:Key="NodeSelectedFillBrush" Color="{StaticResource NodeSelectedFill}"/>
+  <SolidColorBrush x:Key="TabActiveBgBrush" Color="{StaticResource TabActiveBg}"/>
+  <SolidColorBrush x:Key="ControlActiveBgBrush" Color="{StaticResource ControlActiveBg}"/>
+  <SolidColorBrush x:Key="SelectedOverlayBrush" Color="{StaticResource SelectedOverlay}"/>
+
+  <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
+  <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
+  <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
+  <SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabled}"/>
+  <SolidColorBrush x:Key="TextInverseBrush" Color="{StaticResource TextInverse}"/>
+  <SolidColorBrush x:Key="TextAccentBrush" Color="{StaticResource TextAccent}"/>
+  <SolidColorBrush x:Key="TextLinkBrush" Color="{StaticResource TextLink}"/>
+
+  <SolidColorBrush x:Key="IconPrimaryBrush" Color="{StaticResource IconPrimary}"/>
+  <SolidColorBrush x:Key="IconMutedBrush" Color="{StaticResource IconMuted}"/>
+  <SolidColorBrush x:Key="IconDisabledBrush" Color="{StaticResource IconDisabled}"/>
+
+  <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource BorderSubtle}"/>
+  <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource Border}"/>
+  <SolidColorBrush x:Key="BorderDefaultBrush" Color="{StaticResource Border}"/>
+  <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource BorderStrong}"/>
+  <SolidColorBrush x:Key="BorderFocusBrush" Color="{StaticResource BorderFocus}"/>
+  <SolidColorBrush x:Key="BorderDisabledBrush" Color="{StaticResource BorderDisabled}"/>
+  <SolidColorBrush x:Key="BorderActiveBrush" Color="{StaticResource BorderFocus}"/>
+  <SolidColorBrush x:Key="BorderSoftBrush" Color="{StaticResource BorderSubtle}"/>
+
+  <SolidColorBrush x:Key="AccentPrimaryBrush" Color="{StaticResource AccentPrimary}"/>
+  <SolidColorBrush x:Key="AccentPrimaryHoverBrush" Color="{StaticResource AccentPrimaryHover}"/>
+  <SolidColorBrush x:Key="AccentPrimaryPressedBrush" Color="{StaticResource AccentPrimaryPressed}"/>
+  <SolidColorBrush x:Key="AccentSecondaryBrush" Color="{StaticResource AccentSecondary}"/>
+  <SolidColorBrush x:Key="AccentSecondaryHoverBrush" Color="{StaticResource AccentSecondaryHover}"/>
+  <SolidColorBrush x:Key="AccentSecondaryPressedBrush" Color="{StaticResource AccentSecondaryPressed}"/>
+
+  <SolidColorBrush x:Key="AccentTealBrush" Color="{StaticResource AccentTeal}"/>
+  <SolidColorBrush x:Key="AccentTealMidBrush" Color="{StaticResource AccentTealMid}"/>
+  <SolidColorBrush x:Key="AccentTealLightBrush" Color="{StaticResource AccentTealLight}"/>
+  <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlue}"/>
+  <SolidColorBrush x:Key="AccentBlueMidBrush" Color="{StaticResource AccentBlueMid}"/>
+
+  <SolidColorBrush x:Key="StatusOkBrush" Color="{StaticResource StatusOk}"/>
+  <SolidColorBrush x:Key="StatusWarningBrush" Color="{StaticResource StatusWarning}"/>
+  <SolidColorBrush x:Key="StatusErrorBrush" Color="{StaticResource StatusError}"/>
+  <SolidColorBrush x:Key="StatusInfoBrush" Color="{StaticResource StatusInfo}"/>
+
+  <SolidColorBrush x:Key="BgDisabledBrush" Color="{StaticResource BgDisabled}"/>
+  <SolidColorBrush x:Key="ButtonDisabledBgBrush" Color="{StaticResource ButtonDisabledBg}"/>
+  <SolidColorBrush x:Key="ButtonDisabledFgBrush" Color="{StaticResource ButtonDisabledFg}"/>
+
+  <SolidColorBrush x:Key="BtnPrimaryBgBrush" Color="{StaticResource BtnPrimaryBg}"/>
+  <SolidColorBrush x:Key="BtnPrimaryFgBrush" Color="{StaticResource BtnPrimaryFg}"/>
+  <SolidColorBrush x:Key="BtnSecondaryBgBrush" Color="{StaticResource BtnSecondaryBg}"/>
+  <SolidColorBrush x:Key="BtnSecondaryFgBrush" Color="{StaticResource BtnSecondaryFg}"/>
+  <SolidColorBrush x:Key="BtnInfoBgBrush" Color="{StaticResource BtnInfoBg}"/>
+  <SolidColorBrush x:Key="BtnInfoFgBrush" Color="{StaticResource BtnInfoFg}"/>
+  <SolidColorBrush x:Key="BtnSuccessBgBrush" Color="{StaticResource BtnSuccessBg}"/>
+  <SolidColorBrush x:Key="BtnSuccessFgBrush" Color="{StaticResource BtnSuccessFg}"/>
+  <SolidColorBrush x:Key="BtnWarningBgBrush" Color="{StaticResource BtnWarningBg}"/>
+  <SolidColorBrush x:Key="BtnWarningFgBrush" Color="{StaticResource BtnWarningFg}"/>
+  <SolidColorBrush x:Key="BtnDangerBgBrush" Color="{StaticResource BtnDangerBg}"/>
+  <SolidColorBrush x:Key="BtnDangerFgBrush" Color="{StaticResource BtnDangerFg}"/>
+  <SolidColorBrush x:Key="BtnGhostBgBrush" Color="{StaticResource BtnGhostBg}"/>
+  <SolidColorBrush x:Key="BtnGhostFgBrush" Color="{StaticResource BtnGhostFg}"/>
+
+  <SolidColorBrush x:Key="PinTextBrush" Color="{StaticResource PinText}"/>
+  <SolidColorBrush x:Key="PinNumberBrush" Color="{StaticResource PinNumber}"/>
+  <SolidColorBrush x:Key="PinBooleanBrush" Color="{StaticResource PinBoolean}"/>
+  <SolidColorBrush x:Key="PinDateTimeBrush" Color="{StaticResource PinDateTime}"/>
+  <SolidColorBrush x:Key="PinJsonBrush" Color="{StaticResource PinJson}"/>
+  <SolidColorBrush x:Key="PinAnyBrush" Color="{StaticResource PinAny}"/>
+  <SolidColorBrush x:Key="PinExpressionBrush" Color="{StaticResource PinExpression}"/>
+  <SolidColorBrush x:Key="PinRowsetBrush" Color="{StaticResource PinRowset}"/>
+  <SolidColorBrush x:Key="PinColumnBrush" Color="{StaticResource PinColumn}"/>
+  <SolidColorBrush x:Key="PinQueryBrush" Color="{StaticResource PinQuery}"/>
+  <SolidColorBrush x:Key="PinReportBrush" Color="{StaticResource PinReport}"/>
+
+  <SolidColorBrush x:Key="CatDataSourceBrush" Color="{StaticResource CatDataSource}"/>
+  <SolidColorBrush x:Key="CatStringBrush" Color="{StaticResource CatString}"/>
+  <SolidColorBrush x:Key="CatMathBrush" Color="{StaticResource CatMath}"/>
+  <SolidColorBrush x:Key="CatCastBrush" Color="{StaticResource CatCast}"/>
+  <SolidColorBrush x:Key="CatComparisonBrush" Color="{StaticResource CatComparison}"/>
+  <SolidColorBrush x:Key="CatLogicBrush" Color="{StaticResource CatLogic}"/>
+  <SolidColorBrush x:Key="CatJsonBrush" Color="{StaticResource CatJson}"/>
+  <SolidColorBrush x:Key="CatAggregateBrush" Color="{StaticResource CatAggregate}"/>
+  <SolidColorBrush x:Key="CatConditionalBrush" Color="{StaticResource CatConditional}"/>
+  <SolidColorBrush x:Key="CatOutputBrush" Color="{StaticResource CatOutput}"/>
+  <SolidColorBrush x:Key="CatJoinBrush" Color="{StaticResource CatJoin}"/>
+  <SolidColorBrush x:Key="CatDdlBrush" Color="{StaticResource CatDdl}"/>
+
+  <SolidColorBrush x:Key="InputSelectionBrush" Color="#314D89"/>
+  <SolidColorBrush x:Key="WireSelectedGlowBrush" Color="#8FA7FF55"/>
+  <SolidColorBrush x:Key="WireErrorGlowBrush" Color="#E1617440"/>
+  <SolidColorBrush x:Key="MacroScrimBrush" Color="#05070D" Opacity="0.7"/>
+
+  <!-- Typography -->
+  <FontFamily x:Key="UIFont">Manrope,Sora,Plus Jakarta Sans,Segoe UI,Arial,sans-serif</FontFamily>
+  <FontFamily x:Key="NodeFont">Space Grotesk,Manrope,Segoe UI,Arial,sans-serif</FontFamily>
+  <FontFamily x:Key="MonoFont">JetBrainsMono Nerd Font,JetBrains Mono,IBM Plex Mono,Cascadia Code,Consolas,monospace</FontFamily>
+
+  <x:Double x:Key="FontSizeDisplay">24</x:Double>
+  <x:Double x:Key="FontSizeHeading">18</x:Double>
+  <x:Double x:Key="FontSizeTitle">15</x:Double>
+  <x:Double x:Key="FontSizeNodeTitle">14</x:Double>
+  <x:Double x:Key="FontSizeLabel">13</x:Double>
+  <x:Double x:Key="FontSizeBody">12</x:Double>
+  <x:Double x:Key="FontSizeCaption">11</x:Double>
+  <x:Double x:Key="FontSizeMonoBody">12</x:Double>
+  <x:Double x:Key="FontSizeMonoSmall">11</x:Double>
+
+  <FontWeight x:Key="FontWeightDisplay">Bold</FontWeight>
+  <FontWeight x:Key="FontWeightHeading">Bold</FontWeight>
+  <FontWeight x:Key="FontWeightTitle">SemiBold</FontWeight>
+  <FontWeight x:Key="FontWeightNodeTitle">SemiBold</FontWeight>
+  <FontWeight x:Key="FontWeightLabel">Medium</FontWeight>
+  <FontWeight x:Key="FontWeightBody">Normal</FontWeight>
+  <FontWeight x:Key="FontWeightCaption">Normal</FontWeight>
+  <FontWeight x:Key="FontWeightMono">Normal</FontWeight>
+  <FontWeight x:Key="FontWeightMonoStrong">Medium</FontWeight>
+  <FontWeight x:Key="FontWeightStrong">SemiBold</FontWeight>
+  <FontWeight x:Key="FontWeightAction">Medium</FontWeight>
+
+  <x:Double x:Key="LineHeightUiSmall">1.4</x:Double>
+  <x:Double x:Key="LineHeightUiRegular">1.3</x:Double>
+  <x:Double x:Key="LineHeightNode">1.2</x:Double>
+  <x:Double x:Key="LineHeightMono">1.45</x:Double>
+  <x:Double x:Key="TrackingNormal">0</x:Double>
+
+  <!-- Radius scale -->
+  <CornerRadius x:Key="RadiusXS">4</CornerRadius>
+  <CornerRadius x:Key="RadiusSM">6</CornerRadius>
+  <CornerRadius x:Key="RadiusMD">10</CornerRadius>
+  <CornerRadius x:Key="RadiusLG">14</CornerRadius>
+  <CornerRadius x:Key="RadiusXL">18</CornerRadius>
+  <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+  <CornerRadius x:Key="RadiusLGTop">14,14,0,0</CornerRadius>
+  <CornerRadius x:Key="RadiusLGBottom">0,0,14,14</CornerRadius>
+
+  <!-- Canvas radius -->
+  <CornerRadius x:Key="NodeRadius">12</CornerRadius>
+  <CornerRadius x:Key="NodeHeaderRadius">12,12,0,0</CornerRadius>
+  <CornerRadius x:Key="PinRadius">5</CornerRadius>
+
+  <!-- Spacing / geometry -->
+  <x:Double x:Key="NodeMinWidth">200</x:Double>
+  <x:Double x:Key="PinSize">10</x:Double>
+  <x:Double x:Key="WireOpacityNormal">0.85</x:Double>
+  <x:Double x:Key="WireOpacityHover">1</x:Double>
+  <x:Double x:Key="WireOpacitySelected">1</x:Double>
+  <x:Double x:Key="WireOpacityInvalid">0.95</x:Double>
+  <x:Double x:Key="WireOpacityPreview">0.7</x:Double>
+  <x:Double x:Key="WireThicknessHoverDelta">0.4</x:Double>
+  <x:Double x:Key="WireThicknessSelectedDelta">0.8</x:Double>
+  <x:Double x:Key="WireThicknessInvalidDelta">0.4</x:Double>
+
+  <x:Double x:Key="StartSpaceXS">4</x:Double>
+  <x:Double x:Key="StartSpaceSM">10</x:Double>
+  <x:Double x:Key="StartSpaceMD">14</x:Double>
+  <x:Double x:Key="StartSpaceLG">18</x:Double>
+  <x:Double x:Key="StartSpaceXL">24</x:Double>
+
+  <Thickness x:Key="StartPaddingCard">14</Thickness>
+  <Thickness x:Key="StartPaddingPrimaryButton">18,10</Thickness>
+  <Thickness x:Key="StartPaddingGhostButton">10,6</Thickness>
+  <Thickness x:Key="StartPaddingHeader">18,12</Thickness>
+
+  <Thickness x:Key="StartMarginSectionTop">0,18,0,0</Thickness>
+  <Thickness x:Key="StartMarginSectionTopWithGap">18,18,0,0</Thickness>
+  <Thickness x:Key="StartMarginInnerTop">0,10,0,0</Thickness>
+  <Thickness x:Key="StartMarginInnerVertical">0,10,0,10</Thickness>
+  <Thickness x:Key="StartMarginTemplateItem">0,0,10,10</Thickness>
+  <Thickness x:Key="StartMarginFooter">0,0,22,18</Thickness>
+
+  <!-- Elevation -->
+  <BoxShadows x:Key="ShadowNone">0 0 0 0 #00000000</BoxShadows>
+  <BoxShadows x:Key="ShadowSM">0 2 8 0 #00000033</BoxShadows>
+  <BoxShadows x:Key="ShadowMD">0 6 18 0 #00000040</BoxShadows>
+  <BoxShadows x:Key="ShadowLG">0 10 28 0 #00000052</BoxShadows>
+  <BoxShadows x:Key="ShadowXL">0 16 40 0 #00000066</BoxShadows>
+  <BoxShadows x:Key="PinDotHoverShadow">0 0 7 2 #AAFFFFFF</BoxShadows>
+
+  <!-- Legacy shadow aliases -->
+  <BoxShadows x:Key="NodeShadow">0 4 24 0 #40000000, 0 1 4 0 #50000000</BoxShadows>
+  <BoxShadows x:Key="NodeShadowSelected">0 0 0 2 #6B8CFF, 0 8 32 0 #556B8CFF</BoxShadows>
+  <BoxShadows x:Key="PanelShadow">0 10 28 0 #00000052</BoxShadows>
+
+</ResourceDictionary>

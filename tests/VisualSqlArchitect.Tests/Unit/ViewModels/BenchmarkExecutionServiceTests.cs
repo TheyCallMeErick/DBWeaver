@@ -1,8 +1,8 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using DBWeaver.UI.Services.Benchmark;
+
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class BenchmarkExecutionServiceTests
 {

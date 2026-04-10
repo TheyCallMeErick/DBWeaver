@@ -1,14 +1,14 @@
-﻿using VisualSqlArchitect.UI.Services.ConnectionManager;
-using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.ConnectionManager;
+using DBWeaver.UI.Services.Benchmark;
 using Avalonia;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+using DBWeaver.Core;
+using DBWeaver.Metadata;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class ConnectionActivationWorkflowTests
 {

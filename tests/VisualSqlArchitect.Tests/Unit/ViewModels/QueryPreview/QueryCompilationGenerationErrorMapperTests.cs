@@ -1,45 +1,66 @@
-﻿using VisualSqlArchitect.UI.Services.QueryPreview;
+using DBWeaver.Nodes.LogicalPlan;
+using DBWeaver.UI.Services.QueryPreview;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 
-public class QueryCompilationGenerationErrorMapperTests
+public sealed class QueryCompilationGenerationErrorMapperTests
 {
     [Fact]
-    public void Map_WhenCteCycleError_ReturnsDetailedGuidance()
+    public void Map_PlanningJoinWithoutCondition_ReturnsPlannerMessageAndGuidance()
     {
         var mapper = new QueryCompilationGenerationErrorMapper();
-        var ex = new InvalidOperationException("Cycle detected between CTE definitions: a -> b -> a");
+        var exception = new InvalidOperationException(
+            "wrapper",
+            new PlanningException("join_1", PlannerErrorKind.JoinWithoutCondition, "join missing condition"));
 
-        List<string> messages = mapper.Map(ex).ToList();
+        List<string> mapped = mapper.Map(exception).ToList();
 
-        Assert.Equal(2, messages.Count);
-        Assert.Contains("Cycle detected between CTE definitions", messages[0], StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("CTE cycle detected", messages[1], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(mapped, m => m.Contains("join missing condition", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(mapped, m => m.Contains("Join node requires an explicit condition", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public void Map_WhenRecursiveFlagMissing_ReturnsRecursiveGuidance()
+    public void Map_PlanningOutputAmbiguous_ReturnsOutputGuidance()
     {
         var mapper = new QueryCompilationGenerationErrorMapper();
-        var ex = new InvalidOperationException("cte x references itself but is not marked recursive");
+        var exception = new PlanningException(
+            "out",
+            PlannerErrorKind.OutputSourceAmbiguous,
+            "multiple outputs");
 
-        List<string> messages = mapper.Map(ex).ToList();
+        List<string> mapped = mapper.Map(exception).ToList();
 
-        Assert.Equal(2, messages.Count);
-        Assert.Contains("not marked recursive", messages[0], StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("recursive' flag enabled", messages[1], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(mapped, m => m.Contains("multiple outputs", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(mapped, m => m.Contains("exactly one top-level Result Output", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public void Map_WhenUnknownError_ReturnsOriginalMessageOnly()
+    public void Map_PlanningCteNotReferenced_ReturnsCteGuidance()
     {
         var mapper = new QueryCompilationGenerationErrorMapper();
-        var ex = new Exception("some generic failure");
+        var exception = new PlanningException(
+            "out",
+            PlannerErrorKind.CteNotReferencedInPlan,
+            "cte_x not referenced");
 
-        List<string> messages = mapper.Map(ex).ToList();
+        List<string> mapped = mapper.Map(exception).ToList();
 
-        Assert.Single(messages);
-        Assert.Equal("some generic failure", messages[0]);
+        Assert.Contains(mapped, m => m.Contains("cte_x not referenced", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(mapped, m => m.Contains("CTE definida sem uso", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Map_PlanningCyclicDependency_ReturnsCycleGuidance()
+    {
+        var mapper = new QueryCompilationGenerationErrorMapper();
+        var exception = new PlanningException(
+            "out",
+            PlannerErrorKind.CyclicDependency,
+            "cycle detected");
+
+        List<string> mapped = mapper.Map(exception).ToList();
+
+        Assert.Contains(mapped, m => m.Contains("cycle detected", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(mapped, m => m.Contains("Dependência cíclica detectada", StringComparison.OrdinalIgnoreCase));
     }
 }
-

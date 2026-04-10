@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class SqlImporterFocusReportItemTests
 {
@@ -30,7 +30,7 @@ public class SqlImporterFocusReportItemTests
     public void FocusReportItem_WhenItemHasNoNodeLink_ReturnsFalse()
     {
         var canvas = new CanvasViewModel();
-        var item = new ImportReportItem("No link", EImportItemStatus.Skipped, "reason");
+        var item = new ImportReportItem("No link", ImportItemStatus.Skipped, "reason");
 
         bool focused = canvas.SqlImporter.FocusReportItem(item);
 

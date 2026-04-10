@@ -1,8 +1,8 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using DBWeaver.UI.Services.Benchmark;
+
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class AppDiagnosticsOverlayWarningTests
 {
@@ -24,7 +24,7 @@ public class AppDiagnosticsOverlayWarningTests
             vm.SnapshotEntries(),
             e =>
                 e.Name == "Canvas Migration"
-                && e.Status == EDiagnosticStatus.Warning
+                && e.Status == DiagnosticStatus.Warning
                 && e.Details.Contains("migrated", StringComparison.OrdinalIgnoreCase)
         );
     }

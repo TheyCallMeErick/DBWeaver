@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
 using System.Reflection;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class ExplainPlanExportViewModelTests
 {
@@ -44,8 +44,8 @@ public class ExplainPlanExportViewModelTests
     public void CanOpenDalibo_IsFalse_WhenProviderIsNotPostgres()
     {
         var canvas = new CanvasViewModel();
-        canvas.ActiveConnectionConfig = new VisualSqlArchitect.Core.ConnectionConfig(
-            Provider: VisualSqlArchitect.Core.DatabaseProvider.SQLite,
+        canvas.ActiveConnectionConfig = new DBWeaver.Core.ConnectionConfig(
+            Provider: DBWeaver.Core.DatabaseProvider.SQLite,
             Host: string.Empty,
             Port: 0,
             Database: "db.sqlite",
@@ -56,7 +56,7 @@ public class ExplainPlanExportViewModelTests
             canvas,
             daliboUrlBuilder: new StubDaliboUrlBuilder("https://dalibo.local/plan")
         );
-        SetPrivateField(sut, "_provider", VisualSqlArchitect.Core.DatabaseProvider.SQLite);
+        SetPrivateField(sut, "_provider", DBWeaver.Core.DatabaseProvider.SQLite);
         SetPrivateField(sut, "_rawOutput", "{\"Plan\":{}}");
 
         Assert.False(sut.CanOpenDalibo);

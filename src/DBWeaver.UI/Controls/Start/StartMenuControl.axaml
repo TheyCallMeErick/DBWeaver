@@ -1,0 +1,386 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:startmodels="using:DBWeaver.UI.Services.Start.Models"
+             xmlns:start="using:DBWeaver.UI.Controls.Start"
+             xmlns:shell="using:DBWeaver.UI.Controls.Shell"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             x:Class="DBWeaver.UI.Controls.Start.StartMenuControl"
+             x:DataType="vm:StartMenuViewModel"
+             x:Name="Root">
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.kicker">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+      <Setter Property="FontWeight" Value="{StaticResource FontWeightStrong}"/>
+      <Setter Property="Foreground" Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="LetterSpacing" Value="0.6"/>
+    </Style>
+    <Style Selector="TextBlock.h1">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeDisplay}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.h2">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeHeading}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.brand">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeHeading}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.nav">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.nav.active">
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.meta">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.version">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+    </Style>
+    <Style Selector="Button.icon-ghost">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+      <Setter Property="Padding" Value="6,2"/>
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.tips-pill">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+      <Setter Property="Padding" Value="10,4"/>
+      <Setter Property="Foreground" Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+      <Setter Property="FontWeight" Value="{StaticResource FontWeightStrong}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusLG}"/>
+      <Setter Property="Padding" Value="{StaticResource StartPaddingCard}"/>
+      <Setter Property="BoxShadow" Value="{StaticResource PanelShadow}"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12"/>
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.12"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.card:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Border.card.hero-card">
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+          <GradientStop Offset="0.0" Color="{StaticResource AccentPrimary}"/>
+          <GradientStop Offset="1.0" Color="{StaticResource Bg1}"/>
+        </LinearGradientBrush>
+      </Setter>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderActiveBrush}"/>
+    </Style>
+    <Style Selector="Border.chip">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+      <Setter Property="Padding" Value="8,3"/>
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{StaticResource BtnPrimaryBgBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="{StaticResource BtnPrimaryFgBrush}"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+      <Setter Property="Padding" Value="{StaticResource StartPaddingPrimaryButton}"/>
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+      <Setter Property="FontWeight" Value="{StaticResource FontWeightAction}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.primary:pointerover">
+      <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="{StaticResource BtnGhostBgBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="{StaticResource BtnGhostFgBrush}"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+      <Setter Property="Padding" Value="{StaticResource StartPaddingGhostButton}"/>
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.ghost:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Button.template-tile">
+      <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusMD}"/>
+      <Setter Property="Padding" Value="10,8"/>
+    </Style>
+    <Style Selector="Button.template-tile:pointerover">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="StackPanel.empty-state TextBlock">
+      <Setter Property="TextAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.quick-action-card">
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+          <GradientStop Offset="0.0" Color="{StaticResource AccentSecondary}"/>
+          <GradientStop Offset="1.0" Color="{StaticResource Bg2}"/>
+        </LinearGradientBrush>
+      </Setter>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderActiveBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusLG}"/>
+      <Setter Property="Padding" Value="12"/>
+    </Style>
+    <Style Selector="Border.empty-placeholder">
+      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderActiveBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusLG}"/>
+      <Setter Property="Padding" Value="14,12"/>
+    </Style>
+
+    <!-- Responsive typography scale for desktop ranges -->
+    <Style Selector="UserControl.start-compact TextBlock.brand">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+    </Style>
+    <Style Selector="UserControl.start-compact TextBlock.h1">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeHeading}"/>
+    </Style>
+    <Style Selector="UserControl.start-compact TextBlock.h2">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+    </Style>
+    <Style Selector="UserControl.start-compact TextBlock.nav">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+    </Style>
+    <Style Selector="UserControl.start-compact TextBlock.meta">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+    </Style>
+    <Style Selector="UserControl.start-compact TextBlock.version">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+    </Style>
+    <Style Selector="UserControl.start-compact Button.primary">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+    </Style>
+    <Style Selector="UserControl.start-compact Button.ghost">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+    </Style>
+
+    <Style Selector="UserControl.start-large TextBlock.brand">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeDisplay}"/>
+    </Style>
+    <Style Selector="UserControl.start-large TextBlock.h1">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeDisplay}"/>
+    </Style>
+    <Style Selector="UserControl.start-large TextBlock.h2">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeHeading}"/>
+    </Style>
+    <Style Selector="UserControl.start-large TextBlock.nav">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+    </Style>
+    <Style Selector="UserControl.start-large TextBlock.meta">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+    </Style>
+    <Style Selector="UserControl.start-large TextBlock.version">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+    </Style>
+    <Style Selector="UserControl.start-large Button.primary">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+    </Style>
+    <Style Selector="UserControl.start-large Button.ghost">
+      <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*" Background="{StaticResource Bg0Brush}">
+    <Canvas Grid.RowSpan="3" IsHitTestVisible="False" Opacity="0.38">
+      <!-- Azul — canto superior esquerdo (existente) -->
+      <Border Width="420" Height="420" CornerRadius="{StaticResource RadiusPill}" Background="{StaticResource Bg3Brush}" Canvas.Left="-140" Canvas.Top="-220"/>
+      <!-- Verde — lateral direita central (existente) -->
+      <Border Width="360" Height="360" CornerRadius="{StaticResource RadiusPill}" Background="{StaticResource Bg2Brush}" Canvas.Right="-90" Canvas.Top="110"/>
+
+      <!-- Violeta — canto superior direito (análogo ao azul, seção Conexões) -->
+      <Border Width="300" Height="300" CornerRadius="{StaticResource RadiusPill}" Background="{StaticResource Bg2Brush}" Canvas.Right="-100" Canvas.Top="-90"/>
+      <!-- Ciano — centro-esquerda (análogo ao azul, transição entre hero e recentes) -->
+      <Border Width="260" Height="260" CornerRadius="{StaticResource RadiusPill}" Background="{StaticResource Bg1Brush}" Canvas.Left="300" Canvas.Top="250"/>
+      <!-- Teal — inferior esquerdo (análogo ao verde, seção Recentes) -->
+      <Border Width="340" Height="340" CornerRadius="{StaticResource RadiusPill}" Background="{StaticResource Bg2Brush}" Canvas.Left="-80" Canvas.Top="460"/>
+      <!-- Âmbar — inferior direito (complementar ao azul, seção Templates) -->
+      <Border Width="280" Height="280" CornerRadius="{StaticResource RadiusPill}" Background="{StaticResource BtnWarningBgBrush}" Canvas.Right="-70" Canvas.Top="520"/>
+    </Canvas>
+
+    <shell:AppHeaderBar Grid.Row="0"
+                        Title="{Binding [main.brand], Source={x:Static loc:LocalizationService.Instance}}"
+                        ShowBrandBadge="True"
+                        ShowWindowControls="True">
+      <shell:AppHeaderBar.RightContent>
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource StartSpaceSM}" VerticalAlignment="Center">
+          <Button Classes="tips-pill" Content="{Binding [start.tips], Source={x:Static loc:LocalizationService.Instance}}">
+            <ToolTip.Tip>
+              <StackPanel Spacing="4" MaxWidth="320">
+                <TextBlock Text="{Binding [start.tips.quick], Source={x:Static loc:LocalizationService.Instance}}" FontWeight="{StaticResource FontWeightStrong}"/>
+                <TextBlock Text="{Binding [start.tips.item1], Source={x:Static loc:LocalizationService.Instance}}" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding [start.tips.item2], Source={x:Static loc:LocalizationService.Instance}}" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding [start.tips.item3], Source={x:Static loc:LocalizationService.Instance}}" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding [start.tips.shortcut], Source={x:Static loc:LocalizationService.Instance}}" TextWrapping="Wrap"/>
+              </StackPanel>
+            </ToolTip.Tip>
+          </Button>
+          <Button Classes="icon-ghost"
+                  Padding="7,4"
+                  ToolTip.Tip="{Binding [menu.settings], Source={x:Static loc:LocalizationService.Instance}}"
+                  VerticalAlignment="Center"
+                  Command="{Binding OpenSettingsCommand}">
+            <mi:MaterialIcon Kind="CogOutline" Width="14" Height="14"/>
+          </Button>
+        </StackPanel>
+      </shell:AppHeaderBar.RightContent>
+    </shell:AppHeaderBar>
+
+    <ScrollViewer Grid.Row="1"  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <Grid Margin="24" ColumnDefinitions="2.2*,1*" RowDefinitions="Auto,Auto,*" MinHeight="640">
+      <Border Grid.Row="0" Grid.ColumnSpan="2" Grid.Column="0"  Margin="0,0,14,0" Classes="card hero-card" Name="HeroBlock">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="kicker" Text="{Binding [start.workspace], Source={x:Static loc:LocalizationService.Instance}}"/>
+          <TextBlock Classes="h1" Text="{Binding [start.resumeTitle], Source={x:Static loc:LocalizationService.Instance}}"/>
+          <TextBlock Classes="meta" Text="{Binding [start.resumeSubtitle], Source={x:Static loc:LocalizationService.Instance}}"/>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+            <Border Classes="chip"><TextBlock Classes="meta" Text="{Binding [start.chip.quickFlow], Source={x:Static loc:LocalizationService.Instance}}"/></Border>
+            <Border Classes="chip"><TextBlock Classes="meta" Text="{Binding [start.chip.templates], Source={x:Static loc:LocalizationService.Instance}}"/></Border>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="1" Grid.ColumnSpan="2" Grid.Column="0" Margin="0,14,14,0" Classes="card" Name="RecentSection" MinHeight="300">
+        <Grid RowDefinitions="Auto,Auto,Auto,*">
+          <TextBlock Classes="h2" Text="{Binding [start.recentProjectsTitle], Source={x:Static loc:LocalizationService.Instance}}"/>
+
+          <TextBox Grid.Row="1"
+                   Margin="{StaticResource StartMarginInnerTop}"
+                   Text="{Binding RecentSearchQuery}"
+                   Watermark="{Binding [start.searchRecent], Source={x:Static loc:LocalizationService.Instance}}"
+                   Height="34"/>
+
+          <ScrollViewer Grid.Row="2" Margin="{StaticResource StartMarginInnerTop}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Height="170">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource StartSpaceSM}">
+              <Border Classes="quick-action-card" Width="272" Height="154">
+                <Grid RowDefinitions="Auto,*,Auto,Auto">
+                  <TextBlock Classes="meta" Text="{Binding [start.quickActions], Source={x:Static loc:LocalizationService.Instance}}" FontWeight="{StaticResource FontWeightStrong}"/>
+                  <TextBlock Grid.Row="1" Classes="meta" Text="{Binding [start.quickActionsSubtitle], Source={x:Static loc:LocalizationService.Instance}}" TextWrapping="Wrap" Opacity="0.9" Margin="0,6,0,0"/>
+                  <Button Grid.Row="2" Classes="ghost" Content="{Binding [main.open], Source={x:Static loc:LocalizationService.Instance}}" Command="{Binding OpenFromDiskCommand}" Margin="0,8,0,0" HorizontalAlignment="Center" MinWidth="132"/>
+                  <Button Grid.Row="3" Classes="primary" Content="{Binding [menu.newDiagram], Source={x:Static loc:LocalizationService.Instance}}" Command="{Binding CreateNewDiagramCommand}" Margin="0,8,0,0" HorizontalAlignment="Center" MinWidth="164"/>
+                </Grid>
+              </Border>
+
+              <ItemsControl ItemsSource="{Binding RecentProjects}" IsVisible="{Binding HasRecentProjects}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource StartSpaceSM}"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="startmodels:StartRecentProjectItem">
+                    <Button Classes="ghost"
+                            Width="220"
+                            Height="154"
+                            Padding="{StaticResource StartPaddingGhostButton}"
+                            Tag="{Binding}"
+                            Click="RecentProjectCard_Click"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch">
+                      <start:RecentProjectCard/>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+
+          <Border Grid.Row="3" Classes="empty-placeholder" Margin="0,10,0,0" VerticalAlignment="Center" IsVisible="{Binding HasRecentProjects, Converter={x:Static BoolConverters.Not}}">
+            <StackPanel Classes="empty-state" Spacing="8">
+              <TextBlock Text="{Binding [start.noRecentTitle], Source={x:Static loc:LocalizationService.Instance}}" Classes="h2" FontSize="{StaticResource FontSizeHeading}"/>
+              <TextBlock Text="{Binding [start.noRecentSubtitle], Source={x:Static loc:LocalizationService.Instance}}" Classes="meta" Opacity="0.9"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="2" Grid.ColumnSpan="2" Classes="card" Margin="0,14,0,0" Name="TemplatesSection">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock Classes="h2" Text="{Binding [start.exploreTemplates], Source={x:Static loc:LocalizationService.Instance}}"/>
+            <Border Classes="chip"><TextBlock Classes="meta" Text="{Binding [start.templatesFavoritesHint], Source={x:Static loc:LocalizationService.Instance}}"/></Border>
+          </StackPanel>
+          <ScrollViewer Grid.Row="1" Margin="{StaticResource StartMarginInnerTop}" Padding="2,0,2,8" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto" Height="176" MinHeight="176">
+            <ItemsControl ItemsSource="{Binding TemplateCatalog}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="0"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="startmodels:StartTemplateItem">
+                  <Grid Margin="6,6,6,6" Width="236" Height="152">
+                    <Button Classes="template-tile"
+                            Width="236"
+                            Height="152"
+                            Padding="{StaticResource StartPaddingGhostButton}"
+                            Tag="{Binding}"
+                            Click="TemplateCard_Click"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch">
+                      <start:TemplateCard/>
+                    </Button>
+
+                    <Button Classes="icon-ghost"
+                            Width="24"
+                            Height="24"
+                            Padding="0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,8,8,0"
+                            Tag="{Binding}"
+                            Click="TemplateFavorite_Click"
+                            ToolTip.Tip="{Binding [start.favoriteTemplate], Source={x:Static loc:LocalizationService.Instance}}"
+                            ZIndex="2">
+                      <Grid>
+                        <TextBlock Text="★" Foreground="{StaticResource BtnWarningFgBrush}" IsVisible="{Binding IsFavorite}"/>
+                        <TextBlock Text="☆" Foreground="{StaticResource TextSecondaryBrush}" IsVisible="{Binding !IsFavorite}"/>
+                      </Grid>
+                    </Button>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+      </Grid>
+    </ScrollViewer>
+
+  </Grid>
+</UserControl>

@@ -1,17 +1,17 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using Avalonia;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.Nodes;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class ShellViewModelDdlModeTests
 {
     [Fact]
     public void Shell_StartsInQueryMode_WithoutDdlCanvas()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         Assert.Equal(ShellViewModel.AppMode.Query, vm.ActiveMode);
         Assert.True(vm.IsQueryModeActive);
@@ -22,7 +22,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void SetActiveMode_Ddl_InitializesStubCanvas()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         vm.SetActiveMode(ShellViewModel.AppMode.Ddl);
 
@@ -36,7 +36,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void SetActiveMode_InvalidValue_ThrowsExpectedError()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         Assert.Throws<ArgumentOutOfRangeException>(() => vm.SetActiveMode((ShellViewModel.AppMode)999));
     }
@@ -44,7 +44,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void EnsureDdlCanvas_ReturnsSameInstance_OnSubsequentCalls()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         var first = vm.EnsureDdlCanvas();
         var second = vm.EnsureDdlCanvas();
@@ -55,7 +55,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void ModeCommands_SwitchBetweenQueryAndDdl()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         vm.DdlModeCommand.Execute(null);
         Assert.Equal(ShellViewModel.AppMode.Ddl, vm.ActiveMode);
@@ -67,7 +67,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void SettingsSections_AllExpectedTitlesAndSubtitles_AreMapped()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         vm.SelectSettingsSection(ShellViewModel.ESettingsSection.DateTime);
         string dateTimeTitle = vm.SettingsSectionTitle;
@@ -75,13 +75,17 @@ public class ShellViewModelDdlModeTests
 
         vm.SelectSettingsSection(ShellViewModel.ESettingsSection.KeyboardShortcuts);
         string keyboardTitle = vm.SettingsSectionTitle;
+        string keyboardSubtitle = vm.SettingsSectionSubtitle;
         Assert.False(string.IsNullOrWhiteSpace(keyboardTitle));
+        Assert.False(string.IsNullOrWhiteSpace(keyboardSubtitle));
         Assert.NotEqual(dateTimeTitle, keyboardTitle);
 
         vm.SelectSettingsSection(ShellViewModel.ESettingsSection.Notification);
         string notificationTitle = vm.SettingsSectionTitle;
+        string notificationSubtitle = vm.SettingsSectionSubtitle;
         Assert.False(string.IsNullOrWhiteSpace(notificationTitle));
         Assert.NotEqual(keyboardTitle, notificationTitle);
+        Assert.NotEqual(keyboardSubtitle, notificationSubtitle);
 
         vm.SelectSettingsSection(ShellViewModel.ESettingsSection.Accessibility);
         Assert.False(string.IsNullOrWhiteSpace(vm.SettingsSectionTitle));
@@ -92,7 +96,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void AppVersionLabel_IsResolvedToNonEmptyValue()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         Assert.False(string.IsNullOrWhiteSpace(vm.AppVersionLabel));
     }
@@ -100,7 +104,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void ActiveCanvasContext_DerivesFromModeAndSubcanvasState()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         Assert.Equal(CanvasContext.Query, vm.ActiveCanvasContext);
 
@@ -120,7 +124,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void ModeSwitch_UsesIndependentActiveCanvasInstances_WithoutLeakingNodesAcrossModes()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         CanvasViewModel queryCanvas = vm.EnsureCanvas();
         queryCanvas.SpawnTableNode("public.orders", [("id", PinDataType.Number)], new Point(10, 10));
@@ -145,7 +149,7 @@ public class ShellViewModelDdlModeTests
     [Fact]
     public void EnsureCanvasAndDdlCanvas_UseSharedShellToastCenter()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         CanvasViewModel queryCanvas = vm.EnsureCanvas();
         CanvasViewModel ddlCanvas = vm.EnsureDdlCanvas();
@@ -154,4 +158,3 @@ public class ShellViewModelDdlModeTests
         Assert.Same(vm.Toasts, ddlCanvas.Toasts);
     }
 }
-

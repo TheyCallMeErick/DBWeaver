@@ -1,8 +1,8 @@
 using System.Reflection;
-using VisualSqlArchitect.UI.Controls;
+using DBWeaver.UI.Controls;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class DotGridBackgroundDensityTests
 {

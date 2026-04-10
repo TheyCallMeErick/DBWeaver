@@ -1,0 +1,401 @@
+<Styles xmlns="https://github.com/avaloniaui"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:start="using:DBWeaver.UI.Controls.Start">
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       GLOBAL DARK OVERRIDES
+  ═══════════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Window background -->
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{StaticResource Bg0Brush}"/>
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+  </Style>
+
+  <!-- Semantic text roles -->
+  <Style Selector="TextBlock.txt-display">
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeDisplay}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightDisplay}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.txt-heading">
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeHeading}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightHeading}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.txt-title">
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeTitle}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightTitle}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.txt-label">
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeLabel}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightLabel}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.txt-body">
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightBody}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.txt-meta">
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightCaption}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.txt-node-title">
+    <Setter Property="FontFamily" Value="{StaticResource NodeFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeNodeTitle}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightNodeTitle}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.txt-mono-body">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeMonoBody}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightMono}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+  </Style>
+  <Style Selector="TextBlock.txt-mono-small">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeMonoSmall}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightMono}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+  </Style>
+
+  <!-- Reusable shell header -->
+  <Style Selector="Border.app-header-shell">
+    <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+    <Setter Property="Padding" Value="12,6"/>
+  </Style>
+
+  <Style Selector="Button.app-window-btn">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <Style Selector="Button.app-window-btn:pointerover">
+    <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+  </Style>
+  <Style Selector="Button.app-window-btn.app-window-btn-danger:pointerover">
+    <Setter Property="Background" Value="{StaticResource BtnDangerBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource BtnDangerFgBrush}"/>
+  </Style>
+
+  <Style Selector="Button.app-header-title-btn">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeTitle}"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightStrong}"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <Style Selector="Button.app-header-title-btn:pointerover">
+    <Setter Property="Foreground" Value="{StaticResource AccentPrimaryHoverBrush}"/>
+  </Style>
+
+  <!-- Editor title menu -->
+  <Style Selector="ContextMenu.app-title-menu">
+    <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="6"/>
+  </Style>
+  <Style Selector="MenuItem.app-title-menu-item">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+  </Style>
+  <Style Selector="MenuItem.app-title-menu-item:pointerover">
+    <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+    <Setter Property="Foreground" Value="{StaticResource AccentPrimaryHoverBrush}"/>
+  </Style>
+  <Style Selector="Separator.app-title-menu-sep">
+    <Setter Property="Background" Value="{StaticResource BorderSubtleBrush}"/>
+    <Setter Property="Margin" Value="6,4"/>
+  </Style>
+
+  <!-- Canvas right-click context menu -->
+  <Style Selector="ContextMenu.canvas-context-menu">
+    <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="6"/>
+    <Setter Property="Opacity" Value="0.98"/>
+  </Style>
+  <Style Selector="MenuItem.canvas-context-menu-item">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+    <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.10"/>
+        <BrushTransition Property="Foreground" Duration="0:0:0.10"/>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.10"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="MenuItem.canvas-context-menu-item:pointerover">
+    <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
+    <Setter Property="Foreground" Value="{StaticResource AccentPrimaryHoverBrush}"/>
+    <Setter Property="RenderTransform" Value="scale(1.01)"/>
+  </Style>
+  <Style Selector="MenuItem.canvas-context-menu-item:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.99)"/>
+  </Style>
+  <Style Selector="Separator.canvas-context-menu-sep">
+    <Setter Property="Background" Value="{StaticResource BorderSubtleBrush}"/>
+    <Setter Property="Margin" Value="6,4"/>
+  </Style>
+
+  <!-- ── TextBox ─────────────────────────────────────────────────────────── -->
+  <Style Selector="TextBox">
+    <Setter Property="Background"   Value="{StaticResource Bg3Brush}"/>
+    <Setter Property="BorderBrush"  Value="{StaticResource BorderBrush}"/>
+    <Setter Property="Foreground"   Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="CaretBrush"   Value="{StaticResource AccentPrimaryHoverBrush}"/>
+    <Setter Property="SelectionBrush" Value="{StaticResource InputSelectionBrush}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+  </Style>
+  <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryHoverBrush}"/>
+  </Style>
+  <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+  </Style>
+
+  <Style Selector="TextBox.sidebar-input">
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="Padding" Value="6,0,0,0"/>
+    <Setter Property="MinHeight" Value="24"/>
+  </Style>
+  <Style Selector="TextBox.sidebar-input /template/ TextBlock#PART_Watermark">
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="TextBox.sidebar-input:focus-visible /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{StaticResource BorderFocusBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Background" Value="{StaticResource Bg3Brush}"/>
+  </Style>
+
+  <!-- ── Button ─────────────────────────────────────────────────────────── -->
+  <Style Selector="Button">
+    <Setter Property="CornerRadius"  Value="{StaticResource RadiusSM}"/>
+    <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.10"/>
+        <BrushTransition Property="Foreground" Duration="0:0:0.10"/>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.10"/>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.10"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.985)"/>
+  </Style>
+
+  <!-- Semantic button variants -->
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{StaticResource BtnPrimaryBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource BtnPrimaryFgBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryPressedBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="FontWeight" Value="{StaticResource FontWeightAction}"/>
+  </Style>
+  <Style Selector="Button.secondary">
+    <Setter Property="Background" Value="{StaticResource BtnSecondaryBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource BtnSecondaryFgBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button.info">
+    <Setter Property="Background" Value="{StaticResource BtnInfoBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource BtnInfoFgBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryHoverBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button.success">
+    <Setter Property="Background" Value="{StaticResource BtnSuccessBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource BtnSuccessFgBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource StatusOkBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button.warning">
+    <Setter Property="Background" Value="{StaticResource BtnWarningBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource BtnWarningFgBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource StatusWarningBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button.danger">
+    <Setter Property="Background" Value="{StaticResource BtnDangerBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource BtnDangerFgBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource StatusErrorBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button.ghost">
+    <Setter Property="Background" Value="{StaticResource BtnGhostBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource BtnGhostFgBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+
+  <!-- Disabled state baseline for contrast/readability in dark shell -->
+  <Style Selector="Button:disabled">
+    <Setter Property="Opacity" Value="0.62"/>
+    <Setter Property="Background" Value="{StaticResource ButtonDisabledBgBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource ButtonDisabledFgBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderDisabledBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+
+  <Style Selector="ToggleButton:disabled">
+    <Setter Property="Opacity" Value="0.62"/>
+    <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderDisabledBrush}"/>
+  </Style>
+
+  <!-- ── Keyboard focus ring ─────────────────────────────────────────────── -->
+  <!-- Shown only when focused via keyboard (:focus-visible), not mouse click  -->
+  <Style Selector="Button:focus-visible">
+    <Setter Property="BorderThickness" Value="2"/>
+    <Setter Property="BorderBrush"     Value="{StaticResource AccentPrimaryHoverBrush}"/>
+  </Style>
+
+  <!-- TreeView keyboard focus -->
+  <Style Selector="TreeViewItem:focus-visible /template/ Border#headerBorder">
+    <Setter Property="BorderBrush"     Value="{StaticResource AccentPrimaryHoverBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius"    Value="4"/>
+  </Style>
+
+  <!-- ComboBox / ListBoxItem keyboard focus -->
+  <Style Selector="ListBoxItem:focus-visible">
+    <Setter Property="BorderBrush"     Value="{StaticResource BorderFocusBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+
+  <Style Selector="ToggleButton:focus-visible">
+    <Setter Property="BorderBrush" Value="{StaticResource BorderFocusBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+
+  <!-- ── ScrollBar (minimal) ─────────────────────────────────────────────── -->
+  <Style Selector="ScrollBar">
+    <Setter Property="Background"  Value="Transparent"/>
+    <Setter Property="Foreground"  Value="{StaticResource BorderBrush}"/>
+  </Style>
+  <Style Selector="ScrollBar /template/ Thumb">
+    <Setter Property="Background"  Value="{StaticResource BorderBrush}"/>
+    <Setter Property="CornerRadius" Value="4"/>
+  </Style>
+  <Style Selector="ScrollBar /template/ Thumb:pointerover">
+    <Setter Property="Background"  Value="{StaticResource BorderSubtleBrush}"/>
+  </Style>
+
+  <!-- ── TreeView ─────────────────────────────────────────────────────────── -->
+  <Style Selector="TreeView">
+    <Setter Property="Background"  Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="TreeViewItem">
+    <Setter Property="Foreground"  Value="{StaticResource TextSecondaryBrush}"/>
+    <Setter Property="FontSize"    Value="12"/>
+    <Setter Property="Padding"     Value="3,3"/>
+  </Style>
+  <Style Selector="TreeViewItem:pointerover /template/ Border#headerBorder">
+    <Setter Property="Background"  Value="{StaticResource Bg3Brush}"/>
+  </Style>
+
+  <!-- ── ToolTip ─────────────────────────────────────────────────────────── -->
+  <Style Selector="ToolTip">
+    <Setter Property="Background"   Value="{StaticResource Bg2Brush}"/>
+    <Setter Property="BorderBrush"  Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Foreground"   Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
+    <Setter Property="Padding"      Value="10,6"/>
+    <Setter Property="FontSize"     Value="11"/>
+  </Style>
+
+  <!-- ── ProgressBar ─────────────────────────────────────────────────────── -->
+  <Style Selector="ProgressBar">
+    <Setter Property="Background"   Value="{StaticResource BorderSoftBrush}"/>
+    <Setter Property="Foreground"   Value="{StaticResource BorderFocusBrush}"/>
+  </Style>
+  <Style Selector="ProgressBar /template/ Border">
+    <Setter Property="CornerRadius" Value="2"/>
+  </Style>
+
+  <!-- ── DataGrid ─────────────────────────────────────────────────────────── -->
+  <Style Selector="DataGrid">
+    <Setter Property="Background"   Value="{StaticResource Bg0Brush}"/>
+    <Setter Property="Foreground"   Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="GridLinesVisibility" Value="All"/>
+    <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource BorderSoftBrush}"/>
+    <Setter Property="VerticalGridLinesBrush"   Value="{StaticResource BorderSoftBrush}"/>
+    <Setter Property="RowBackground"            Value="Transparent"/>
+    <!-- <Setter Property="AlternatingRowBackground" Value="{StaticResource PanelHoverBrush}"/> -->
+    <Setter Property="FontSize"     Value="12"/>
+  </Style>
+
+  <Style Selector="DataGridColumnHeader">
+    <Setter Property="Background"   Value="{StaticResource Bg0Brush}"/>
+    <Setter Property="Foreground"   Value="{StaticResource StatusInfoBrush}"/>
+    <Setter Property="FontSize"     Value="11"/>
+    <Setter Property="FontWeight"   Value="SemiBold"/>
+    <Setter Property="Padding"      Value="12,8"/>
+    <Setter Property="BorderBrush"  Value="{StaticResource BorderSoftBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+  </Style>
+
+  <Style Selector="DataGridCell">
+    <Setter Property="Padding"      Value="12,6"/>
+    <Setter Property="BorderBrush"  Value="{StaticResource BorderSoftBrush}"/>
+  </Style>
+
+  <Style Selector="DataGridRow:pointerover">
+    <Setter Property="Background"   Value="{StaticResource Bg2Brush}"/>
+  </Style>
+
+  <Style Selector="DataGridRow:selected">
+    <Setter Property="Background"   Value="{StaticResource Bg3Brush}"/>
+  </Style>
+
+  <!-- ── Separator ─────────────────────────────────────────────────────────── -->
+  <Style Selector="Separator">
+    <Setter Property="Background" Value="{StaticResource BorderBrush}"/>
+  </Style>
+
+  <!-- ── Start Menu typography consistency ─────────────────────────────── -->
+  <Style Selector="start|StartMenuControl TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+  </Style>
+
+  <Style Selector="start|RecentProjectCard TextBlock, start|TemplateCard TextBlock, start|ConnectionStatusCard TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+  </Style>
+
+</Styles>

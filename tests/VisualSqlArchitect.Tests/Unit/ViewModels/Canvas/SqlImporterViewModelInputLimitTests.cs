@@ -1,9 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using Avalonia;
+using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class SqlImporterViewModelInputLimitTests
 {
@@ -91,6 +92,63 @@ public class SqlImporterViewModelInputLimitTests
 
         Assert.False(canvas.SqlImporter.IsImporting);
         Assert.True(canvas.SqlImporter.HasReport);
+    }
+
+    [Fact]
+    public async Task ImportAsync_WhenCanvasNotEmpty_RequestsConfirmationAndDoesNotMutateUntilConfirmed()
+    {
+        var canvas = new CanvasViewModel();
+        var existingNode = new NodeViewModel("manual.node", [], new Point(0, 0));
+        canvas.Nodes.Add(existingNode);
+
+        canvas.SqlImporter.ImportStartDelayMs = 0;
+        canvas.SqlImporter.ImportTimeout = TimeSpan.FromSeconds(5);
+        canvas.SqlImporter.SqlInput = "SELECT id FROM public.orders";
+
+        await canvas.SqlImporter.ImportAsync();
+
+        Assert.True(canvas.SqlImporter.IsClearCanvasConfirmationVisible);
+        Assert.False(canvas.SqlImporter.HasReport);
+        Assert.Contains(canvas.Nodes, n => n.Id == existingNode.Id);
+    }
+
+    [Fact]
+    public async Task CancelClearCanvasConfirmation_KeepsCanvasUnchanged()
+    {
+        var canvas = new CanvasViewModel();
+        var existingNode = new NodeViewModel("manual.node", [], new Point(0, 0));
+        canvas.Nodes.Add(existingNode);
+
+        canvas.SqlImporter.ImportStartDelayMs = 0;
+        canvas.SqlImporter.ImportTimeout = TimeSpan.FromSeconds(5);
+        canvas.SqlImporter.SqlInput = "SELECT id FROM public.orders";
+
+        await canvas.SqlImporter.ImportAsync();
+        canvas.SqlImporter.CancelClearCanvasConfirmation();
+
+        Assert.False(canvas.SqlImporter.IsClearCanvasConfirmationVisible);
+        Assert.Contains(canvas.Nodes, n => n.Id == existingNode.Id);
+        Assert.False(canvas.SqlImporter.HasReport);
+    }
+
+    [Fact]
+    public async Task ConfirmClearCanvasAndImportAsync_WhenRequested_ReplacesCanvasAndImports()
+    {
+        var canvas = new CanvasViewModel();
+        var existingNode = new NodeViewModel("manual.node", [], new Point(0, 0));
+        canvas.Nodes.Add(existingNode);
+
+        canvas.SqlImporter.ImportStartDelayMs = 0;
+        canvas.SqlImporter.ImportTimeout = TimeSpan.FromSeconds(5);
+        canvas.SqlImporter.SqlInput = "SELECT id FROM public.orders";
+
+        await canvas.SqlImporter.ImportAsync();
+        await canvas.SqlImporter.ConfirmClearCanvasAndImportAsync();
+
+        Assert.False(canvas.SqlImporter.IsClearCanvasConfirmationVisible);
+        Assert.True(canvas.SqlImporter.HasReport);
+        Assert.DoesNotContain(canvas.Nodes, n => n.Id == existingNode.Id);
+        Assert.True(canvas.Nodes.Count > 0);
     }
 }
 

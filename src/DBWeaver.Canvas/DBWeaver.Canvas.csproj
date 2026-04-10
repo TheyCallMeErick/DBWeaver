@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>DBWeaver.CanvasKit</RootNamespace>
+    <AssemblyName>DBWeaver.Canvas</AssemblyName>
+  </PropertyGroup>
+</Project>

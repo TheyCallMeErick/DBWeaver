@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Explain;
+using DBWeaver.UI.Services.Explain;
 using MySqlConnector;
 using Testcontainers.MySql;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+using DBWeaver.Core;
+using DBWeaver.UI.ViewModels.Canvas;
 
-namespace VisualSqlArchitect.Tests.Integration.Explain;
+namespace DBWeaver.Tests.Integration.Explain;
 
 public class MySqlExplainExecutorContainerIntegrationTests
 {

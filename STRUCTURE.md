@@ -1,4 +1,4 @@
-# Estrutura do Projeto Visual SQL Architect
+# Estrutura do Projeto DBWeaver
 
 ## Organização da Solução
 
@@ -9,8 +9,7 @@
 ├── STRUCTURE.md                   # Este arquivo
 │
 ├── src/                           # Código-fonte principal
-│   ├── VisualSqlArchitect/        # Projeto Core (VisualSqlArchitect.csproj)
-│   │   ├── Core/                  # Orquestradores principais
+│   ├──  Projeto Core (DBWeaver.c─ Core/                  # Orquestradores principais
 │   │   │   ├── BaseDbOrchestrator.cs
 │   │   │   └── IDbOrchestrator.cs
 │   │   │
@@ -43,10 +42,8 @@
 │   │   │   └── SqlFunctionRegistry.cs
 │   │   │
 │   │   ├── ServiceRegistration.cs # Configuração de injeção dependência
-│   │   └── VisualSqlArchitect.csproj
-│   │
-│   └── VisualSqlArchitect.UI/     # Projeto UI (VisualSqlArchitect.UI.csproj)
-│       ├── App.axaml              # Arquivo XAML principal
+│   │   └──    │
+│   └──  Projeto UI (DBWeaver.U ├── App.axaml              # Arquivo XAML principal
 │       ├── App.axaml.cs           # Code-behind da aplicação
 │       ├── MainWindow.axaml       # Janela principal
 │       ├── MainWindow.axaml.cs
@@ -82,46 +79,44 @@
 │       │   └── CanvasSerializer.cs
 │       │
 │       ├── DataPreviewPanel.axaml
-│       └── VisualSqlArchitect.UI.csproj
+│       └──
 │
 └── tests/                         # Projetos de testes
-    └── VisualSqlArchitect.Tests/  # Projeto de Testes (VisualSqlArchitect.Tests.csproj)
-        ├── ArchitectureTests.cs
+    └──  Projeto de Testes (DBWeaver.T    ├── ArchitectureTests.cs
         ├── AtomicNodeTests.cs
         ├── MetadataTests.cs
-        └── VisualSqlArchitect.Tests.csproj
+        └── roj
 ```
 
 ## Namespaces
 
-### Core (VisualSqlArchitect.csproj)
-- `VisualSqlArchitect.Core` - Interfaces e classes base
-- `VisualSqlArchitect.Metadata` - Serviços de metadados
-- `VisualSqlArchitect.Metadata.Inspectors` - Inspetores específicos por BD
-- `VisualSqlArchitect.Nodes` - Modelo de nós
-- `VisualSqlArchitect.Providers` - Implementações de orquestradores
-- `VisualSqlArchitect.QueryEngine` - Serviços de queries
-- `VisualSqlArchitect.Registry` - Registro de funções
+### Core (- `nterfaces e classes base
+- ` - Serviços de metadados
+- `Inspectors` - Inspetores específicos por BD
+- `Modelo de nós
+- `` - Implementações de orquestradores
+- `ne` - Serviços de queries
+- ` - Registro de funções
 
-### UI (VisualSqlArchitect.UI.csproj)
-- `VisualSqlArchitect.UI` - Código principal da aplicação
-- `VisualSqlArchitect.UI.Controls` - Controles customizados
-- `VisualSqlArchitect.UI.ViewModels` - ViewModels
-- `VisualSqlArchitect.UI.Serialization` - Serviços de serialização
+### UI ()
+- `igo principal da aplicação
+- `ls` - Controles customizados
+- `dels` - ViewModels
+- `ization` - Serviços de serialização
 
-### Testes (VisualSqlArchitect.Tests.csproj)
-- `VisualSqlArchitect.Tests` - Testes unitários
+### Testes (roj)
+- `Testes unitários
 
 ## Dependências do Projeto
 
-### Visual SQL Architect (Core)
+### DBWeaver (Core)
 - ✅ Independente de UI
 - Depende de: SqlKata, database drivers
 
-### Visual SQL Architect.UI
+### DBWeaver.UI
 - Depende de: Core + Avalonia
 
-### Visual SQL Architect.Tests
+### DBWeaver.Tests
 - Depende de: Core + xUnit
 
 ## Compilação
@@ -131,11 +126,7 @@
 dotnet build
 
 # Build apenas do Core
-dotnet build src/VisualSqlArchitect/VisualSqlArchitect.csproj
-
-# Build apenas da UI
-dotnet build src/VisualSqlArchitect.UI/VisualSqlArchitect.UI.csproj
-
-# Build e executa testes
+dotnet build src/cpenas da UI
+dotnet build src/er.Ud e executa testes
 dotnet test
 ```

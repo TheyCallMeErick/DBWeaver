@@ -1,12 +1,12 @@
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.Benchmark;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.Services.Benchmark;
 using Xunit;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 /// <summary>
 /// Tests for BenchmarkViewModel thread safety using Random.Shared.

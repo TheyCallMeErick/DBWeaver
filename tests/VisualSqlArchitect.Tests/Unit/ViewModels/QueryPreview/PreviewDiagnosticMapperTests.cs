@@ -1,7 +1,7 @@
-﻿using VisualSqlArchitect.UI.Services.QueryPreview.Models;
-using VisualSqlArchitect.UI.Services.QueryPreview;
+﻿using DBWeaver.UI.Services.QueryPreview.Models;
+using DBWeaver.UI.Services.QueryPreview;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.QueryPreview;
+namespace DBWeaver.Tests.Unit.ViewModels.QueryPreview;
 
 public class PreviewDiagnosticMapperTests
 {
@@ -9,15 +9,15 @@ public class PreviewDiagnosticMapperTests
     public void PreviewDiagnostic_StoresAllProperties()
     {
         var diagnostic = new PreviewDiagnostic(
-            EPreviewDiagnosticSeverity.Warning,
-            EPreviewDiagnosticCategory.Predicate,
+            PreviewDiagnosticSeverity.Warning,
+            PreviewDiagnosticCategory.Predicate,
             "W-PRD-001",
             "Predicate missing input",
             nodeId: "node-1",
             pinName: "left");
 
-        Assert.Equal(EPreviewDiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Equal(EPreviewDiagnosticCategory.Predicate, diagnostic.Category);
+        Assert.Equal(PreviewDiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Equal(PreviewDiagnosticCategory.Predicate, diagnostic.Category);
         Assert.Equal("W-PRD-001", diagnostic.Code);
         Assert.Equal("Predicate missing input", diagnostic.Message);
         Assert.Equal("node-1", diagnostic.NodeId);
@@ -31,8 +31,8 @@ public class PreviewDiagnosticMapperTests
 
         PreviewDiagnostic diagnostic = PreviewDiagnosticMapper.FromLegacyMessage(message);
 
-        Assert.Equal(EPreviewDiagnosticCategory.Cte, diagnostic.Category);
-        Assert.Equal(EPreviewDiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal(PreviewDiagnosticCategory.Cte, diagnostic.Category);
+        Assert.Equal(PreviewDiagnosticSeverity.Error, diagnostic.Severity);
         Assert.Equal("E-CTE-001", diagnostic.Code);
         Assert.Equal(message, diagnostic.Message);
     }
@@ -44,8 +44,8 @@ public class PreviewDiagnosticMapperTests
 
         PreviewDiagnostic diagnostic = PreviewDiagnosticMapper.FromLegacyMessage(message);
 
-        Assert.Equal(EPreviewDiagnosticCategory.TypeCompatibility, diagnostic.Category);
-        Assert.Equal(EPreviewDiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Equal(PreviewDiagnosticCategory.TypeCompatibility, diagnostic.Category);
+        Assert.Equal(PreviewDiagnosticSeverity.Warning, diagnostic.Severity);
         Assert.Equal("W-TYP-001", diagnostic.Code);
     }
 
@@ -56,8 +56,8 @@ public class PreviewDiagnosticMapperTests
 
         PreviewDiagnostic diagnostic = PreviewDiagnosticMapper.FromLegacyMessage(message);
 
-        Assert.Equal(EPreviewDiagnosticCategory.Window, diagnostic.Category);
-        Assert.Equal(EPreviewDiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Equal(PreviewDiagnosticCategory.Window, diagnostic.Category);
+        Assert.Equal(PreviewDiagnosticSeverity.Error, diagnostic.Severity);
         Assert.Equal("E-WIN-001", diagnostic.Code);
     }
 
@@ -68,8 +68,8 @@ public class PreviewDiagnosticMapperTests
 
         PreviewDiagnostic diagnostic = PreviewDiagnosticMapper.FromLegacyMessage(message);
 
-        Assert.Equal(EPreviewDiagnosticCategory.General, diagnostic.Category);
-        Assert.Equal(EPreviewDiagnosticSeverity.Info, diagnostic.Severity);
+        Assert.Equal(PreviewDiagnosticCategory.General, diagnostic.Category);
+        Assert.Equal(PreviewDiagnosticSeverity.Info, diagnostic.Severity);
         Assert.Equal("W-GEN-001", diagnostic.Code);
     }
 

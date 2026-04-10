@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class NodeControlPinHoverTemplateRegressionTests
 {
@@ -30,7 +30,7 @@ public class NodeControlPinHoverTemplateRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "Node",
                 "NodeControl.axaml"

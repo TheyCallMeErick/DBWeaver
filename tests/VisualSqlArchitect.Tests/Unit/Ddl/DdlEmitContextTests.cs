@@ -1,8 +1,8 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Ddl;
-using VisualSqlArchitect.Registry;
+using DBWeaver.Core;
+using DBWeaver.Ddl;
+using DBWeaver.Registry;
 
-namespace VisualSqlArchitect.Tests.Unit.Ddl;
+namespace DBWeaver.Tests.Unit.Ddl;
 
 public sealed class DdlEmitContextTests
 {

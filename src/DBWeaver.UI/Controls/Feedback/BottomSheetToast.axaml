@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
+             x:Class="DBWeaver.UI.Controls.BottomSheetToast"
+             x:DataType="vm:ToastCenterViewModel">
+  <Border IsVisible="{Binding IsVisible, FallbackValue=False}"
+      HorizontalAlignment="Right"
+          VerticalAlignment="Bottom"
+      Margin="0,0,16,14"
+          Padding="12,10"
+      MinWidth="300"
+      MaxWidth="520"
+          Background="{StaticResource Bg1Brush}"
+          BorderBrush="{Binding AccentBrush}"
+          BorderThickness="1"
+          CornerRadius="{StaticResource RadiusMD}">
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+      <TextBlock Grid.Row="0" Grid.Column="0"
+                 Text="{Binding SeverityIcon}"
+                 Foreground="{Binding AccentBrush}"
+                 FontWeight="{StaticResource FontWeightHeading}"
+                 Margin="0,0,8,0"
+                 VerticalAlignment="Top"/>
+
+      <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4">
+        <TextBlock Text="{Binding SeverityLabel}"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   FontWeight="{StaticResource FontWeightTitle}"
+                   Foreground="{Binding AccentBrush}"/>
+        <TextBlock Text="{Binding Message}"
+                   TextWrapping="Wrap"
+                   FontSize="{StaticResource FontSizeBody}"
+                   Foreground="{StaticResource TextPrimaryBrush}"/>
+      </StackPanel>
+
+      <Button Grid.Row="0" Grid.Column="2"
+              Command="{Binding DismissCommand}"
+              Background="Transparent"
+              BorderThickness="0"
+              Foreground="{StaticResource TextSecondaryBrush}"
+              Padding="2"
+              VerticalAlignment="Top"
+              Cursor="Hand">
+        <mi:MaterialIcon Kind="Close" Width="13" Height="13"/>
+      </Button>
+
+      <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+        <Button Command="{Binding ShowDetailsCommand}"
+          IsVisible="{Binding HasDetails, FallbackValue=False}"
+                Classes="secondary"
+                CornerRadius="{StaticResource RadiusSM}"
+                Padding="8,4"
+                FontSize="{StaticResource FontSizeCaption}"
+                Cursor="Hand"
+                Content="{Binding [common.details], Source={x:Static loc:LocalizationService.Instance}}"/>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

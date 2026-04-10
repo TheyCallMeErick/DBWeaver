@@ -1,9 +1,9 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.QueryEngine;
-using VisualSqlArchitect.Registry;
+using DBWeaver.Core;
+using DBWeaver.QueryEngine;
+using DBWeaver.Registry;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Queries;
+namespace DBWeaver.Tests.Unit.Queries;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SqlFunctionRegistry Tests

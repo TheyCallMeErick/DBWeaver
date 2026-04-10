@@ -1,8 +1,8 @@
-using VisualSqlArchitect.UI.Services;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Services;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 /// <summary>
 /// Contract-level tests for PreviewService disposal and safety checks.

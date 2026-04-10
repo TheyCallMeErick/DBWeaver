@@ -1,6 +1,6 @@
-using VisualSqlArchitect.UI.Services;
+using DBWeaver.UI.Services;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class SqlDisplayFormatterTests
 {

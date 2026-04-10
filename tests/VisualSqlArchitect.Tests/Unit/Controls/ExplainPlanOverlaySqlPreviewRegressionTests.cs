@@ -1,7 +1,7 @@
-﻿using VisualSqlArchitect.UI.Services.Explain;
+using DBWeaver.UI.Services.Explain;
 using System.IO;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class ExplainPlanOverlaySqlPreviewRegressionTests
 {
@@ -145,7 +145,7 @@ public class ExplainPlanOverlaySqlPreviewRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "ExplainPlan",
                 "ExplainPlanOverlay.axaml"

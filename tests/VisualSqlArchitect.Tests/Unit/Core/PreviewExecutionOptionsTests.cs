@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Options;
-using VisualSqlArchitect.Core;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Core;
+namespace DBWeaver.Tests.Unit.Core;
 
 public sealed class PreviewExecutionOptionsTests
 {

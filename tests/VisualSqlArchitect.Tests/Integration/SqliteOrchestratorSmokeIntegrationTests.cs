@@ -1,9 +1,9 @@
 using Microsoft.Data.Sqlite;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.UI.Services;
+using DBWeaver.Core;
+using DBWeaver.UI.Services;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Integration;
+namespace DBWeaver.Tests.Integration;
 
 public class SqliteOrchestratorSmokeIntegrationTests
 {

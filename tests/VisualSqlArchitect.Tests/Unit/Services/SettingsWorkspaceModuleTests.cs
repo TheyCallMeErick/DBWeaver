@@ -1,15 +1,15 @@
-using VisualSqlArchitect.UI.Services.Settings;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Services.Settings;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class SettingsWorkspaceModuleTests
 {
     [Fact]
     public void OpenSettings_FromStart_KeepsStartVisible()
     {
-        var shell = new ShellViewModel();
+        var shell = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
         var enteredCanvas = false;
 
         var module = new SettingsWorkspaceModule(
@@ -26,7 +26,7 @@ public class SettingsWorkspaceModuleTests
     [Fact]
     public void OpenSettings_FromEditor_EntersCanvas()
     {
-        var shell = new ShellViewModel();
+        var shell = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
         var enteredCanvas = false;
 
         var module = new SettingsWorkspaceModule(
@@ -43,7 +43,7 @@ public class SettingsWorkspaceModuleTests
     [Fact]
     public void CloseSettings_HidesModal()
     {
-        var shell = new ShellViewModel();
+        var shell = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
         shell.OpenSettings();
 
         var module = new SettingsWorkspaceModule(

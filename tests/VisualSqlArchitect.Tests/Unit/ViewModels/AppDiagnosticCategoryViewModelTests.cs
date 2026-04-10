@@ -1,8 +1,8 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
+﻿using DBWeaver.UI.Services.Benchmark;
 using Material.Icons;
-using VisualSqlArchitect.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class AppDiagnosticCategoryViewModelTests
 {
@@ -18,9 +18,9 @@ public class AppDiagnosticCategoryViewModelTests
 
         vm.ReplaceItems(
         [
-            new AppDiagnosticEntry { Name = "ok", Status = EDiagnosticStatus.Ok },
-            new AppDiagnosticEntry { Name = "warn", Status = EDiagnosticStatus.Warning },
-            new AppDiagnosticEntry { Name = "err", Status = EDiagnosticStatus.Error },
+            new AppDiagnosticEntry { Name = "ok", Status = DiagnosticStatus.Ok },
+            new AppDiagnosticEntry { Name = "warn", Status = DiagnosticStatus.Warning },
+            new AppDiagnosticEntry { Name = "err", Status = DiagnosticStatus.Error },
         ]);
 
         Assert.Equal(3, vm.TotalCount);
@@ -35,7 +35,7 @@ public class AppDiagnosticCategoryViewModelTests
     public void ReplaceItems_WithOnlyOkEntries_ClearsIssueFlags()
     {
         var vm = new AppDiagnosticCategoryViewModel();
-        vm.ReplaceItems([new AppDiagnosticEntry { Name = "ok", Status = EDiagnosticStatus.Ok }]);
+        vm.ReplaceItems([new AppDiagnosticEntry { Name = "ok", Status = DiagnosticStatus.Ok }]);
 
         Assert.Equal(1, vm.TotalCount);
         Assert.Equal(0, vm.WarningCount);

@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.Services.Theming;
+using DBWeaver.UI.Services.Theming;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class ThemeLoaderAndRuntimeApplierTests
 {
@@ -19,13 +19,13 @@ public class ThemeLoaderAndRuntimeApplierTests
         string file = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(file, "{\"colors\":{\"macroBg0\":\"#0B0E14\"}}");
+            File.WriteAllText(file, "{\"colors\":{\"bg0\":\"#0B0E14\"}}");
 
             ThemeLoadResult result = ThemeLoader.LoadFromPath(file);
 
             Assert.Equal(ThemeLoadStatus.Loaded, result.Status);
             Assert.NotNull(result.Config);
-            Assert.Equal("#0B0E14", result.Config!.Colors!.MacroBg0);
+            Assert.Equal("#0B0E14", result.Config!.Colors!.Bg0);
         }
         finally
         {

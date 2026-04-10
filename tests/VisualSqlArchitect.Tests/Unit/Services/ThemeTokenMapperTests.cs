@@ -1,37 +1,105 @@
 using Avalonia.Media;
-using VisualSqlArchitect.UI.Services.Theming;
+using DBWeaver.UI.Services.Theming;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class ThemeTokenMapperTests
 {
     [Fact]
-    public void Map_ValidConfig_ProducesColorBrushAndTypographyOverrides()
+    public void Map_BgFields_MapsToUnifiedBgTokens()
+    {
+        var cfg = new ThemeConfig
+        {
+            Colors = new ThemeColorsConfig { Bg0 = "#010203", Bg1 = "#040506" }
+        };
+
+        ThemeTokenMapResult result = ThemeTokenMapper.Map(cfg);
+
+        Assert.True(result.TokenOverrides.ContainsKey("Bg0"));
+        Assert.True(result.TokenOverrides.ContainsKey("Bg0Brush"));
+        Assert.True(result.TokenOverrides.ContainsKey("Bg1"));
+        Assert.True(result.TokenOverrides.ContainsKey("Bg1Brush"));
+        Assert.IsType<SolidColorBrush>(result.TokenOverrides["Bg0Brush"]);
+    }
+
+    [Fact]
+    public void Map_AccentTealField_MapsToAccentTealTokens()
+    {
+        var cfg = new ThemeConfig
+        {
+            Colors = new ThemeColorsConfig { AccentTeal = "#0D9488" }
+        };
+
+        ThemeTokenMapResult result = ThemeTokenMapper.Map(cfg);
+
+        Assert.True(result.TokenOverrides.ContainsKey("AccentTeal"));
+        Assert.True(result.TokenOverrides.ContainsKey("AccentTealBrush"));
+        Assert.IsType<SolidColorBrush>(result.TokenOverrides["AccentTealBrush"]);
+    }
+
+    [Fact]
+    public void Map_TypographyRoles_MapToCorrectTokenKeys()
+    {
+        var cfg = new ThemeConfig
+        {
+            Typography = new ThemeTypographyConfig
+            {
+                UiFont = "Segoe UI",
+                NodeFont = "Space Grotesk",
+                MonoFont = "JetBrainsMono Nerd Font",
+                DisplaySize = 22,
+                HeadingSize = 16,
+                TitleSize = 15,
+                NodeTitleSize = 14,
+                LabelSize = 14,
+                BodySize = 12,
+                CaptionSize = 11,
+                MonoBodySize = 12,
+                MonoSmallSize = 11
+            }
+        };
+
+        ThemeTokenMapResult result = ThemeTokenMapper.Map(cfg);
+
+        Assert.True(result.TokenOverrides.ContainsKey("UIFont"));
+        Assert.True(result.TokenOverrides.ContainsKey("NodeFont"));
+        Assert.True(result.TokenOverrides.ContainsKey("MonoFont"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeDisplay"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeHeading"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeTitle"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeNodeTitle"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeLabel"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeBody"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeCaption"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeMonoBody"));
+        Assert.True(result.TokenOverrides.ContainsKey("FontSizeMonoSmall"));
+    }
+
+    [Fact]
+    public void Map_TextHierarchy_MapsToAllTextColorTokens()
     {
         var cfg = new ThemeConfig
         {
             Colors = new ThemeColorsConfig
             {
-                MacroBg0 = "#010203",
-                BtnPrimaryBg = "#112233"
-            },
-            Typography = new ThemeTypographyConfig
-            {
-                UiFont = "Segoe UI,Arial",
-                TitleSize = 14
+                TextPrimary = "#E7ECFF",
+                TextSecondary = "#AEB9D9",
+                TextMuted = "#7F8AAE",
+                TextDisabled = "#66708F",
+                TextInverse = "#0B0F1D",
+                TextAccent = "#8FA7FF"
             }
         };
 
-        ThemeTokenMapResult mapped = ThemeTokenMapper.Map(cfg);
+        ThemeTokenMapResult result = ThemeTokenMapper.Map(cfg);
 
-        Assert.True(mapped.TokenOverrides.ContainsKey("MacroBg0"));
-        Assert.True(mapped.TokenOverrides.ContainsKey("MacroBg0Brush"));
-        Assert.IsType<SolidColorBrush>(mapped.TokenOverrides["MacroBg0Brush"]);
-        Assert.True(mapped.TokenOverrides.ContainsKey("BtnPrimaryBg"));
-        Assert.True(mapped.TokenOverrides.ContainsKey("BtnPrimaryBgBrush"));
-        Assert.True(mapped.TokenOverrides.ContainsKey("UIFont"));
-        Assert.True(mapped.TokenOverrides.ContainsKey("FontSizeTitle"));
+        Assert.True(result.TokenOverrides.ContainsKey("TextPrimary"));
+        Assert.True(result.TokenOverrides.ContainsKey("TextSecondary"));
+        Assert.True(result.TokenOverrides.ContainsKey("TextMuted"));
+        Assert.True(result.TokenOverrides.ContainsKey("TextDisabled"));
+        Assert.True(result.TokenOverrides.ContainsKey("TextInverse"));
+        Assert.True(result.TokenOverrides.ContainsKey("TextAccent"));
     }
 
     [Fact]
@@ -39,14 +107,14 @@ public class ThemeTokenMapperTests
     {
         var cfg = new ThemeConfig
         {
-            Colors = new ThemeColorsConfig { MacroBg1 = "invalid" },
-            Typography = new ThemeTypographyConfig { BodySize = 100 }
+            Colors = new ThemeColorsConfig { Bg0 = "not-a-color" },
+            Typography = new ThemeTypographyConfig { BodySize = 999 }
         };
 
-        ThemeTokenMapResult mapped = ThemeTokenMapper.Map(cfg);
+        ThemeTokenMapResult result = ThemeTokenMapper.Map(cfg);
 
-        Assert.False(mapped.TokenOverrides.ContainsKey("MacroBg1"));
-        Assert.False(mapped.TokenOverrides.ContainsKey("FontSizeBody"));
-        Assert.NotEmpty(mapped.Warnings);
+        Assert.False(result.TokenOverrides.ContainsKey("Bg0"));
+        Assert.False(result.TokenOverrides.ContainsKey("FontSizeBody"));
+        Assert.NotEmpty(result.Warnings);
     }
 }

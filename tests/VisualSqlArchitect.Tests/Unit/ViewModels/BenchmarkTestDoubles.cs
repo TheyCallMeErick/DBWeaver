@@ -1,7 +1,7 @@
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.Benchmark;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+using DBWeaver.UI.Services.Benchmark;
+
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 internal static class BenchmarkTestDoubles
 {

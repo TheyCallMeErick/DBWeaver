@@ -1,6 +1,6 @@
-using VisualSqlArchitect.Core;
+using DBWeaver.Core;
 
-namespace VisualSqlArchitect.Tests.Unit.Core;
+namespace DBWeaver.Tests.Unit.Core;
 
 public sealed class SqlStatementSplitterTests
 {

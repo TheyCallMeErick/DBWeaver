@@ -1,8 +1,8 @@
-using VisualSqlArchitect.UI.Services.Connection;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Services.Connection;
+using DBWeaver.UI.ViewModels;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Services;
+namespace DBWeaver.Tests.Unit.Services;
 
 public class ConnectionWorkspaceModuleTests
 {
@@ -55,7 +55,7 @@ public class ConnectionWorkspaceModuleTests
         {
             Id = "profile-1",
             Name = "Local PG",
-            Provider = VisualSqlArchitect.Core.DatabaseProvider.Postgres,
+            Provider = DBWeaver.Core.DatabaseProvider.Postgres,
             Host = "localhost",
             Port = 5432,
             Database = "demo",

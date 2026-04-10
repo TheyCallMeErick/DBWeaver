@@ -18,15 +18,14 @@ jobs:
       matrix:
         include:
           - rid: linux-x64
-            asset_name: VisualSqlArchitect-linux-x64
+            asset_name:
           - rid: linux-arm64
-            asset_name: VisualSqlArchitect-linux-arm64
+            asset_name: 64
           - rid: win-x64
-            asset_name: VisualSqlArchitect-win-x64.exe
+            asset_name: xe
           - rid: osx-x64
-            asset_name: VisualSqlArchitect-osx-x64
-          - rid: osx-arm64
-            asset_name: VisualSqlArchitect-osx-arm64
+            asset_name:           - rid: osx-arm64
+            asset_name:
 
     steps:
       - name: Checkout
@@ -45,8 +44,7 @@ jobs:
           fi
           VERSION="${TAG#v}"
 
-          dotnet publish src/VisualSqlArchitect.UI/VisualSqlArchitect.UI.csproj \
-            --configuration Release \
+          dotnet publish src/er.U      --configuration Release \
             --runtime ${{ matrix.rid }} \
             --output ./dist/${{ matrix.rid }} \
             --self-contained \
@@ -59,7 +57,7 @@ jobs:
 
       - name: Rename binary
         run: |
-          src=$(find ./dist/${{ matrix.rid }} -maxdepth 1 -type f -name 'VisualSqlArchitect.UI*' | head -1)
+          src=$(find ./dist/${{ matrix.rid }} -maxdepth 1 -type f -name 'ad -1)
           mv "$src" ./dist/${{ matrix.rid }}/${{ matrix.asset_name }}
 
       - name: Upload artifact
@@ -94,6 +92,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Visual SQL Architect ${{ steps.version.outputs.tag }}
+          name: DBWeaver ${{ steps.version.outputs.tag }}
           generate_release_notes: true
           files: ./artifacts/**/*

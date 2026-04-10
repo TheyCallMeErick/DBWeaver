@@ -1,15 +1,15 @@
-﻿using VisualSqlArchitect.UI.Services.Benchmark;
-using VisualSqlArchitect.UI.ViewModels;
+﻿using DBWeaver.UI.Services.Benchmark;
+
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels;
+namespace DBWeaver.Tests.Unit.ViewModels;
 
 public class ShellViewModelTests
 {
     [Fact]
     public void InitialState_StartVisible_AndCanvasNotInitialized()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         Assert.True(vm.IsStartVisible);
         Assert.False(vm.IsCanvasVisible);
@@ -20,7 +20,7 @@ public class ShellViewModelTests
     [Fact]
     public void EnterCanvas_InitializesCanvas_AndHidesStart()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         vm.EnterCanvas();
 
@@ -32,7 +32,7 @@ public class ShellViewModelTests
     [Fact]
     public void ReturnToStart_KeepsCanvasInstance()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
         var canvas = vm.EnsureCanvas();
 
         vm.EnterCanvas();
@@ -46,7 +46,7 @@ public class ShellViewModelTests
     [Fact]
     public void StartMenuCommandExecution_DoesNotInstantiateCanvasByItself()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
         var called = false;
 
         vm.StartMenu.CreateNewDiagramRequested += () => called = true;
@@ -60,7 +60,7 @@ public class ShellViewModelTests
     [Fact]
     public void ConnectionManagerVisibility_TracksCanvasConnectionManagerState()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         Assert.False(vm.IsConnectionManagerVisible);
 
@@ -77,7 +77,7 @@ public class ShellViewModelTests
     [Fact]
     public void SettingsVisibility_OpenAndClose_Works()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         Assert.False(vm.IsSettingsVisible);
 
@@ -91,7 +91,7 @@ public class ShellViewModelTests
     [Fact]
     public void SettingsSectionSelection_SwitchesFlags()
     {
-        var vm = new ShellViewModel();
+        var vm = new ShellViewModel(connectionManagerViewModelFactory: global::DBWeaver.UI.Services.ConnectionManager.ConnectionManagerViewModelFactory.CreateDefault());
 
         Assert.True(vm.IsAppearanceSectionSelected);
         Assert.False(string.IsNullOrWhiteSpace(vm.SettingsSectionTitle));

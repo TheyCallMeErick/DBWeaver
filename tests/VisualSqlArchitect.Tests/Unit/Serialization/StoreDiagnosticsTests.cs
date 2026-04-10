@@ -1,9 +1,9 @@
 using System.Reflection;
 using System.Threading;
-using VisualSqlArchitect.UI.Serialization;
+using DBWeaver.UI.Serialization;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Serialization;
+namespace DBWeaver.Tests.Unit.Serialization;
 
 [Collection("StoreSerialization")]
 public class StoreDiagnosticsTests

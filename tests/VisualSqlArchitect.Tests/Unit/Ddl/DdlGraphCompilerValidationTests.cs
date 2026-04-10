@@ -1,8 +1,8 @@
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Ddl;
-using VisualSqlArchitect.Nodes;
+using DBWeaver.Core;
+using DBWeaver.Ddl;
+using DBWeaver.Nodes;
 
-namespace VisualSqlArchitect.Tests.Unit.Ddl;
+namespace DBWeaver.Tests.Unit.Ddl;
 
 public class DdlGraphCompilerValidationTests
 {

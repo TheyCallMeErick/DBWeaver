@@ -1,8 +1,8 @@
 using Avalonia;
-using VisualSqlArchitect.UI.Serialization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Serialization;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.Serialization;
+namespace DBWeaver.Tests.Unit.Serialization;
 
 public class CanvasSerializerLayeringTests
 {

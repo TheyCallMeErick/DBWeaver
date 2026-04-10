@@ -1,5 +1,5 @@
-﻿using VisualSqlArchitect.UI.Services.Explain;
-namespace VisualSqlArchitect.Tests.Integration.Explain;
+using DBWeaver.UI.Services.Explain;
+namespace DBWeaver.Tests.Integration.Explain;
 
 internal static class DockerIntegrationRequirements
 {

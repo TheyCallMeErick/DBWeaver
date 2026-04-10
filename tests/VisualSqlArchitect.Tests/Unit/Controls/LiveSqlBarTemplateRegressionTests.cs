@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class LiveSqlBarTemplateRegressionTests
 {
@@ -36,7 +36,7 @@ public class LiveSqlBarTemplateRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "LiveSqlBar",
                 "LiveSqlBar.axaml"

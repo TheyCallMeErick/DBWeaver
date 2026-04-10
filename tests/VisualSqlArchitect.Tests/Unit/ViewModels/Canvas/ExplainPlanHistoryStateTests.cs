@@ -1,9 +1,9 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class ExplainPlanHistoryStateTests
 {
@@ -29,6 +29,25 @@ public class ExplainPlanHistoryStateTests
         Assert.Equal("Op 12", sut.History[^1].TopOperation);
         Assert.Equal(10, exported.Count);
     }
-}
 
+    [Fact]
+    public void Close_PreservesHistorySnapshotForInspectorContinuity()
+    {
+        var canvas = new CanvasViewModel();
+        var sut = new ExplainPlanViewModel(canvas);
+        sut.ImportHistoryState(
+        [
+            new ExplainHistoryState(
+                TimestampUtc: new DateTimeOffset(2026, 4, 9, 0, 0, 0, TimeSpan.Zero),
+                TopOperation: "Seq Scan",
+                TopCost: 120,
+                AlertCount: 1),
+        ]);
+
+        sut.Close();
+
+        Assert.Single(sut.History);
+        Assert.True(sut.HasHistory);
+    }
+}
 

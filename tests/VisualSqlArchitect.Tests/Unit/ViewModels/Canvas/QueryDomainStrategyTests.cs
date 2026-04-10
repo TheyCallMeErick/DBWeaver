@@ -1,19 +1,22 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
 using Avalonia;
-using VisualSqlArchitect.Metadata;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.UI.Serialization;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.ViewModels.Canvas.Strategies;
+using DBWeaver.Metadata;
+using DBWeaver.Nodes;
+using DBWeaver.UI.Serialization;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.ViewModels.Canvas.Strategies;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class QueryDomainStrategyTests
 {
     [Theory]
     [InlineData(NodeType.CteDefinition, true)]
     [InlineData(NodeType.ViewDefinition, true)]
+    [InlineData(NodeType.Subquery, true)]
+    [InlineData(NodeType.SubqueryReference, true)]
+    [InlineData(NodeType.SubqueryDefinition, true)]
     [InlineData(NodeType.And, false)]
     [InlineData(NodeType.TableDefinition, false)]
     public void CanEnterSubEditor_MatchesExpectedNodeTypes(NodeType type, bool expected)
@@ -273,5 +276,3 @@ public class QueryDomainStrategyTests
         }
     }
 }
-
-

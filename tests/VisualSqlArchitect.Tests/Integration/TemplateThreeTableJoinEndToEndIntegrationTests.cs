@@ -1,13 +1,13 @@
 ﻿using System.Text.Json;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Nodes;
-using VisualSqlArchitect.QueryEngine;
-using VisualSqlArchitect.Registry;
-using VisualSqlArchitect.UI.ViewModels;
-using VisualSqlArchitect.UI.Services.QueryPreview;
+using DBWeaver.Core;
+using DBWeaver.Nodes;
+using DBWeaver.QueryEngine;
+using DBWeaver.Registry;
+using DBWeaver.UI.ViewModels;
+using DBWeaver.UI.Services.QueryPreview;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Integration;
+namespace DBWeaver.Tests.Integration;
 
 public class TemplateThreeTableJoinEndToEndIntegrationTests
 {

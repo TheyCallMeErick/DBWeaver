@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace VisualSqlArchitect.Tests.Unit.Controls;
+namespace DBWeaver.Tests.Unit.Controls;
 
 public class NodeControlPreviewToggleContrastRegressionTests
 {
@@ -11,9 +11,9 @@ public class NodeControlPreviewToggleContrastRegressionTests
         string xaml = ReadNodeControlXaml();
 
         Assert.Contains("<Style Selector=\"Button.preview-toggle\">", xaml);
-        Assert.Contains("<Setter Property=\"Background\"      Value=\"#0B1220\"/>", xaml);
-        Assert.Contains("<Setter Property=\"BorderBrush\"     Value=\"#2B3A55\"/>", xaml);
-        Assert.Contains("<Setter Property=\"Foreground\"      Value=\"#7DD3FC\"/>", xaml);
+        Assert.Contains("<Setter Property=\"Background\"      Value=\"{StaticResource Bg1Brush}\"/>", xaml);
+        Assert.Contains("<Setter Property=\"BorderBrush\"     Value=\"{StaticResource BorderBrush}\"/>", xaml);
+        Assert.Contains("<Setter Property=\"Foreground\"      Value=\"{StaticResource AccentPrimaryHoverBrush}\"/>", xaml);
 
         Assert.Contains("<Style Selector=\"Button.preview-toggle.active\">", xaml);
         Assert.Contains("Classes.active=\"{Binding ShowInlinePreview}\"", xaml);
@@ -28,7 +28,7 @@ public class NodeControlPreviewToggleContrastRegressionTests
             string candidate = Path.Combine(
                 dir.FullName,
                 "src",
-                "VisualSqlArchitect.UI",
+                "DBWeaver.UI",
                 "Controls",
                 "Node",
                 "NodeControl.axaml"

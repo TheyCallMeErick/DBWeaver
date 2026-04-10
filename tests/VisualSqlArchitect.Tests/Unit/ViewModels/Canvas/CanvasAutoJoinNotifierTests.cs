@@ -1,10 +1,10 @@
-﻿using VisualSqlArchitect.UI.Services.Canvas.AutoJoin;
-using VisualSqlArchitect.UI.Services.Explain;
+﻿using DBWeaver.UI.Services.Canvas.AutoJoin;
+using DBWeaver.UI.Services.Explain;
 using System.ComponentModel;
-using VisualSqlArchitect.UI.Services.Localization;
-using VisualSqlArchitect.UI.ViewModels;
+using DBWeaver.UI.Services.Localization;
+using DBWeaver.UI.ViewModels;
 
-namespace VisualSqlArchitect.Tests.Unit.ViewModels.Canvas;
+namespace DBWeaver.Tests.Unit.ViewModels.Canvas;
 
 public class CanvasAutoJoinNotifierTests
 {
@@ -21,7 +21,7 @@ public class CanvasAutoJoinNotifierTests
         notifier.ShowAutoJoinApplied("orders.customer_id = customers.id");
 
         Assert.True(toasts.IsVisible);
-        Assert.Equal(EToastSeverity.Success, toasts.Severity);
+        Assert.Equal(ToastSeverity.Success, toasts.Severity);
         Assert.Equal("Auto-join applied", toasts.Message);
         Assert.Equal("orders.customer_id = customers.id", toasts.Details);
     }
@@ -61,7 +61,7 @@ public class CanvasAutoJoinNotifierTests
         notifier.ShowManualJoinFailed();
 
         Assert.True(toasts.IsVisible);
-        Assert.Equal(EToastSeverity.Warning, toasts.Severity);
+        Assert.Equal(ToastSeverity.Warning, toasts.Severity);
         Assert.Equal("Manual join failed", toasts.Message);
         Assert.Equal("Fix columns", toasts.Details);
     }

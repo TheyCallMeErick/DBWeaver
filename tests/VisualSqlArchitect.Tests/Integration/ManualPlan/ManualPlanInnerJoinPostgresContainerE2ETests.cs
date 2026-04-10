@@ -1,10 +1,10 @@
 using DotNet.Testcontainers.Builders;
 using Npgsql;
-using VisualSqlArchitect.Core;
-using VisualSqlArchitect.Tests.Integration.Explain;
-using VisualSqlArchitect.UI.Services;
+using DBWeaver.Core;
+using DBWeaver.Tests.Integration.Explain;
+using DBWeaver.UI.Services;
 
-namespace VisualSqlArchitect.Tests.Integration.ManualPlan;
+namespace DBWeaver.Tests.Integration.ManualPlan;
 
 public class ManualPlanInnerJoinPostgresContainerE2ETests
 {
