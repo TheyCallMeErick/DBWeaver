@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using DBWeaver.UI.Services.ConnectionManager;
 using DBWeaver.UI.Services.ConnectionManager.Contracts;
+using DBWeaver.UI.Services.Localization;
 using DBWeaver.UI.Services.Modal;
 using DBWeaver.UI.Services.Settings;
 using DBWeaver.UI.Services.Theming;
@@ -39,7 +40,10 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
+        services.AddSingleton<ILoggerFactory>(_ => NullLoggerFactory.Instance);
+        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         services.AddDBWeaver();
+        services.AddSingleton<ILocalizationService>(_ => LocalizationService.Instance);
         services.AddSingleton<IConnectionErrorMessageMapper, ConnectionErrorMessageMapper>();
         services.AddSingleton<IConnectionStatusPresenter, ConnectionStatusPresenter>();
         services.AddSingleton<IConnectionCanvasPromptCoordinator, ConnectionCanvasPromptCoordinator>();
