@@ -70,6 +70,11 @@
             <DataTemplate x:DataType="vm:SqlEditorTabState">
               <Border Classes="sql-tab-chip">
                 <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="●"
+                             IsVisible="{Binding IsDirty}"
+                             FontSize="{StaticResource FontSizeBody}"
+                             Foreground="{StaticResource StatusWarningBrush}"
+                             VerticalAlignment="Center"/>
                   <TextBlock Text="{Binding FallbackTitle}"
                              FontSize="{StaticResource FontSizeBody}"
                              FontWeight="{StaticResource FontWeightTitle}"

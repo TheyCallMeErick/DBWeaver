@@ -22,7 +22,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
     {
         _vm = vm;
 
-        Title = L("sqlEditor.export.dialog.windowTitle", "Export SQL Data");
+        Title = L("sqlEditor.export.dialog.windowTitle", "Exportar Dados SQL");
         Width = 700;
         Height = 650;
         MinWidth = 620;
@@ -32,7 +32,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
 
         _confirmButton = new Button
         {
-            Content = L("sqlEditor.export.dialog.confirm", "Export"),
+            Content = L("sqlEditor.export.dialog.confirm", "Exportar"),
             Padding = new Thickness(14, 8),
             MinWidth = 120,
             IsEnabled = _vm.CanConfirm,
@@ -54,7 +54,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
         _typeBadge = new TextBlock
         {
             FontSize = 10,
-            FontFamily = new FontFamily("JetBrains Mono,IBM Plex Mono,Cascadia Code,Consolas,monospace"),
+            FontFamily = ResolveFontFamily("MonoFont", "JetBrains Mono,IBM Plex Mono,Cascadia Code,Consolas,monospace"),
             Foreground = ResolveBrush("StatusOkBrush", UiColorConstants.C_34D399),
         };
 
@@ -87,7 +87,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
         var fileNameBox = new TextBox
         {
             Text = _vm.FileName,
-            Watermark = L("sqlEditor.export.dialog.fileNameWatermark", "report.html"),
+            Watermark = L("sqlEditor.export.dialog.fileNameWatermark", "relatorio.html"),
         };
         fileNameBox.PropertyChanged += (_, e) =>
         {
@@ -98,7 +98,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
         var titleBox = new TextBox
         {
             Text = _vm.Title,
-            Watermark = L("sqlEditor.export.dialog.titleWatermark", "SQL Report"),
+            Watermark = L("sqlEditor.export.dialog.titleWatermark", "Relatorio SQL"),
         };
         titleBox.PropertyChanged += (_, e) =>
         {
@@ -112,7 +112,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             MinHeight = 84,
-            Watermark = L("sqlEditor.export.dialog.descriptionWatermark", "Additional context for auditors and teammates."),
+            Watermark = L("sqlEditor.export.dialog.descriptionWatermark", "Contexto adicional para auditoria e compartilhamento."),
         };
         descriptionBox.PropertyChanged += (_, e) =>
         {
@@ -122,7 +122,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
 
         var includeSchemaCheck = new CheckBox
         {
-            Content = L("sqlEditor.export.option.includeSchema", "Include output schema"),
+            Content = L("sqlEditor.export.option.includeSchema", "Incluir schema de saida"),
             IsChecked = _vm.IncludeSchema,
             IsVisible = _vm.ShowIncludeSchema,
         };
@@ -130,7 +130,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
 
         var includeNodeDetailsCheck = new CheckBox
         {
-            Content = L("sqlEditor.export.option.includeNodeDetails", "Include node/connection placeholders in JSON"),
+            Content = L("sqlEditor.export.option.includeNodeDetails", "Incluir placeholders de no/conexao no JSON"),
             IsChecked = _vm.IncludeNodeDetails,
             IsVisible = _vm.ShowIncludeNodeDetails,
         };
@@ -138,7 +138,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
 
         var includeMetadataCheck = new CheckBox
         {
-            Content = L("sqlEditor.export.option.includeMetadata", "Include optional metadata"),
+            Content = L("sqlEditor.export.option.includeMetadata", "Incluir metadados opcionais"),
             IsChecked = _vm.IncludeMetadata,
             IsVisible = _vm.ShowIncludeMetadata,
         };
@@ -146,7 +146,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
 
         var useDashForEmptyCheck = new CheckBox
         {
-            Content = L("sqlEditor.export.option.useDashForEmpty", "Use '-' for empty fields"),
+            Content = L("sqlEditor.export.option.useDashForEmpty", "Usar '-' para campos vazios"),
             IsChecked = _vm.UseDashForEmptyFields,
             IsVisible = _vm.ShowUseDashForEmptyFields,
         };
@@ -179,7 +179,7 @@ public sealed class SqlEditorReportExportDialogWindow : Window
 
         Button cancelButton = new()
         {
-            Content = L("common.cancel", "Cancel"),
+            Content = L("common.cancel", "Cancelar"),
             Padding = new Thickness(14, 8),
             MinWidth = 120,
             Background = ResolveBrush("Bg2Brush", UiColorConstants.C_12172A),
@@ -189,6 +189,19 @@ public sealed class SqlEditorReportExportDialogWindow : Window
             CornerRadius = ResolveCornerRadius("RadiusSM", 6),
         };
         cancelButton.Click += (_, _) => Close();
+
+        Button headerCloseButton = new()
+        {
+            Content = "×",
+            Padding = new Thickness(8, 4),
+            MinWidth = 32,
+            Background = ResolveBrush("Bg2Brush", UiColorConstants.C_12172A),
+            BorderBrush = ResolveBrush("BorderBrush", UiColorConstants.C_20314A),
+            Foreground = ResolveBrush("TextSecondaryBrush", UiColorConstants.C_B8C3D9),
+            BorderThickness = new Thickness(1),
+            CornerRadius = ResolveCornerRadius("RadiusSM", 6),
+        };
+        headerCloseButton.Click += (_, _) => Close();
 
         Border section(string title, Control child)
         {
@@ -262,20 +275,21 @@ public sealed class SqlEditorReportExportDialogWindow : Window
                             {
                                 new TextBlock
                                 {
-                                    Text = L("sqlEditor.export.dialog.title", "Export SQL Data"),
+                                    Text = L("sqlEditor.export.dialog.title", "Exportar Dados SQL"),
                                     Foreground = ResolveBrush("TextPrimaryBrush", UiColorConstants.C_E6EDF8),
                                     FontWeight = FontWeight.SemiBold,
                                     FontSize = 14,
                                 },
                                 new TextBlock
                                 {
-                                    Text = L("sqlEditor.export.dialog.subtitle", "Choose the artifact format and metadata before exporting."),
+                                    Text = L("sqlEditor.export.dialog.subtitle", "Escolha o formato e os metadados do artefato antes de exportar."),
                                     Foreground = ResolveBrush("TextMutedBrush", UiColorConstants.C_8B95A8),
                                     FontSize = 11,
                                 },
                             },
                         },
                         1),
+                    PlaceAtCol(headerCloseButton, 2),
                 },
             },
         });
@@ -305,11 +319,11 @@ public sealed class SqlEditorReportExportDialogWindow : Window
             Spacing = 10,
             Children =
             {
-                section(L("sqlEditor.export.dialog.section.reportType", "Report type"), typeInfoPanel),
-                section(L("sqlEditor.export.dialog.section.fileName", "File name"), fileNameBox),
-                section(L("sqlEditor.export.dialog.section.reportTitle", "Title"), titleBox),
-                section(L("sqlEditor.export.dialog.section.description", "Description"), descriptionBox),
-                section(L("sqlEditor.export.dialog.section.options", "Options"), optionsPanel),
+                section(L("sqlEditor.export.dialog.section.reportType", "TIPO DE RELATORIO"), typeInfoPanel),
+                section(L("sqlEditor.export.dialog.section.fileName", "NOME DO ARQUIVO"), fileNameBox),
+                section(L("sqlEditor.export.dialog.section.reportTitle", "TITULO"), titleBox),
+                section(L("sqlEditor.export.dialog.section.description", "DESCRICAO"), descriptionBox),
+                section(L("sqlEditor.export.dialog.section.options", "OPCOES"), optionsPanel),
             },
         };
         var formScroll = new ScrollViewer
@@ -321,16 +335,23 @@ public sealed class SqlEditorReportExportDialogWindow : Window
         Grid.SetRow(formScroll, 1);
         root.Children.Add(formScroll);
 
-        var actions = new StackPanel
+        var footer = new Border
         {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Spacing = 8,
-            Margin = new Thickness(0, 12, 0, 0),
-            Children = { cancelButton, _confirmButton },
+            BorderBrush = ResolveBrush("BorderSubtleBrush", UiColorConstants.C_1E2A3F),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Background = ResolveBrush("Bg1Brush", UiColorConstants.C_0F1220),
+            CornerRadius = ResolveCornerRadius("RadiusSM", 6),
+            Padding = new Thickness(0, 10, 0, 0),
+            Child = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Spacing = 8,
+                Children = { cancelButton, _confirmButton },
+            },
         };
-        Grid.SetRow(actions, 2);
-        root.Children.Add(actions);
+        Grid.SetRow(footer, 2);
+        root.Children.Add(footer);
 
         return root;
     }
@@ -341,11 +362,11 @@ public sealed class SqlEditorReportExportDialogWindow : Window
 
         _typeBadge.Text = _vm.SelectedType?.Type switch
         {
-            SqlEditorReportType.HtmlFullFeature => L("sqlEditor.export.badge.offline", "OFFLINE READY"),
-            SqlEditorReportType.JsonContract => L("sqlEditor.export.badge.structured", "STRUCTURED PAYLOAD"),
-            SqlEditorReportType.CsvData => L("sqlEditor.export.badge.dataOnly", "DATA ONLY"),
-            SqlEditorReportType.ExcelWorkbook => L("sqlEditor.export.badge.dataOnly", "DATA ONLY"),
-            _ => L("sqlEditor.export.badge.offline", "OFFLINE READY"),
+            SqlEditorReportType.HtmlFullFeature => L("sqlEditor.export.badge.offline", "PRONTO PARA OFFLINE"),
+            SqlEditorReportType.JsonContract => L("sqlEditor.export.badge.structured", "PAYLOAD ESTRUTURADO"),
+            SqlEditorReportType.CsvData => L("sqlEditor.export.badge.dataOnly", "SOMENTE DADOS"),
+            SqlEditorReportType.ExcelWorkbook => L("sqlEditor.export.badge.dataOnly", "SOMENTE DADOS"),
+            _ => L("sqlEditor.export.badge.offline", "PRONTO PARA OFFLINE"),
         };
     }
 
@@ -384,5 +405,13 @@ public sealed class SqlEditorReportExportDialogWindow : Window
             return radius;
 
         return new CornerRadius(fallbackValue);
+    }
+
+    private static FontFamily ResolveFontFamily(string key, string fallbackFamily)
+    {
+        if (Application.Current?.Resources.TryGetResource(key, null, out object? resource) == true && resource is FontFamily font)
+            return font;
+
+        return new FontFamily(fallbackFamily);
     }
 }

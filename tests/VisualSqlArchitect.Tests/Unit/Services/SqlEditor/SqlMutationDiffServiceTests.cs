@@ -34,10 +34,18 @@ public sealed class SqlMutationDiffServiceTests
             estimatedAffectedRows: null);
 
         Assert.True(preview.Available);
-        Assert.Contains("ROLLBACK guaranteed", preview.Message);
-        Assert.Contains("before 10", preview.Message);
-        Assert.Contains("affected 4", preview.Message);
-        Assert.Contains("after 6", preview.Message);
+        Assert.True(
+            preview.Message.Contains("ROLLBACK garantido", StringComparison.OrdinalIgnoreCase)
+            || preview.Message.Contains("ROLLBACK guaranteed", StringComparison.OrdinalIgnoreCase));
+        Assert.True(
+            preview.Message.Contains("antes 10", StringComparison.OrdinalIgnoreCase)
+            || preview.Message.Contains("before 10", StringComparison.OrdinalIgnoreCase));
+        Assert.True(
+            preview.Message.Contains("afetadas 4", StringComparison.OrdinalIgnoreCase)
+            || preview.Message.Contains("affected 4", StringComparison.OrdinalIgnoreCase));
+        Assert.True(
+            preview.Message.Contains("depois 6", StringComparison.OrdinalIgnoreCase)
+            || preview.Message.Contains("after 6", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -59,7 +67,9 @@ public sealed class SqlMutationDiffServiceTests
             estimatedAffectedRows: null);
 
         Assert.False(preview.Available);
-        Assert.Contains("No transactional diff preview", preview.Message);
+        Assert.True(
+            preview.Message.Contains("Sem previa de diff transacional", StringComparison.OrdinalIgnoreCase)
+            || preview.Message.Contains("No transactional diff preview", StringComparison.OrdinalIgnoreCase));
     }
 
     private static SqlEditorResultSet CreateScalarResult(long value)

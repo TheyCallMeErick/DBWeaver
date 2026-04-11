@@ -38,8 +38,8 @@ public sealed class SqlEditorResultStateService
 
         List<SqlEditorHistoryEntry> history = tab.ExecutionHistory.ToList();
         history.Insert(0, historyEntry);
-        if (history.Count > 50)
-            history = history.Take(50).ToList();
+        if (history.Count > 500)
+            history = history.Take(500).ToList();
 
         tab.ExecutionHistory = history;
     }

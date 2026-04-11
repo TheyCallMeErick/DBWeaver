@@ -22,7 +22,16 @@ public class SqlImportApplyStepsTests
         SqlImportApplyResult result = step.Apply(context);
 
         Assert.Equal(1, result.Imported);
-        Assert.Contains(setup.Canvas.Nodes, n => n.Type == NodeType.WhereOutput);
+        Assert.Contains(setup.Canvas.Nodes, n =>
+            n.Type is NodeType.Equals
+                or NodeType.NotEquals
+                or NodeType.GreaterThan
+                or NodeType.GreaterOrEqual
+                or NodeType.LessThan
+                or NodeType.LessOrEqual);
+        Assert.Contains(setup.Canvas.Connections, c =>
+            c.ToPin?.Owner == setup.CoreContext.ResultNode
+            && c.ToPin.Name.Equals("where", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

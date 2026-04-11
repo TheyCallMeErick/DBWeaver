@@ -264,6 +264,29 @@ public partial class MainWindow
             return item;
         }
 
+        MenuItem NewGroupHeader(string header)
+        {
+            var item = new MenuItem
+            {
+                Header = new TextBlock
+                {
+                    Text = header,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+                IsEnabled = false,
+            };
+            item.Classes.Add("app-title-menu-group");
+            return item;
+        }
+
+        MenuItem NewDisabledItem(string header, MaterialIconKind icon, string disabledReason)
+        {
+            var item = NewItem(header, icon, () => { });
+            item.IsEnabled = false;
+            ToolTip.SetTip(item, disabledReason);
+            return item;
+        }
+
         Separator NewSeparator()
         {
             var separator = new Separator();
@@ -272,8 +295,10 @@ public partial class MainWindow
         }
 
         bool isDdlModeActive = CurrentShell.IsDdlDocumentPageActive;
+        string ddlModeOnlyReason = L("menu.reason.ddlOnly", "Disponivel apenas no modo DDL.");
         var items = new List<object>
         {
+            NewGroupHeader(L("menu.group.project", "Projeto")),
             NewItem(L("menu.newDiagram", "Novo diagrama"), MaterialIconKind.FileOutline, () =>
             {
                 EnterCanvasMode();
@@ -295,6 +320,7 @@ public partial class MainWindow
                 CurrentVm.FileHistory.Open();
             }),
             NewSeparator(),
+            NewGroupHeader(L("menu.group.currentMode", "Modo Atual")),
             NewItem(L("menu.shortcuts", "Atalhos de teclado"), MaterialIconKind.Keyboard, () => new KeyboardShortcutsWindow().Show(this)),
             NewItem(L("menu.settings", "Configurações"), MaterialIconKind.CogOutline, () =>
             {
@@ -305,6 +331,8 @@ public partial class MainWindow
             {
                 _ = ImportSqlToQuerySafeAsync();
             }),
+            NewSeparator(),
+            NewGroupHeader(L("menu.group.tools", "Ferramentas")),
         };
 
         if (isDdlModeActive)
@@ -321,6 +349,12 @@ public partial class MainWindow
             {
                 _ = ExecuteDdlSafeAsync();
             }));
+        }
+        else
+        {
+            items.Add(NewDisabledItem(L("menu.importDdlSchema", "Importar Schema DDL"), MaterialIconKind.DatabaseImportOutline, ddlModeOnlyReason));
+            items.Add(NewDisabledItem(L("menu.viewDdlSql", "Ver SQL DDL"), MaterialIconKind.CodeBraces, ddlModeOnlyReason));
+            items.Add(NewDisabledItem(L("menu.executeDdl", "Executar DDL"), MaterialIconKind.PlayCircleOutline, ddlModeOnlyReason));
         }
 
         items.Add(NewSeparator());
@@ -558,7 +592,7 @@ public partial class MainWindow
         CanvasViewModel ddlCanvas = PrepareDdlPreviewCanvas();
         LiveDdlBarViewModel liveDdl = ddlCanvas.LiveDdl
             ?? throw new InvalidOperationException(
-                L("error.mainWindow.ddlPreviewUnavailable", "DDL preview is unavailable for the current canvas.")
+                L("error.mainWindow.ddlPreviewUnavailable", "Preview DDL indisponivel para o canvas atual.")
             );
         CurrentShell.OutputPreview.OpenForDdl(ddlCanvas, liveDdl, ddlCanvas.Provider.ToString());
         await Task.CompletedTask;
@@ -571,7 +605,7 @@ public partial class MainWindow
         ddlCanvas.Provider = provider;
         LiveDdlBarViewModel liveDdl = ddlCanvas.LiveDdl
             ?? throw new InvalidOperationException(
-                L("error.mainWindow.ddlPreviewUnavailable", "DDL preview is unavailable for the current canvas.")
+                L("error.mainWindow.ddlPreviewUnavailable", "Preview DDL indisponivel para o canvas atual.")
             );
         liveDdl.Recompile();
         return ddlCanvas;
@@ -592,7 +626,7 @@ public partial class MainWindow
         ddlCanvas.Provider = provider;
         LiveDdlBarViewModel liveDdl = ddlCanvas.LiveDdl
             ?? throw new InvalidOperationException(
-                L("error.mainWindow.ddlPreviewUnavailable", "DDL preview is unavailable for the current canvas.")
+                L("error.mainWindow.ddlPreviewUnavailable", "Preview DDL indisponivel para o canvas atual.")
             );
         liveDdl.Recompile();
 
@@ -702,7 +736,7 @@ public partial class MainWindow
                 CanvasViewModel ddlCanvas = PrepareDdlPreviewCanvas();
                 LiveDdlBarViewModel liveDdl = ddlCanvas.LiveDdl
                     ?? throw new InvalidOperationException(
-                        L("error.mainWindow.ddlPreviewUnavailable", "DDL preview is unavailable for the current canvas.")
+                        L("error.mainWindow.ddlPreviewUnavailable", "Preview DDL indisponivel para o canvas atual.")
                     );
                 CurrentShell.OutputPreview.OpenForDdl(ddlCanvas, liveDdl, ddlCanvas.Provider.ToString());
                 return;

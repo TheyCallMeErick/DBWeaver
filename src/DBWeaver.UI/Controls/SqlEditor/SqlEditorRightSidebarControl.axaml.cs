@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using DBWeaver.UI.Services.Localization;
 using DBWeaver.UI.ViewModels;
 
 namespace DBWeaver.UI.Controls.SqlEditor;
@@ -47,7 +48,7 @@ public partial class SqlEditorRightSidebarControl : UserControl
             return;
 
         await topLevel.Clipboard.SetTextAsync(entry.Sql ?? string.Empty);
-        vm.PublishStatus("SQL copiado do historico.");
+        vm.PublishStatus(L("sqlEditor.history.copiedFromHistory", "SQL copiado do historico."));
     }
 
     private void ClearHistoryButton_Click(object? sender, RoutedEventArgs e)
@@ -97,5 +98,35 @@ public partial class SqlEditorRightSidebarControl : UserControl
 
         _ = vm.ExecuteSelectedHistoryEntryAsync();
         e.Handled = true;
+    }
+
+    private void ExplainButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SqlEditorViewModel vm)
+            return;
+
+        _ = vm.RunExplainAsync(includeAnalyze: false);
+    }
+
+    private void BenchmarkButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SqlEditorViewModel vm)
+            return;
+
+        _ = vm.RunBenchmarkAsync();
+    }
+
+    private void BenchmarkCancelButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SqlEditorViewModel vm)
+            return;
+
+        vm.CancelBenchmark();
+    }
+
+    private static string L(string key, string fallback)
+    {
+        string value = LocalizationService.Instance[key];
+        return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
     }
 }

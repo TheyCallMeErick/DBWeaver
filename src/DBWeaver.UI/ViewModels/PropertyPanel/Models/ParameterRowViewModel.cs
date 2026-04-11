@@ -85,18 +85,29 @@ public sealed class ParameterRowViewModel(NodeParameter param, string? currentVa
 
     public void SetSuggestedValues(IEnumerable<string> values)
     {
+        string? preservedValue = Value;
+        // Break ComboBox selection binding before mutating ItemsSource to avoid stale index issues.
+        _suppressDirtyTracking = true;
+        Value = null;
+        _suppressDirtyTracking = false;
+
         SuggestedValues.Clear();
         foreach (string value in values.Where(static v => !string.IsNullOrWhiteSpace(v)).Distinct(StringComparer.OrdinalIgnoreCase))
             SuggestedValues.Add(value);
 
-        if (!string.IsNullOrWhiteSpace(Value)
-            && SuggestedValues.All(s => !string.Equals(s, Value, StringComparison.OrdinalIgnoreCase)))
+        if (!string.IsNullOrWhiteSpace(preservedValue)
+            && SuggestedValues.All(s => !string.Equals(s, preservedValue, StringComparison.OrdinalIgnoreCase)))
         {
-            SuggestedValues.Insert(0, Value);
+            SuggestedValues.Insert(0, preservedValue);
         }
 
         HasSuggestedValues = SuggestedValues.Count > 0;
         RaisePropertyChanged(nameof(IsPlainText));
         RaisePropertyChanged(nameof(IsTextWithSuggestions));
+
+        _suppressDirtyTracking = true;
+        Value = preservedValue;
+        _suppressDirtyTracking = false;
+        IsDirty = false;
     }
 }

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DBWeaver.UI.ViewModels"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
              xmlns:mi="using:Material.Icons.Avalonia"
              x:Class="DBWeaver.UI.Controls.SqlEditor.SqlEditorRightSidebarControl"
              x:Name="Root"
@@ -19,7 +20,7 @@
         <StackPanel Spacing="8">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <mi:MaterialIcon Kind="AlertCircleOutline" Width="14" Height="14"/>
-            <TextBlock Text="MESSAGES"
+            <TextBlock Text="{Binding [sqlEditor.sidebar.messages], Source={x:Static loc:LocalizationService.Instance}}"
                        FontSize="{StaticResource FontSizeCaption}"
                        FontWeight="{StaticResource FontWeightHeading}"
                        Foreground="{StaticResource AccentPrimaryHoverBrush}"
@@ -52,10 +53,68 @@
                      Foreground="{StaticResource TextMutedBrush}"
                      FontSize="{StaticResource FontSizeCaption}"
                      TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding CompletionTelemetryText}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     TextWrapping="Wrap"/>
           <TextBlock Text="{Binding ExecutionTelemetryErrorsText}"
                      Foreground="{StaticResource StatusErrorBrush}"
                      FontSize="{StaticResource FontSizeCaption}"
                      TextWrapping="Wrap"/>
+
+          <Border Height="1" Background="{StaticResource BorderSubtleBrush}"/>
+
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding [sqlEditor.sidebar.tools], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       FontWeight="{StaticResource FontWeightHeading}"
+                       Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                       LetterSpacing="1.5"/>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Content="{Binding [sqlEditor.tools.explain], Source={x:Static loc:LocalizationService.Instance}}"
+                      Padding="10,2"
+                      MinHeight="24"
+                      FontSize="{StaticResource FontSizeCaption}"
+                      IsEnabled="{Binding IsExplainRunning, Converter={x:Static BoolConverters.Not}}"
+                      Click="ExplainButton_Click"/>
+              <Button Content="{Binding [sqlEditor.tools.benchmark], Source={x:Static loc:LocalizationService.Instance}}"
+                      Padding="10,2"
+                      MinHeight="24"
+                      FontSize="{StaticResource FontSizeCaption}"
+                      IsEnabled="{Binding IsBenchmarkRunning, Converter={x:Static BoolConverters.Not}}"
+                      Click="BenchmarkButton_Click"/>
+              <Button Content="{Binding [common.cancel], Source={x:Static loc:LocalizationService.Instance}}"
+                      Padding="10,2"
+                      MinHeight="24"
+                      FontSize="{StaticResource FontSizeCaption}"
+                      IsEnabled="{Binding IsBenchmarkRunning}"
+                      Click="BenchmarkCancelButton_Click"/>
+            </StackPanel>
+
+            <TextBlock Text="{Binding ExplainSummaryText}"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ExplainRawOutput}"
+                       IsVisible="{Binding HasExplainRawOutput}"
+                       Foreground="{StaticResource TextMutedBrush}"
+                       FontFamily="{StaticResource MonoFont}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       MaxHeight="120"
+                       TextWrapping="Wrap"
+                       TextTrimming="CharacterEllipsis"/>
+
+            <TextBlock Text="{Binding BenchmarkProgressText}"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding BenchmarkSummaryText}"
+                       IsVisible="{Binding HasBenchmarkResult}"
+                       Foreground="{StaticResource TextMutedBrush}"
+                       FontFamily="{StaticResource MonoFont}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       TextWrapping="Wrap"/>
+          </StackPanel>
         </StackPanel>
       </Border>
 
@@ -68,7 +127,7 @@
         <StackPanel Spacing="8">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <mi:MaterialIcon Kind="History" Width="14" Height="14"/>
-            <TextBlock Text="HISTORY"
+            <TextBlock Text="{Binding [sqlEditor.sidebar.history], Source={x:Static loc:LocalizationService.Instance}}"
                        FontSize="{StaticResource FontSizeCaption}"
                        FontWeight="{StaticResource FontWeightHeading}"
                        Foreground="{StaticResource AccentPrimaryHoverBrush}"
@@ -85,7 +144,7 @@
               IsVisible="{Binding HasExecutionHistory}">
             <TextBox Grid.Column="0"
                  x:Name="HistorySearchTextBox"
-                 Watermark="Buscar no historico"
+                 Watermark="{Binding [sqlEditor.history.searchWatermark], Source={x:Static loc:LocalizationService.Instance}}"
                  Text="{Binding HistorySearchText}"
                  FontSize="{StaticResource FontSizeCaption}"
                  Background="{StaticResource Bg1Brush}"
@@ -93,14 +152,14 @@
                  BorderBrush="{StaticResource BorderSubtleBrush}"
                  KeyDown="HistorySearchTextBox_KeyDown"/>
             <Button Grid.Column="1"
-                Content="Limpar"
+                Content="{Binding [common.clear], Source={x:Static loc:LocalizationService.Instance}}"
                 Padding="10,2"
                 MinHeight="24"
                 FontSize="{StaticResource FontSizeCaption}"
                 Click="ClearHistorySearchButton_Click"/>
             </Grid>
 
-              <TextBlock Text="Setas percorrem o historico, Enter executa selecionado, Esc limpa a busca."
+              <TextBlock Text="{Binding [sqlEditor.history.navigationHint], Source={x:Static loc:LocalizationService.Instance}}"
                  IsVisible="{Binding HasExecutionHistory}"
                  Foreground="{StaticResource TextMutedBrush}"
                  FontSize="{StaticResource FontSizeCaption}"
@@ -121,7 +180,7 @@
                 Click="ClearHistoryButton_Click"/>
             </Grid>
 
-          <TextBlock Text="Nenhum item encontrado para a busca."
+          <TextBlock Text="{Binding [sqlEditor.history.noSearchResults], Source={x:Static loc:LocalizationService.Instance}}"
                      IsVisible="{Binding HasHistorySearchNoResults}"
                      Foreground="{StaticResource TextSecondaryBrush}"
                      FontSize="{StaticResource FontSizeCaption}"
@@ -153,19 +212,19 @@
                                TextTrimming="CharacterEllipsis"
                                Foreground="{StaticResource TextSecondaryBrush}"/>
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                          <Button Content="Usar"
+                          <Button Content="{Binding [sqlEditor.history.use], Source={x:Static loc:LocalizationService.Instance}}"
                             HorizontalAlignment="Left"
                             Padding="10,2"
                             MinHeight="24"
                             FontSize="{StaticResource FontSizeCaption}"
                             Click="HistoryUseButton_Click"/>
-                          <Button Content="Copiar"
+                          <Button Content="{Binding [sqlEditor.history.copy], Source={x:Static loc:LocalizationService.Instance}}"
                             HorizontalAlignment="Left"
                             Padding="10,2"
                             MinHeight="24"
                             FontSize="{StaticResource FontSizeCaption}"
                             Click="HistoryCopyButton_Click"/>
-                          <Button Content="Executar"
+                          <Button Content="{Binding [sqlEditor.history.run], Source={x:Static loc:LocalizationService.Instance}}"
                             HorizontalAlignment="Left"
                             Padding="10,2"
                             MinHeight="24"

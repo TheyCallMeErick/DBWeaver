@@ -24,11 +24,11 @@ public class ConnectionTabControlTemplateRegressionTests
     }
 
     [Fact]
-    public void ConnectionTemplate_SectionHeadersUseUppercaseTealCaption()
+    public void ConnectionTemplate_SectionHeadersUseUppercaseAccentCaption()
     {
         string xaml = ReadConnectionXaml();
 
-        Assert.Contains("section-header-teal", xaml);
+        Assert.Contains("section-header-accent", xaml);
     }
 
     [Fact]

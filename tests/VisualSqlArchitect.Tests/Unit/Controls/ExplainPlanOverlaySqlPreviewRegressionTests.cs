@@ -134,7 +134,7 @@ public class ExplainPlanOverlaySqlPreviewRegressionTests
         Assert.Contains("Height=\"820\"", xaml);
         Assert.Contains("Grid IsVisible=\"{Binding ShowListView}\"", xaml);
         Assert.Contains("ColumnDefinitions=\"3*,2*\"", xaml);
-        Assert.Contains("Text=\"Comparacao de snapshots\"", xaml);
+        Assert.Contains("Text=\"{Binding [explain.section.snapshotComparison], Source={x:Static loc:LocalizationService.Instance}}\"", xaml);
     }
 
     private static string ReadOverlayXaml()

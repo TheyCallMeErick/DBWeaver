@@ -17,6 +17,8 @@ public sealed class SqlEditorControlTemplateRegressionTests
         Assert.Contains("IsReadOnly=\"False\"", xaml);
         Assert.Contains("IsVisible=\"{Binding ShouldShowResultsSheet}\"", xaml);
         Assert.Contains("Height=\"{Binding ResultsSheetHeight}\"", xaml);
+        Assert.Contains("<GridSplitter Grid.Row=\"0\"", xaml);
+        Assert.Contains("x:Name=\"ResultsResizeGrip\"", xaml);
         Assert.Contains("Command=\"{Binding CloseResultsSheetCommand}\"", xaml);
         Assert.Contains("<ctrl:MutationConfirmDialog", xaml);
         Assert.Contains("Text=\"{Binding ExecutionStatusText}\"", xaml);
@@ -37,6 +39,8 @@ public sealed class SqlEditorControlTemplateRegressionTests
 
         Assert.Contains("Key.F8", source);
         Assert.Contains("Key.F5", source);
+        Assert.Contains("Key.F4", source);
+        Assert.Contains("Key.F6", source);
         Assert.Contains("Key.S", source);
         Assert.Contains("Key.O", source);
         Assert.Contains("Key.T", source);
@@ -50,6 +54,14 @@ public sealed class SqlEditorControlTemplateRegressionTests
         Assert.Contains("CompletionWindow", source);
         Assert.Contains("TextEntered", source);
         Assert.Contains("ShouldAutoTriggerCompletionAfterSpace", source);
+        Assert.Contains("LargeEditorCompletionThreshold = 10_000", source);
+        Assert.Contains("Editor grande — completion sob demanda (Ctrl+Space).", source);
+        Assert.Contains("_completionWindow.CompletionList.CompletionData.Clear();", source);
+        Assert.Contains("_vm.RecordCompletionLatency(stopwatch.Elapsed);", source);
+        Assert.Contains("AllowScrollBelowDocument = true", source);
+        Assert.Contains("ApplyEditorExecutionState", source);
+        Assert.Contains("nameof(SqlEditorViewModel.IsExecuting)", source);
+        Assert.Contains("StandardCursorType.Wait", source);
         Assert.Contains("ExecuteAllAsync", source);
         Assert.Contains("ExecuteSelectionOrCurrentAsync", source);
         Assert.Contains("SaveActiveTabAsync", source);
@@ -58,6 +70,10 @@ public sealed class SqlEditorControlTemplateRegressionTests
         Assert.Contains("NewTabCommand", source);
         Assert.Contains("ActiveEditorTabIndex", source);
         Assert.Contains("CancelExecution", source);
+        Assert.Contains("RunExplainAsync", source);
+        Assert.Contains("RunBenchmarkAsync", source);
+        Assert.Contains("SqlExecutionStatementHighlightRenderer", source);
+        Assert.Contains("RefreshExecutionStatementHighlight", source);
     }
 
     private static string ReadSqlEditorControlXaml()

@@ -11,7 +11,7 @@
           Padding="8"
           ClipToBounds="True">
     <Grid RowDefinitions="Auto,*">
-      <Grid Grid.Row="0" ColumnDefinitions="*,220" Margin="0,0,0,6">
+      <Grid Grid.Row="0" ColumnDefinitions="*,220,Auto" Margin="0,0,0,6">
         <StackPanel Grid.Column="0"
                     Orientation="Horizontal"
                     Spacing="8">
@@ -40,20 +40,29 @@
         <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
           <TextBox Grid.Column="0"
              Text="{Binding ResultGridFilterText}"
-             Watermark="Filtrar resultados"
+             Watermark="{Binding [sqlEditor.results.filterWatermark], Source={x:Static loc:LocalizationService.Instance}}"
              FontSize="{StaticResource FontSizeCaption}"
              HorizontalAlignment="Stretch"
              Background="{StaticResource Bg1Brush}"
              Foreground="{StaticResource TextPrimaryBrush}"
              BorderBrush="{StaticResource BorderSubtleBrush}"/>
           <Button Grid.Column="1"
-            Content="Limpar"
+            Content="{Binding [common.clear], Source={x:Static loc:LocalizationService.Instance}}"
               Margin="6,0,0,0"
             Padding="10,2"
             MinHeight="24"
             FontSize="{StaticResource FontSizeCaption}"
             Click="ClearResultFilterButton_Click"/>
         </Grid>
+
+        <Button Grid.Column="2"
+                Margin="8,0,0,0"
+                Content="{Binding [sqlEditor.export.action], Source={x:Static loc:LocalizationService.Instance}}"
+                IsVisible="{Binding CanExportReport}"
+                Padding="10,2"
+                MinHeight="24"
+                FontSize="{StaticResource FontSizeCaption}"
+                Click="ExportReportButton_Click"/>
       </Grid>
 
       <Grid Grid.Row="1">

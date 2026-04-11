@@ -46,11 +46,11 @@ public class SidebarControlTemplateRegressionTests
     }
 
     [Fact]
-    public void SidebarTemplate_ActiveTabUsesTealSolidBackground()
+    public void SidebarTemplate_ActiveTabUsesPrimaryAccentBackground()
     {
         string xaml = ReadSidebarXaml();
 
-        Assert.Contains("AccentTeal", xaml);
+        Assert.Contains("AccentPrimaryBrush", xaml);
         Assert.Contains("tab-button.active", xaml);
     }
 

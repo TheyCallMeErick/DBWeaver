@@ -147,7 +147,7 @@ public sealed class SqlEditorReportExportServiceTests
             JsonElement root = document.RootElement;
             JsonElement meta = root.GetProperty("meta");
 
-            Assert.Equal("2.2", root.GetProperty("version").GetString());
+            Assert.Equal("2.3", root.GetProperty("version").GetString());
             Assert.True(root.GetProperty("hasSql").GetBoolean());
             Assert.Equal("warning", meta.GetProperty("summary").GetProperty("status").GetString());
             Assert.False(meta.GetProperty("summary").GetProperty("success").GetBoolean());

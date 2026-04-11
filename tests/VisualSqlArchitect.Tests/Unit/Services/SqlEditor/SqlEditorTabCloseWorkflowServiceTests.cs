@@ -17,7 +17,10 @@ public sealed class SqlEditorTabCloseWorkflowServiceTests
 
         Assert.Equal(SqlEditorTabCloseAction.ConfirmationRequired, outcome.Action);
         Assert.True(sut.HasPendingConfirmation);
-        Assert.Equal("Tab close requires confirmation.", outcome.StatusText);
+        AssertLocalized(
+            outcome.StatusText,
+            "O fechamento da aba exige confirmacao.",
+            "Tab close requires confirmation.");
         Assert.Equal(2, tabs.Tabs.Count);
     }
 
@@ -34,7 +37,7 @@ public sealed class SqlEditorTabCloseWorkflowServiceTests
         Assert.Equal(SqlEditorTabCloseAction.Closed, outcome.Action);
         Assert.False(sut.HasPendingConfirmation);
         Assert.Single(tabs.Tabs);
-        Assert.Equal("Tab closed.", outcome.StatusText);
+        AssertLocalized(outcome.StatusText, "Aba fechada.", "Tab closed.");
     }
 
     [Fact]
@@ -49,7 +52,7 @@ public sealed class SqlEditorTabCloseWorkflowServiceTests
 
         Assert.Equal(SqlEditorTabCloseAction.None, outcome.Action);
         Assert.False(sut.HasPendingConfirmation);
-        Assert.Equal("Tab close canceled.", outcome.StatusText);
+        AssertLocalized(outcome.StatusText, "Fechamento da aba cancelado.", "Tab close canceled.");
         Assert.Equal(2, tabs.Tabs.Count);
     }
 
@@ -85,5 +88,10 @@ public sealed class SqlEditorTabCloseWorkflowServiceTests
             tabs.AddNewTab();
         return tabs;
     }
-}
 
+    private static void AssertLocalized(string? actual, params string[] expectedValues)
+    {
+        Assert.NotNull(actual);
+        Assert.Contains(actual!, expectedValues);
+    }
+}

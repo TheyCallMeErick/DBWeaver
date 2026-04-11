@@ -42,7 +42,7 @@
 
     <Style Selector="Border.schema-header-card:pointerover">
       <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource AccentTealLightBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryHoverBrush}"/>
       <Setter Property="RenderTransform" Value="scale(1.008)"/>
     </Style>
 
@@ -60,12 +60,12 @@
 
     <Style Selector="Border.schema-object-card:pointerover">
       <Setter Property="Background" Value="{StaticResource Bg1Brush}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource AccentTealLightBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryHoverBrush}"/>
       <Setter Property="RenderTransform" Value="scale(1.01)"/>
     </Style>
 
     <Style Selector="Border.schema-object-card.expanded">
-      <Setter Property="BorderBrush" Value="{StaticResource AccentTealLightBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryHoverBrush}"/>
     </Style>
 
     <Style Selector="StackPanel.schema-empty-state TextBlock">
@@ -184,7 +184,7 @@
                               </ToggleButton.Content>
                             </ToggleButton>
                             <StackPanel Spacing="10" Orientation="Horizontal" VerticalAlignment="Center">
-                              <mi:MaterialIcon Kind="{Binding Icon, Converter={StaticResource StringToIconConverter}}" Width="17" Height="17" Foreground="{StaticResource AccentTealLightBrush}"/>
+                              <mi:MaterialIcon Kind="{Binding Icon, Converter={StaticResource StringToIconConverter}}" Width="17" Height="17" Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
                               <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="{Binding Name}" Classes="schema-title"/>
                                 <TextBlock Text="{Binding SubText}" Classes="schema-meta" Opacity="0.65"/>

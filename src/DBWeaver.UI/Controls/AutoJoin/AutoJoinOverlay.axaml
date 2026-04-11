@@ -18,52 +18,26 @@
       <Setter Property="Margin"        Value="0,4"/>
     </Style>
 
-    <!-- Accept button -->
-    <Style Selector="Button.accept-btn">
-      <Setter Property="Background"     Value="{StaticResource BtnInfoBgBrush}"/>
-      <Setter Property="BorderBrush"    Value="{StaticResource BorderFocusBrush}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Foreground"     Value="{StaticResource AccentPrimaryHoverBrush}"/>
-      <Setter Property="FontSize"       Value="11"/>
-      <Setter Property="CornerRadius"   Value="{StaticResource RadiusSM}"/>
-      <Setter Property="Padding"        Value="8,4"/>
-      <Setter Property="Cursor"         Value="Hand"/>
-    </Style>
-    <Style Selector="Button.accept-btn:pointerover">
-      <Setter Property="Background" Value="{StaticResource PanelActiveBrush}"/>
-    </Style>
-
-    <!-- Dismiss button -->
-    <Style Selector="Button.dismiss-btn">
-      <Setter Property="Background"     Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Foreground"     Value="{StaticResource TextMutedBrush}"/>
-      <Setter Property="FontSize"       Value="11"/>
-      <Setter Property="Padding"        Value="6,4"/>
-      <Setter Property="Cursor"         Value="Hand"/>
-    </Style>
-    <Style Selector="Button.dismiss-btn:pointerover">
-      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-    </Style>
-
   </UserControl.Styles>
 
   <!-- ══ Overlay panel ══════════════════════════════════════════════════════ -->
   <Border MaxWidth="380"
+        MaxHeight="520"
           Background="{StaticResource Bg0Brush}"
           BorderBrush="{StaticResource BorderSubtleBrush}"
           BorderThickness="1"
           CornerRadius="{StaticResource RadiusLG}"
           BoxShadow="{StaticResource ShadowXL}">
 
-    <StackPanel>
+      <Grid RowDefinitions="Auto,*,Auto">
 
       <!-- ── Header ───────────────────────────────────────────────────────── -->
-      <Border Background="{StaticResource Bg1Brush}"
+    <Border Grid.Row="0"
+        Background="{StaticResource Bg1Brush}"
               CornerRadius="{StaticResource RadiusLGTop}"
               Padding="12,10">
 
-        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+      <Grid ColumnDefinitions="Auto,*,Auto">
 
           <!-- Sparkle icon -->
           <Border Grid.Column="0"
@@ -91,17 +65,9 @@
                        Foreground="{StaticResource TextMutedBrush}"/>
           </StackPanel>
 
-          <!-- Accept All -->
+          <!-- Close -->
           <Button Grid.Column="2"
-                  Classes="accept-btn"
-                  Content="{Binding [autoJoin.acceptAll], Source={x:Static loc:LocalizationService.Instance}}"
-                  Command="{Binding AcceptAllCommand}"
-                  Margin="0,0,4,0"
-                  Name="AcceptAllBtn"/>
-
-          <!-- Close All -->
-          <Button Grid.Column="3"
-                  Classes="dismiss-btn"
+              Classes="modal-close-btn"
                   Command="{Binding DismissCommand}"
                   Name="DismissAllBtn">
             <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
@@ -110,10 +76,10 @@
       </Border>
 
       <!-- Divider -->
-      <Border Height="1" Background="{StaticResource BorderSubtleBrush}"/>
+      <Border Grid.Row="0" Height="1" Background="{StaticResource BorderSubtleBrush}" VerticalAlignment="Bottom"/>
 
       <!-- ── Suggestion cards ──────────────────────────────────────────────── -->
-      <ScrollViewer MaxHeight="360"
+      <ScrollViewer Grid.Row="1"
                     Margin="8,6"
                     HorizontalScrollBarVisibility="Disabled">
 
@@ -221,7 +187,7 @@
                                TextTrimming="CharacterEllipsis"/>
 
                     <Button Grid.Column="1"
-                            Classes="accept-btn"
+                          Classes="modal-footer-secondary-btn"
                             Margin="0,0,4,0"
                             Command="{Binding AcceptCommand}">
                       <StackPanel Orientation="Horizontal" Spacing="4">
@@ -231,7 +197,7 @@
                     </Button>
 
                     <Button Grid.Column="2"
-                            Classes="dismiss-btn"
+                          Classes="modal-close-btn"
                             Content="{Binding [autoJoin.skip], Source={x:Static loc:LocalizationService.Instance}}"
                             Command="{Binding DismissCommand}"/>
                   </Grid>
@@ -245,7 +211,8 @@
       </ScrollViewer>
 
       <!-- Empty state (all dismissed or accepted) -->
-      <Border Padding="16,12"
+      <Border Grid.Row="1"
+              Padding="16,12"
               IsVisible="{Binding HasCards, Converter={x:Static BoolConverters.Not}}">
         <TextBlock Text="{Binding [autoJoin.allHandled], Source={x:Static loc:LocalizationService.Instance}}"
                    FontSize="{StaticResource FontSizeBody}"
@@ -253,6 +220,31 @@
                    HorizontalAlignment="Center"/>
       </Border>
 
-    </StackPanel>
+      <Border Grid.Row="2"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="0,1,0,0"
+              Background="{StaticResource Bg1Brush}"
+              CornerRadius="{StaticResource RadiusLGBottom}"
+              Padding="10,8">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <TextBlock Grid.Column="0"
+                     Text="{Binding Title}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis"/>
+          <Button Grid.Column="1"
+              Classes="modal-footer-secondary-btn"
+                  Command="{Binding DismissCommand}"
+                  Margin="0,0,8,0"
+                  Content="{Binding [common.cancel], Source={x:Static loc:LocalizationService.Instance}}"/>
+          <Button Grid.Column="2"
+              Classes="modal-footer-primary-btn"
+                  Content="{Binding [autoJoin.acceptAll], Source={x:Static loc:LocalizationService.Instance}}"
+                  Command="{Binding AcceptAllCommand}"
+                  Name="AcceptAllBtn"/>
+        </Grid>
+      </Border>
+    </Grid>
   </Border>
 </UserControl>

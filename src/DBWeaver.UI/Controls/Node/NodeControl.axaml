@@ -76,7 +76,7 @@
 
     <DataTemplate x:Key="PinTooltipTemplate" x:DataType="vm:PinViewModel">
       <StackPanel Spacing="2" MaxWidth="320">
-        <TextBlock Text="{Binding Name}" FontWeight="{StaticResource FontWeightHeading}" Foreground="White"/>
+        <TextBlock Text="{Binding Name}" FontWeight="{StaticResource FontWeightHeading}" Foreground="{StaticResource TextPrimaryBrush}"/>
         <TextBlock Text="{Binding DataTypeLabel}" FontSize="{StaticResource FontSizeMonoSmall}" Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
         <TextBlock Text="{Binding TooltipTypeDetails}" FontSize="{StaticResource FontSizeMonoSmall}" Foreground="{StaticResource AccentSecondaryHoverBrush}" TextWrapping="Wrap"/>
 
@@ -237,7 +237,7 @@
                   VerticalAlignment="Center">
             <mi:MaterialIcon Kind="{Binding CategoryIconKind}"
                              Width="14" Height="14"
-                             Foreground="White"
+                             Foreground="{StaticResource TextInverseBrush}"
                              HorizontalAlignment="Center"
                              VerticalAlignment="Center"/>
           </Border>
@@ -248,7 +248,7 @@
                        FontFamily="{StaticResource NodeFont}"
                        FontSize="{StaticResource FontSizeNodeTitle}"
                        FontWeight="{StaticResource FontWeightNodeTitle}"
-                       Foreground="White"
+                       Foreground="{StaticResource TextPrimaryBrush}"
                        TextTrimming="CharacterEllipsis"/>
             <TextBlock Text="{Binding Subtitle}"
                        FontSize="{StaticResource FontSizeCaption}"
@@ -311,7 +311,7 @@
                            MaxWidth="300"/>
               </ToolTip.Tip>
               <TextBlock Text="!" FontSize="{StaticResource FontSizeCaption}" FontWeight="{StaticResource FontWeightHeading}"
-                         Foreground="White"
+                         Foreground="{StaticResource TextInverseBrush}"
                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
 

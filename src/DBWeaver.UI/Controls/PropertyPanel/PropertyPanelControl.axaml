@@ -148,7 +148,7 @@
                     VerticalAlignment="Center">
               <mi:MaterialIcon Kind="{Binding CategoryIconKind}"
                                Width="12" Height="12"
-                               Foreground="White"
+                               Foreground="{StaticResource TextInverseBrush}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
             </Border>

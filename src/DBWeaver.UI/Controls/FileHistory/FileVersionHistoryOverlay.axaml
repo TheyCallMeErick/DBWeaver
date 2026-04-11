@@ -7,15 +7,17 @@
              x:DataType="vm:FileVersionHistoryViewModel">
 
   <Border MaxWidth="620"
+          MaxHeight="640"
           Background="{StaticResource Bg0Brush}"
           BorderBrush="{StaticResource BorderSubtleBrush}"
           BorderThickness="1"
           CornerRadius="{StaticResource RadiusLG}"
           BoxShadow="{StaticResource ShadowXL}">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto">
 
-      <Border Grid.Row="0" Background="{StaticResource Bg1Brush}" CornerRadius="{StaticResource RadiusLGTop}" Padding="12,10">
+      <Border Grid.Row="0" Background="{StaticResource Bg1Brush}" CornerRadius="{StaticResource RadiusLGTop}" Padding="12,10"
+              BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <Border Grid.Column="0" Width="22" Height="22" CornerRadius="{StaticResource RadiusSM}"
                   Background="{StaticResource Bg2Brush}" BorderBrush="{StaticResource BorderFocusBrush}" BorderThickness="1" Margin="0,0,8,0">
@@ -25,44 +27,16 @@
 
           <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
             <TextBlock Text="{Binding [fileHistory.title], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}" FontWeight="{StaticResource FontWeightTitle}" Foreground="{StaticResource TextPrimaryBrush}"/>
-            <TextBlock Text="{Binding CurrentFileLabel}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+            <TextBlock Text="{Binding CurrentFileLabel}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
           </StackPanel>
 
-          <Button Grid.Column="2" Name="CloseBtn" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextSecondaryBrush}">
+          <Button Grid.Column="2" Name="CloseBtn" Classes="modal-close-btn">
             <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
           </Button>
         </Grid>
       </Border>
 
-      <Border Grid.Row="1" Height="1" Background="{StaticResource BorderSubtleBrush}"/>
-
-      <Border Grid.Row="2" Padding="12,10">
-        <Grid ColumnDefinitions="Auto,Auto,*">
-          <Button Grid.Column="0" Name="ReloadBtn" Margin="0,0,8,0"
-                  Background="{StaticResource BtnInfoBgBrush}" BorderBrush="{StaticResource BorderFocusBrush}" BorderThickness="1"
-                  Foreground="{StaticResource AccentPrimaryHoverBrush}" CornerRadius="{StaticResource RadiusXS}" Padding="8,4">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <mi:MaterialIcon Kind="Refresh" Width="12" Height="12"/>
-              <TextBlock Text="{Binding [fileHistory.reload], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
-            </StackPanel>
-          </Button>
-
-          <Button Grid.Column="1" Name="RestoreBtn"
-                  IsEnabled="{Binding CanRestore}"
-                  Background="{StaticResource BtnSuccessBgBrush}" BorderBrush="{StaticResource StatusOkBrush}" BorderThickness="1"
-                  Foreground="{StaticResource StatusOkBrush}" CornerRadius="{StaticResource RadiusXS}" Padding="8,4">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <mi:MaterialIcon Kind="Restore" Width="12" Height="12"/>
-              <TextBlock Text="{Binding [fileHistory.restoreSelected], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
-            </StackPanel>
-          </Button>
-
-          <TextBlock Grid.Column="2" Text="{Binding StatusMessage}" Margin="12,0,0,0"
-                     VerticalAlignment="Center" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
-        </Grid>
-      </Border>
-
-      <Border Grid.Row="3" Padding="10,0,10,10">
+      <Border Grid.Row="1" Padding="10,10,10,8">
         <Border Background="{StaticResource Bg0Brush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusSM}" Padding="8">
           <Grid>
             <ListBox ItemsSource="{Binding Versions}"
@@ -96,6 +70,35 @@
             </StackPanel>
           </Grid>
         </Border>
+      </Border>
+
+      <Border Grid.Row="2"
+              Padding="12,10"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="0,1,0,0"
+              Background="{StaticResource Bg1Brush}"
+              CornerRadius="{StaticResource RadiusLGBottom}">
+        <Grid ColumnDefinitions="Auto,Auto,*">
+          <Button Grid.Column="0" Name="ReloadBtn" Margin="0,0,8,0"
+                  Classes="modal-footer-secondary-btn">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="Refresh" Width="12" Height="12"/>
+              <TextBlock Text="{Binding [fileHistory.reload], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
+            </StackPanel>
+          </Button>
+
+          <Button Grid.Column="1" Name="RestoreBtn"
+                  IsEnabled="{Binding CanRestore}"
+                  Classes="modal-footer-primary-btn">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="Restore" Width="12" Height="12"/>
+              <TextBlock Text="{Binding [fileHistory.restoreSelected], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
+            </StackPanel>
+          </Button>
+
+          <TextBlock Grid.Column="2" Text="{Binding StatusMessage}" Margin="12,0,0,0"
+                     VerticalAlignment="Center" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+        </Grid>
       </Border>
     </Grid>
   </Border>

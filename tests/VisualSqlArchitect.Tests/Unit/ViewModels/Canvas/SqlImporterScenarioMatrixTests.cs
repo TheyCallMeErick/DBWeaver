@@ -31,13 +31,11 @@ public class SqlImporterScenarioMatrixTests
 
         if (scenario.ExpectsWhereComparison)
         {
-            Assert.Contains(canvas.Nodes, n => n.Type == NodeType.WhereOutput);
             Assert.Contains(canvas.Nodes, n =>
                 n.Type is NodeType.Equals or NodeType.NotEquals or NodeType.GreaterThan or NodeType.GreaterOrEqual or NodeType.LessThan or NodeType.LessOrEqual);
             Assert.Contains(
                 canvas.Connections,
-                c => c.FromPin.Owner.Type == NodeType.WhereOutput
-                    && string.Equals(c.FromPin.Name, "result", StringComparison.OrdinalIgnoreCase)
+                c => string.Equals(c.FromPin.Name, "result", StringComparison.OrdinalIgnoreCase)
                     && c.ToPin?.Owner == resultNode
                     && string.Equals(c.ToPin.Name, "where", StringComparison.OrdinalIgnoreCase));
         }

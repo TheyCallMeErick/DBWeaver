@@ -13,7 +13,7 @@ public sealed class SqlEditorFileServiceTests
 
         Assert.False(outcome.Success);
         Assert.False(outcome.HasError);
-        Assert.Equal("Save canceled.", outcome.StatusText);
+        AssertLocalized(outcome.StatusText, "Salvamento cancelado.", "Save canceled.");
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class SqlEditorFileServiceTests
         Assert.False(outcome.Success);
         Assert.True(outcome.HasError);
         Assert.Null(outcome.Content);
-        Assert.Equal("Open failed.", outcome.StatusText);
+        AssertLocalized(outcome.StatusText, "Falha ao abrir arquivo SQL.", "Open failed.");
     }
 
     [Fact]
@@ -71,5 +71,10 @@ public sealed class SqlEditorFileServiceTests
                 File.Delete(path);
         }
     }
-}
 
+    private static void AssertLocalized(string? actual, params string[] expectedValues)
+    {
+        Assert.NotNull(actual);
+        Assert.Contains(actual!, expectedValues);
+    }
+}

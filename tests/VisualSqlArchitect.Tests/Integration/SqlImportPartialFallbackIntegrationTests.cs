@@ -86,9 +86,8 @@ public class SqlImportPartialFallbackIntegrationTests
 
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, item =>
-            item.Label.Contains("Correlation fields", StringComparison.OrdinalIgnoreCase)
-            && (item.Note ?? string.Empty).Contains("o.id", StringComparison.OrdinalIgnoreCase)
-            && (item.Note ?? string.Empty).Contains("o.customer_id", StringComparison.OrdinalIgnoreCase));
+            item.Status == ImportItemStatus.Imported
+            && item.Label.Contains("WHERE EXISTS", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

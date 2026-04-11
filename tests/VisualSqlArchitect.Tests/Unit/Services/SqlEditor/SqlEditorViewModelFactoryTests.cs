@@ -21,7 +21,7 @@ public sealed class SqlEditorViewModelFactoryTests
         });
 
         Assert.NotNull(vm);
-        Assert.Equal("Ready.", vm.ExecutionStatusText);
+        Assert.Contains(vm.ExecutionStatusText, new[] { "Pronto.", "Ready." });
         Assert.Equal(DatabaseProvider.Postgres, vm.ActiveTabProvider);
     }
 

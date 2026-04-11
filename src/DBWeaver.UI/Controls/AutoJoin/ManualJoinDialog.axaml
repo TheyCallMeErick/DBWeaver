@@ -42,27 +42,61 @@
     <Border HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Width="860"
+            MaxHeight="620"
             Background="{StaticResource Bg1Brush}"
             BorderBrush="{StaticResource BorderSubtleBrush}"
             BorderThickness="1"
             CornerRadius="{StaticResource RadiusLG}"
-            Padding="14">
-      <Grid RowDefinitions="Auto,Auto,*,Auto">
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-          <mi:MaterialIcon Kind="SourceBranch" Width="16" Height="16" Foreground="{StaticResource AccentBlueBrush}"/>
-          <TextBlock Text="{Binding [autoJoin.manual.title], Source={x:Static loc:LocalizationService.Instance}}"
-                     FontSize="{StaticResource FontSizeTitle}"
-                     FontWeight="{StaticResource FontWeightTitle}"
-                     Foreground="{StaticResource TextPrimaryBrush}"/>
-        </StackPanel>
+            Padding="0">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <Border Grid.Row="0"
+                Padding="14,12"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="0,0,0,1"
+                Background="{StaticResource Bg1Brush}"
+                CornerRadius="{StaticResource RadiusLGTop}">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Grid.Column="0"
+                    Width="26"
+                    Height="26"
+                    CornerRadius="{StaticResource RadiusSM}"
+                    Background="{StaticResource Bg2Brush}"
+                    BorderBrush="{StaticResource BorderFocusBrush}"
+                    BorderThickness="1"
+                    Margin="0,0,8,0">
+              <mi:MaterialIcon Kind="SourceBranch"
+                               Width="14"
+                               Height="14"
+                               Foreground="{StaticResource AccentBlueBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+              <TextBlock Text="{Binding [autoJoin.manual.title], Source={x:Static loc:LocalizationService.Instance}}"
+                         FontSize="{StaticResource FontSizeTitle}"
+                         FontWeight="{StaticResource FontWeightTitle}"
+                         Foreground="{StaticResource TextPrimaryBrush}"/>
+              <TextBlock Text="{Binding [autoJoin.manual.subtitle], Source={x:Static loc:LocalizationService.Instance}}"
+                         FontSize="{StaticResource FontSizeCaption}"
+                         Foreground="{StaticResource TextMutedBrush}"
+                         TextWrapping="Wrap"/>
+            </StackPanel>
+            <Button Grid.Column="2"
+                    Classes="secondary"
+                    Command="{Binding CancelCommand}"
+                    Width="28"
+                    Height="28"
+                    Padding="0"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center">
+              <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
+            </Button>
+          </Grid>
+        </Border>
 
-        <TextBlock Grid.Row="1"
-                   Margin="0,8,0,10"
-                   Text="{Binding [autoJoin.manual.subtitle], Source={x:Static loc:LocalizationService.Instance}}"
-                   FontSize="{StaticResource FontSizeBody}"
-                   Foreground="{StaticResource TextSecondaryBrush}"/>
-
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,*">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+          <Border Padding="14,12">
+            <Grid ColumnDefinitions="*,Auto,*">
           <Border Grid.Column="0"
                   Background="{StaticResource Bg2Brush}"
                   BorderBrush="{StaticResource BorderSubtleBrush}"
@@ -144,20 +178,29 @@
                          Foreground="{StaticResource BtnWarningFgBrush}"/>
             </StackPanel>
           </Border>
-        </Grid>
+            </Grid>
+          </Border>
+        </ScrollViewer>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
-          <Button Command="{Binding CancelCommand}"
-                  Classes="secondary"
-                  Padding="12,6"
-                  CornerRadius="{StaticResource RadiusSM}"
-                  Content="{Binding [common.cancel], Source={x:Static loc:LocalizationService.Instance}}"/>
-          <Button Command="{Binding ConfirmCommand}"
-                  Classes="primary"
-                  Padding="12,6"
-                  CornerRadius="{StaticResource RadiusSM}"
-                  Content="{Binding [autoJoin.manual.confirm], Source={x:Static loc:LocalizationService.Instance}}"/>
-        </StackPanel>
+        <Border Grid.Row="2"
+                Padding="14,10"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="0,1,0,0"
+                Background="{StaticResource Bg1Brush}"
+                CornerRadius="{StaticResource RadiusLGBottom}">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Command="{Binding CancelCommand}"
+                    Classes="secondary"
+                    Padding="12,6"
+                    CornerRadius="{StaticResource RadiusSM}"
+                    Content="{Binding [common.cancel], Source={x:Static loc:LocalizationService.Instance}}"/>
+            <Button Command="{Binding ConfirmCommand}"
+                    Classes="primary"
+                    Padding="12,6"
+                    CornerRadius="{StaticResource RadiusSM}"
+                    Content="{Binding [autoJoin.manual.confirm], Source={x:Static loc:LocalizationService.Instance}}"/>
+          </StackPanel>
+        </Border>
       </Grid>
     </Border>
   </Border>

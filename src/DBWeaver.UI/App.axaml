@@ -1,6 +1,7 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mi="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:sqlcomp="using:DBWeaver.UI.Services.SqlEditor"
              x:Class="DBWeaver.UI.App"
              RequestedThemeVariant="Dark">
 
@@ -12,6 +13,27 @@
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
+
+  <Application.DataTemplates>
+    <DataTemplate DataType="sqlcomp:SqlEditorCompletionItemContent">
+      <StackPanel Spacing="1">
+        <TextBlock Text="{Binding Label}"
+                   Classes="txt-mono-small"
+                   FontWeight="{StaticResource FontWeightMonoStrong}"
+                   Foreground="{StaticResource TextPrimaryBrush}"/>
+        <TextBlock Text="{Binding Description}"
+                   Classes="txt-meta"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{StaticResource TextSecondaryBrush}"/>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate DataType="sqlcomp:SqlEditorCompletionLoadingContent">
+      <TextBlock Text="{Binding Message}"
+                 Classes="txt-meta"
+                 FontStyle="Italic"
+                 Foreground="{StaticResource TextSecondaryBrush}"/>
+    </DataTemplate>
+  </Application.DataTemplates>
 
   <Application.Styles>
     <!-- Fluent Dark base -->

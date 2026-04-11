@@ -17,21 +17,21 @@ public sealed class SqlEditorResultStateServiceTests
 
         Assert.Same(result, tab.LastResult);
         Assert.Single(tab.ResultTabs);
-        Assert.Equal("Result 1", tab.ResultTabs[0].Title);
+        Assert.Contains(tab.ResultTabs[0].Title, new[] { "Resultado 1", "Result 1" });
         Assert.Single(tab.ExecutionHistory);
         Assert.Equal("SELECT 1", tab.ExecutionHistory[0].Sql);
     }
 
     [Fact]
-    public void AppendResult_CapsHistoryAtFifty()
+    public void AppendResult_CapsHistoryAtFiveHundred()
     {
         var sut = new SqlEditorResultStateService();
         var tab = new SqlEditorTabState { Id = "tab-1", FallbackTitle = "Script 1" };
 
-        for (int i = 0; i < 60; i++)
+        for (int i = 0; i < 700; i++)
             sut.AppendResult(tab, BuildResult($"SELECT {i}", true, 1, 1));
 
-        Assert.Equal(50, tab.ExecutionHistory.Count);
+        Assert.Equal(500, tab.ExecutionHistory.Count);
     }
 
     [Fact]
@@ -89,4 +89,3 @@ public sealed class SqlEditorResultStateServiceTests
         };
     }
 }
-

@@ -88,7 +88,10 @@ public sealed class SqlEditorMutationExecutionOrchestratorTests
 
         Assert.True(outcome.RequiresConfirmation);
         Assert.False(outcome.Result.Success);
-        Assert.Equal("Mutation confirmation required.", outcome.Result.ErrorMessage);
+        AssertLocalized(
+            outcome.Result.ErrorMessage,
+            "Confirmacao de mutacao necessaria.",
+            "Mutation confirmation required.");
         Assert.NotNull(outcome.ConfirmationState);
         Assert.Equal("DELETE FROM orders;", outcome.ConfirmationState!.StatementSql);
         Assert.Equal(5, outcome.ConfirmationState.EstimatedRows);
@@ -204,5 +207,11 @@ public sealed class SqlEditorMutationExecutionOrchestratorTests
             ExecutionTime = TimeSpan.FromMilliseconds(1),
             ExecutedAt = DateTimeOffset.UtcNow,
         };
+    }
+
+    private static void AssertLocalized(string? actual, params string[] expectedValues)
+    {
+        Assert.NotNull(actual);
+        Assert.Contains(actual!, expectedValues);
     }
 }

@@ -14,13 +14,71 @@
     <Style Selector="TextBlock.exec-status.error">
       <Setter Property="Foreground" Value="{StaticResource StatusErrorBrush}"/>
     </Style>
+    <Style Selector="Border.sql-connection-badge">
+      <Setter Property="Padding" Value="8,4"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+      <Setter Property="MaxWidth" Value="300"/>
+    </Style>
+    <Style Selector="Button.sql-primary-runstop">
+      <Setter Property="Padding" Value="10,2"/>
+      <Setter Property="MinHeight" Value="24"/>
+      <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+    </Style>
   </UserControl.Styles>
-  <Grid RowDefinitions="Auto,*,Auto"
+  <Grid RowDefinitions="Auto,Auto,*,Auto"
         ClipToBounds="True">
     <ctrl:SqlEditorTabBar Grid.Row="0"/>
 
-    <Grid Grid.Row="1" ClipToBounds="True">
-      <Border Margin="10,10,10,12"
+    <Grid Grid.Row="1"
+          Margin="10,8,10,0"
+          ColumnDefinitions="Auto,*">
+      <Button Grid.Column="0"
+              Background="Transparent"
+              BorderThickness="0"
+              Padding="0"
+              Command="{Binding OpenConnectionSwitcherCommand}">
+        <Grid>
+          <Border Classes="sql-connection-badge"
+                  IsVisible="{Binding IsNeutralConnectionContext}"
+                  Background="{StaticResource Bg2Brush}">
+            <TextBlock Text="{Binding ActiveConnectionContextBadgeText}"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"/>
+          </Border>
+          <Border Classes="sql-connection-badge"
+                  IsVisible="{Binding IsProductionConnectionContext}"
+                  Background="#33E16174">
+            <TextBlock Text="{Binding ActiveConnectionContextBadgeText}"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"/>
+          </Border>
+          <Border Classes="sql-connection-badge"
+                  IsVisible="{Binding IsStagingConnectionContext}"
+                  Background="#33D9A441">
+            <TextBlock Text="{Binding ActiveConnectionContextBadgeText}"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"/>
+          </Border>
+          <Border Classes="sql-connection-badge"
+                  IsVisible="{Binding HasNoActiveConnection}"
+                  Background="{StaticResource Bg2Brush}">
+            <TextBlock Text="{Binding ActiveConnectionContextBadgeText}"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeCaption}"/>
+          </Border>
+        </Grid>
+      </Button>
+    </Grid>
+
+    <Grid Grid.Row="2" ClipToBounds="True" RowDefinitions="*,Auto">
+      <Border Grid.Row="0"
+              Margin="10,10,10,12"
               Background="{StaticResource Bg0Brush}"
               BorderBrush="{StaticResource BorderSubtleBrush}"
               BorderThickness="1"
@@ -37,11 +95,54 @@
                        Foreground="{StaticResource TextPrimaryBrush}"/>
       </Border>
 
-        <Border x:Name="ResultsSheetHost"
-          VerticalAlignment="Bottom"
-                Margin="14"
-                IsVisible="{Binding ShouldShowResultsSheet}"
-                Height="{Binding ResultsSheetHeight}"
+      <Border Grid.Row="0"
+              x:Name="GoToLineOverlay"
+              IsVisible="False"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top"
+              Margin="22,18,22,0"
+              Padding="10,8"
+              MinWidth="210"
+              Background="{StaticResource Bg1Brush}"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="1"
+              CornerRadius="{StaticResource RadiusMD}"
+              BoxShadow="{StaticResource PanelShadow}">
+        <StackPanel Spacing="6">
+          <TextBlock x:Name="GoToLineLabel"
+                     Text="Ir para linha"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextSecondaryBrush}"/>
+          <TextBox x:Name="GoToLineInput"
+                   KeyDown="GoToLineInput_OnKeyDown"
+                   MinWidth="140"
+                   HorizontalAlignment="Stretch"
+                   Watermark="Numero da linha"/>
+        </StackPanel>
+      </Border>
+
+      <Grid Grid.Row="1"
+            x:Name="ResultsSheetHost"
+            Margin="14,0,14,14"
+            IsVisible="{Binding ShouldShowResultsSheet}"
+            Height="{Binding ResultsSheetHeight}"
+            MinHeight="160"
+            ClipToBounds="True"
+            RowDefinitions="Auto,*">
+        <GridSplitter Grid.Row="0"
+                      x:Name="ResultsResizeGrip"
+                      Height="6"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Center"
+                      Background="{StaticResource BorderSubtleBrush}"
+                      Cursor="SizeNorthSouth"
+                      PointerPressed="ResultsResizeGrip_OnPointerPressed"
+                      PointerMoved="ResultsResizeGrip_OnPointerMoved"
+                      PointerReleased="ResultsResizeGrip_OnPointerReleased"
+                      PointerCaptureLost="ResultsResizeGrip_OnPointerCaptureLost"/>
+
+        <Border Grid.Row="1"
+                Margin="0,6,0,0"
                 Background="{StaticResource Bg1Brush}"
                 BorderBrush="{StaticResource BorderSubtleBrush}"
                 BorderThickness="1"
@@ -56,28 +157,15 @@
           </Border.Transitions>
 
           <Grid RowDefinitions="Auto,*">
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="10,8,10,6">
-              <Border Grid.Column="0"
-                      x:Name="ResultsResizeGrip"
-                      Width="38"
-                      Height="4"
-                      CornerRadius="{StaticResource RadiusPill}"
-                      VerticalAlignment="Center"
-                      Background="{StaticResource BorderSubtleBrush}"
-                      Cursor="SizeNorthSouth"
-                      PointerPressed="ResultsResizeGrip_OnPointerPressed"
-                      PointerMoved="ResultsResizeGrip_OnPointerMoved"
-                      PointerReleased="ResultsResizeGrip_OnPointerReleased"
-                      PointerCaptureLost="ResultsResizeGrip_OnPointerCaptureLost"/>
-
-              <TextBlock Grid.Column="1"
-                         Text="Resultados"
-                         HorizontalAlignment="Center"
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="10,8,10,6">
+              <TextBlock Grid.Column="0"
+                         Text="{Binding [sqlEditor.results.title], Source={x:Static loc:LocalizationService.Instance}}"
+                         HorizontalAlignment="Left"
                          Foreground="{StaticResource TextPrimaryBrush}"
                          FontWeight="{StaticResource FontWeightTitle}"
                          FontSize="{StaticResource FontSizeBody}"/>
 
-              <Button Grid.Column="2"
+              <Button Grid.Column="1"
                       Width="24"
                       Height="24"
                       Padding="0"
@@ -89,41 +177,89 @@
             <ctrl:SqlEditorResultPanel Grid.Row="1" Margin="10,0,10,10"/>
           </Grid>
         </Border>
+      </Grid>
     </Grid>
 
-    <Border Grid.Row="2"
+    <Border Grid.Row="3"
             Background="{StaticResource Bg1Brush}"
             BorderBrush="{StaticResource BorderSubtleBrush}"
             BorderThickness="0,1,0,0"
             Padding="10,6">
-      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-        <ProgressBar IsIndeterminate="True"
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto"
+            VerticalAlignment="Center">
+        <Button Grid.Column="0"
+                Classes="sql-primary-runstop"
+                Margin="0,0,10,0"
+                Content="{Binding ExecuteOrCancelButtonText}"
+                IsEnabled="{Binding CanExecuteOrCancel}"
+                ToolTip.Tip="{Binding ExecuteOrCancelTooltipText}"
+                Click="ExecuteOrCancelPrimaryButton_Click"/>
+
+        <ProgressBar Grid.Column="1"
+                     IsIndeterminate="True"
                      Width="72"
                      Height="3"
+                     Margin="0,0,10,0"
+                     VerticalAlignment="Center"
                      IsVisible="{Binding IsExecuting}"/>
-        <TextBlock Classes.exec-status="True"
+
+        <TextBlock Grid.Column="2"
+                   Margin="0,0,10,0"
+                   Classes.exec-status="True"
                    Classes.error="{Binding HasExecutionError}"
                    VerticalAlignment="Center"
                    FontSize="{StaticResource FontSizeCaption}"
-                   Text="{Binding ExecutionStatusText}"/>
-        <TextBlock VerticalAlignment="Center"
+                   Text="{Binding ExecutionStatusText}"
+                   TextTrimming="CharacterEllipsis"/>
+
+        <TextBlock Grid.Column="3"
+                   Margin="0,0,10,0"
+                   VerticalAlignment="Center"
                    FontSize="{StaticResource FontSizeCaption}"
                    Foreground="{StaticResource TextSecondaryBrush}"
                    Text="{Binding ResultSummaryText}"/>
-        <Button Content="Export Report"
-          IsVisible="{Binding CanExportReport}"
-          Click="ExportReportBtn_Click"
-          Padding="10,2"
-          MinHeight="24"
-          FontSize="{StaticResource FontSizeCaption}"/>
-      </StackPanel>
+
+        <Button Grid.Column="4"
+                Margin="0,0,10,0"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                Padding="0"
+                Click="CursorPositionButton_Click"
+                ToolTip.Tip="{Binding CursorPositionTooltipText}">
+          <TextBlock VerticalAlignment="Center"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextSecondaryBrush}"
+                     Text="{Binding CursorPositionText}"/>
+        </Button>
+
+        <Button Grid.Column="5"
+                Margin="0,0,10,0"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                Padding="0"
+                Command="{Binding OpenConnectionSwitcherCommand}">
+          <TextBlock VerticalAlignment="Center"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextSecondaryBrush}"
+                     Text="{Binding ActiveProviderStatusText}"/>
+        </Button>
+
+        <TextBlock Grid.Column="6"
+                   Margin="0,0,10,0"
+                   VerticalAlignment="Center"
+                   FontSize="{StaticResource FontSizeCaption}"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   Text="{Binding IndentationStatusText}"/>
+      </Grid>
     </Border>
 
-    <ctrl:MutationConfirmDialog Grid.Row="2"
+    <ctrl:MutationConfirmDialog Grid.Row="3"
                                 IsVisible="{Binding HasPendingMutationConfirmation}"
                                 Margin="0,30,0,0"/>
 
-    <Border Grid.Row="2"
+    <Border Grid.Row="3"
             IsVisible="{Binding HasPendingCloseTabConfirmation}"
             Margin="0,30,0,0"
             Padding="10,8"

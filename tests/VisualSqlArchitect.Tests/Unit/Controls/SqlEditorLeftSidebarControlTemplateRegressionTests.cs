@@ -10,13 +10,13 @@ public sealed class SqlEditorLeftSidebarControlTemplateRegressionTests
         string xaml = ReadXaml();
 
         Assert.Contains("x:DataType=\"vm:SqlEditorViewModel\"", xaml);
-        Assert.Contains("Text=\"CONEXÃO\"", xaml);
+        Assert.Contains("Text=\"{Binding [sidebar.tab.connection], Source={x:Static loc:LocalizationService.Instance}}\"", xaml);
         Assert.Contains("shared:DatabaseConnectionCard", xaml);
         Assert.Contains("SwitchConnectionCommand=\"{Binding SharedConnectionManager.SwitchConnectionCommand}\"", xaml);
         Assert.Contains("SwitchSchemaCommand=\"{Binding SharedConnectionManager.SwitchSchemaCommand}\"", xaml);
         Assert.DoesNotContain("ShowDialectSelector", xaml);
         Assert.DoesNotContain("FallbackDialect", xaml);
-        Assert.Contains("Text=\"SCHEMA\"", xaml);
+        Assert.Contains("Text=\"{Binding [sidebar.tab.schema], Source={x:Static loc:LocalizationService.Instance}}\"", xaml);
         Assert.Contains("ItemsSource=\"{Binding SchemaTables}\"", xaml);
         Assert.Contains("x:DataType=\"vm:SqlEditorSchemaTableItem\"", xaml);
         Assert.Contains("x:DataType=\"vm:SqlEditorSchemaColumnItem\"", xaml);

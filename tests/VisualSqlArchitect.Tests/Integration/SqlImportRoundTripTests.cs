@@ -236,7 +236,7 @@ public class SqlImportRoundTripTests
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, r =>
             r.Status == ImportItemStatus.Imported
-            && r.Label.Contains(" IN(", StringComparison.OrdinalIgnoreCase));
+            && r.Label.Contains("WHERE id IN", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(" IN ", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
     }
@@ -259,7 +259,7 @@ public class SqlImportRoundTripTests
         Assert.True(canvas.SqlImporter.HasReport);
         Assert.Contains(canvas.SqlImporter.Report, r =>
             r.Status == ImportItemStatus.Imported
-            && r.Label.Contains("scalar sub-query", StringComparison.OrdinalIgnoreCase));
+            && r.Label.Contains("WHERE id >", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("SELECT MAX", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(">", sql, StringComparison.OrdinalIgnoreCase);
     }

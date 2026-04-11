@@ -1,34 +1,34 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using DBWeaver.UI.Controls;
 using DBWeaver.UI.ViewModels;
 using DBWeaver.UI.ViewModels.Canvas;
-using System.ComponentModel;
 
 namespace DBWeaver.UI.Controls.Shell;
 
 public partial class DiagramDocumentPageControl : UserControl
 {
-    private const int BaseOverlayZIndex = 999;
-    private int _nextOverlayZIndex = BaseOverlayZIndex;
-    private Panel? _benchmarkOverlayHost;
-    private Panel? _explainOverlayHost;
+    private Panel? _overlayDismissBackdrop;
     private CanvasViewModel? _viewModel;
-    private BenchmarkViewModel? _benchmarkViewModel;
-    private ExplainPlanViewModel? _explainPlanViewModel;
 
     public DiagramDocumentPageControl()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        AddHandler(KeyDownEvent, OnHostKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
-        _benchmarkOverlayHost = this.FindControl<Panel>("BenchmarkOverlayHost");
-        _explainOverlayHost = this.FindControl<Panel>("ExplainOverlayHost");
+        _overlayDismissBackdrop = this.FindControl<Panel>("OverlayDismissBackdrop");
+        if (_overlayDismissBackdrop is not null)
+            _overlayDismissBackdrop.PointerPressed += (_, _) => TryDismissTopOverlay();
+    }
 
-        if (_benchmarkOverlayHost is not null)
-            _benchmarkOverlayHost.PointerPressed += (_, _) => BringOverlayToFront(_benchmarkOverlayHost);
+    private void OnHostKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape)
+            return;
 
-        if (_explainOverlayHost is not null)
-            _explainOverlayHost.PointerPressed += (_, _) => BringOverlayToFront(_explainOverlayHost);
+        if (TryDismissTopOverlay())
+            e.Handled = true;
     }
 
     public InfiniteCanvas? CanvasControl => this.FindControl<InfiniteCanvas>("TheCanvas");
@@ -42,66 +42,54 @@ public partial class DiagramDocumentPageControl : UserControl
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        if (_viewModel is not null)
-            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        if (_benchmarkViewModel is not null)
-            _benchmarkViewModel.PropertyChanged -= OnBenchmarkPropertyChanged;
-        if (_explainPlanViewModel is not null)
-            _explainPlanViewModel.PropertyChanged -= OnExplainPlanPropertyChanged;
-
         _viewModel = DataContext as CanvasViewModel;
-        if (_viewModel is null)
-            return;
-
-        _benchmarkViewModel = _viewModel.Benchmark;
-        _explainPlanViewModel = _viewModel.ExplainPlan;
-        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        _benchmarkViewModel.PropertyChanged += OnBenchmarkPropertyChanged;
-        _explainPlanViewModel.PropertyChanged += OnExplainPlanPropertyChanged;
     }
 
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private bool TryDismissTopOverlay()
     {
         if (_viewModel is null)
-            return;
+            return false;
 
-        if (e.PropertyName == nameof(CanvasViewModel.Benchmark) && _benchmarkOverlayHost is not null && _viewModel.Benchmark.IsVisible)
-            BringOverlayToFront(_benchmarkOverlayHost);
-
-        if (e.PropertyName == nameof(CanvasViewModel.ExplainPlan) && _explainOverlayHost is not null && _viewModel.ExplainPlan.IsVisible)
-            BringOverlayToFront(_explainOverlayHost);
-    }
-
-    private void OnBenchmarkPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (_benchmarkOverlayHost is null || _benchmarkViewModel is null)
-            return;
-
-        if ((e.PropertyName == nameof(BenchmarkViewModel.IsVisible) || e.PropertyName == nameof(BenchmarkViewModel.OpenRequestToken))
-            && _benchmarkViewModel.IsVisible)
+        if (_viewModel.FileHistory.IsVisible)
         {
-            BringOverlayToFront(_benchmarkOverlayHost);
+            _viewModel.FileHistory.Close();
+            return true;
         }
-    }
 
-    private void OnExplainPlanPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (_explainOverlayHost is null || _explainPlanViewModel is null)
-            return;
-
-        if ((e.PropertyName == nameof(ExplainPlanViewModel.IsVisible) || e.PropertyName == nameof(ExplainPlanViewModel.OpenRequestToken))
-            && _explainPlanViewModel.IsVisible)
+        if (_viewModel.FlowVersions.IsVisible)
         {
-            BringOverlayToFront(_explainOverlayHost);
+            _viewModel.FlowVersions.Close();
+            return true;
         }
-    }
 
-    private void BringOverlayToFront(Panel? overlayHost)
-    {
-        if (overlayHost is null)
-            return;
+        if (_viewModel.SqlImporter.IsVisible)
+        {
+            if (_viewModel.SqlImporter.IsImporting)
+                _viewModel.SqlImporter.CancelImport();
+            else
+                _viewModel.SqlImporter.Close();
 
-        _nextOverlayZIndex++;
-        overlayHost.ZIndex = _nextOverlayZIndex;
+            return true;
+        }
+
+        if (_viewModel.ExplainPlan.IsVisible)
+        {
+            _viewModel.ExplainPlan.Close();
+            return true;
+        }
+
+        if (_viewModel.Benchmark.IsVisible)
+        {
+            _viewModel.Benchmark.CloseCommand.Execute(null);
+            return true;
+        }
+
+        if (VisualRoot is Window window && window.DataContext is ShellViewModel shellViewModel && shellViewModel.CommandPalette.IsVisible)
+        {
+            shellViewModel.CommandPalette.Close();
+            return true;
+        }
+
+        return false;
     }
 }

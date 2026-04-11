@@ -4,6 +4,7 @@
              xmlns:mi="using:Material.Icons.Avalonia"
              xmlns:ctrl="using:DBWeaver.UI.Controls"
              xmlns:shared="using:DBWeaver.UI.Controls.Shared"
+             xmlns:loc="using:DBWeaver.UI.Services.Localization"
              x:Class="DBWeaver.UI.Controls.SqlEditor.SqlEditorLeftSidebarControl"
              x:DataType="vm:SqlEditorViewModel"
              x:Name="SqlEditorSidebarRoot">
@@ -16,7 +17,7 @@
       x:DataType="vm:SqlEditorSchemaTableItem"
       x:DataType="vm:SqlEditorSchemaColumnItem" -->
   <UserControl.Styles>
-    <Style Selector="TextBlock.section-header-teal">
+    <Style Selector="TextBlock.section-header-accent">
       <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
       <Setter Property="FontWeight" Value="Bold"/>
       <Setter Property="Foreground" Value="{StaticResource AccentPrimaryHoverBrush}"/>
@@ -48,8 +49,8 @@
           RowDefinitions="Auto,*"
           VerticalAlignment="Stretch">
       <StackPanel Grid.Row="0" Spacing="8">
-        <TextBlock Text="CONEXÃO"
-                   Classes="section-header-teal"
+        <TextBlock Text="{Binding [sidebar.tab.connection], Source={x:Static loc:LocalizationService.Instance}}"
+                   Classes="section-header-accent"
                    Margin="2,0,0,0"/>
 
       <Grid IsVisible="{Binding HasSharedConnectionManager}">
@@ -75,13 +76,13 @@
                 IsVisible="{Binding SharedConnectionManager.ActiveProfileId, Converter={x:Static StringConverters.IsNullOrEmpty}}"
                 Margin="0,0,0,6">
           <StackPanel Spacing="10">
-            <TextBlock Text="Sem conexão"
+            <TextBlock Text="{Binding [sqlEditor.sidebar.connection.none], Source={x:Static loc:LocalizationService.Instance}}"
                        Classes="empty-state"/>
-            <TextBlock Text="Conecte-se para carregar metadados e executar consultas."
+            <TextBlock Text="{Binding [sqlEditor.sidebar.connection.connectHint], Source={x:Static loc:LocalizationService.Instance}}"
                        Classes="empty-state"
                        FontSize="{StaticResource FontSizeCaption}"
                        TextWrapping="Wrap"/>
-            <Button Content="Conectar"
+            <Button Content="{Binding [sqlEditor.sidebar.connection.connect], Source={x:Static loc:LocalizationService.Instance}}"
                     Classes="primary"
                     Command="{Binding SharedConnectionManager.ConnectOrOpenManagerCommand}"
                     HorizontalAlignment="Stretch"
@@ -99,8 +100,8 @@
             VerticalAlignment="Stretch"
             Margin="0,8,0,0">
         <TextBlock Grid.Row="0"
-                   Text="SCHEMA"
-                   Classes="section-header-teal"
+                   Text="{Binding [sidebar.tab.schema], Source={x:Static loc:LocalizationService.Instance}}"
+                   Classes="section-header-accent"
                    Margin="2,0,0,8"/>
 
         <Border Grid.Row="1"
@@ -127,7 +128,7 @@
                                  Margin="0,0,7,0"/>
                 <TextBox Classes="sidebar-input"
                          Text="{Binding SharedConnectionManager.SchemaFilterQuery}"
-                         Watermark="Buscar tabela ou coluna"
+                         Watermark="{Binding [sqlEditor.sidebar.schema.searchWatermark], Source={x:Static loc:LocalizationService.Instance}}"
                          Background="Transparent"
                          BorderBrush="Transparent"
                          BorderThickness="1"
@@ -144,7 +145,7 @@
                     Padding="8"
                     Margin="8,0,0,0"
                     CornerRadius="{StaticResource RadiusSM}"
-                    ToolTip.Tip="Recarregar metadados"
+                    ToolTip.Tip="{Binding [sqlEditor.sidebar.schema.reloadTooltip], Source={x:Static loc:LocalizationService.Instance}}"
                     IsEnabled="{Binding SharedConnectionManager.IsBusy, Converter={x:Static BoolConverters.Not}}">
               <mi:MaterialIcon Kind="Refresh"
                                Width="16"
@@ -168,7 +169,7 @@
                                 DataContext="{Binding SharedConnectionManager.Canvas.Schema}"
                                 VerticalAlignment="Stretch"/>
 
-            <TextBlock Text="Conecte-se para visualizar o schema completo."
+            <TextBlock Text="{Binding [sqlEditor.sidebar.schema.connectHint], Source={x:Static loc:LocalizationService.Instance}}"
                        Classes="empty-state"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Center"

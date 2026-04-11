@@ -89,9 +89,15 @@
                     Background="{StaticResource Bg2Brush}" BorderBrush="{StaticResource BorderFocusBrush}" BorderThickness="1">
               <mi:MaterialIcon Kind="DatabaseSettings" Width="16" Height="16" Foreground="{StaticResource AccentPrimaryBrush}"/>
             </Border>
-            <TextBlock Text="{Binding [connection.title], Source={x:Static loc:LocalizationService.Instance}}"
-                       FontSize="{StaticResource FontSizeTitle}" FontWeight="{StaticResource FontWeightTitle}" Foreground="{StaticResource TextSecondaryBrush}"
-                       VerticalAlignment="Center"/>
+            <StackPanel Spacing="1" VerticalAlignment="Center">
+              <TextBlock Text="{Binding [connection.title], Source={x:Static loc:LocalizationService.Instance}}"
+                         FontSize="{StaticResource FontSizeTitle}" FontWeight="{StaticResource FontWeightTitle}" Foreground="{StaticResource TextSecondaryBrush}"
+                         VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding [connection.subtitle], Source={x:Static loc:LocalizationService.Instance}}"
+                         FontSize="{StaticResource FontSizeCaption}"
+                         Foreground="{StaticResource TextMutedBrush}"
+                         VerticalAlignment="Center"/>
+            </StackPanel>
           </StackPanel>
 
           <Button Grid.Column="2" Classes="secondary" Command="{Binding CloseCommand}"
@@ -171,23 +177,24 @@
           </Grid>
         </Border>
 
-        <!-- RIGHT column: edit form -->
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-          <Border Padding="20,16">
-          <StackPanel Spacing="0">
+        <!-- RIGHT column: edit form + fixed footer -->
+        <Grid Grid.Column="1" RowDefinitions="*,Auto">
+          <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <Border Padding="20,16">
+              <StackPanel Spacing="0">
 
-            <!-- Placeholder when nothing is selected -->
-            <StackPanel IsVisible="{Binding !IsEditing}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                        Margin="0,60,0,0" Spacing="10">
-              <mi:MaterialIcon Kind="DatabaseOff" Width="40" Height="40"
-                               Foreground="{StaticResource BorderSubtleBrush}" HorizontalAlignment="Center"/>
-              <TextBlock Text="{Binding [connection.selectOrCreate], Source={x:Static loc:LocalizationService.Instance}}"
-                         FontSize="{StaticResource FontSizeBody}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
-            </StackPanel>
+                <!-- Placeholder when nothing is selected -->
+                <StackPanel IsVisible="{Binding !IsEditing}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Margin="0,60,0,0" Spacing="10">
+                  <mi:MaterialIcon Kind="DatabaseOff" Width="40" Height="40"
+                                   Foreground="{StaticResource BorderSubtleBrush}" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding [connection.selectOrCreate], Source={x:Static loc:LocalizationService.Instance}}"
+                             FontSize="{StaticResource FontSizeBody}" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                </StackPanel>
 
-            <!-- Edit form -->
-            <StackPanel IsVisible="{Binding IsEditing}" Spacing="0">
+                <!-- Edit form -->
+                <StackPanel IsVisible="{Binding IsEditing}" Spacing="0">
 
               <!-- Connection name -->
               <TextBlock Classes="label" Text="{Binding [connection.name], Source={x:Static loc:LocalizationService.Instance}}"/>
@@ -312,53 +319,59 @@
               <TextBox Classes="field" Text="{Binding EditTimeout}" Margin="0,0,0,16"
                        Watermark="{Binding [connection.watermark.timeout], Source={x:Static loc:LocalizationService.Instance}}"/>
 
-              <!-- Test connection status -->
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </ScrollViewer>
+
+          <Border Grid.Row="1"
+                  IsVisible="{Binding IsEditing}"
+                  BorderBrush="{StaticResource BorderSubtleBrush}"
+                  BorderThickness="0,1,0,0"
+                  Background="{StaticResource Bg1Brush}"
+                  Padding="20,12">
+            <StackPanel Spacing="10">
               <Border IsVisible="{Binding TestStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                       Background="{StaticResource Bg0Brush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                      CornerRadius="{StaticResource RadiusSM}" Padding="10,8" Margin="0,0,0,14">
+                      CornerRadius="{StaticResource RadiusSM}" Padding="10,8">
                 <TextBlock Text="{Binding TestStatus}" FontSize="{StaticResource FontSizeCaption}"
                            Foreground="{Binding TestStatusColor}"
                            TextWrapping="Wrap"/>
               </Border>
 
-              <!-- Action buttons row -->
               <Grid ColumnDefinitions="Auto,*,Auto,8,Auto,8,Auto">
 
-                <!-- Delete (only when editing existing) -->
                 <Button Grid.Column="0" Classes="danger"
                         Command="{Binding DeleteProfileCommand}"
                         IsVisible="{Binding SelectedProfile, Converter={x:Static ObjectConverters.IsNotNull}}"
-                  ToolTip.Tip="{Binding [tooltip.deleteConnection], Source={x:Static loc:LocalizationService.Instance}}"
+                        ToolTip.Tip="{Binding [tooltip.deleteConnection], Source={x:Static loc:LocalizationService.Instance}}"
                         AutomationProperties.Name="{Binding [tooltip.deleteConnection], Source={x:Static loc:LocalizationService.Instance}}">
                   <mi:MaterialIcon Kind="Delete" Width="14" Height="14"/>
                 </Button>
 
-                <!-- Test -->
                 <Button Grid.Column="2" Classes="secondary"
                         Command="{Binding TestConnectionCommand}"
-                  ToolTip.Tip="{Binding [tooltip.testConnection], Source={x:Static loc:LocalizationService.Instance}}"
+                        ToolTip.Tip="{Binding [tooltip.testConnection], Source={x:Static loc:LocalizationService.Instance}}"
                         AutomationProperties.Name="{Binding [tooltip.testConnection], Source={x:Static loc:LocalizationService.Instance}}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <mi:MaterialIcon Kind="LanConnect" Width="13" Height="13"
                                      IsVisible="{Binding !IsTesting}"/>
                     <mi:MaterialIcon Kind="Loading" Width="13" Height="13"
                                      IsVisible="{Binding IsTesting}"/>
-                    <TextBlock Text="{Binding [connection.test], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                    <TextBlock Text="{Binding [connection.action.testConnection], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
                   </StackPanel>
                 </Button>
 
-                <!-- Save -->
                 <Button Grid.Column="4" Classes="secondary"
                         Command="{Binding SaveProfileCommand}"
-                  ToolTip.Tip="{Binding [tooltip.saveConnection], Source={x:Static loc:LocalizationService.Instance}}"
+                        ToolTip.Tip="{Binding [tooltip.saveConnection], Source={x:Static loc:LocalizationService.Instance}}"
                         AutomationProperties.Name="{Binding [tooltip.saveConnection], Source={x:Static loc:LocalizationService.Instance}}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <mi:MaterialIcon Kind="ContentSave" Width="13" Height="13"/>
-                    <TextBlock Text="{Binding [connection.save], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                    <TextBlock Text="{Binding [connection.action.saveConnection], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
                   </StackPanel>
                 </Button>
 
-                <!-- Connect -->
                 <Button Grid.Column="6" Classes="primary"
                         Command="{Binding ConnectCommand}"
                         IsVisible="{Binding !IsSelectedProfileActive}"
@@ -366,7 +379,7 @@
                         AutomationProperties.Name="{Binding [connection.connect], Source={x:Static loc:LocalizationService.Instance}}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <mi:MaterialIcon Kind="DatabaseArrowRight" Width="13" Height="13"/>
-                    <TextBlock Text="{Binding [connection.connect], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                    <TextBlock Text="{Binding [connection.action.connectConnection], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
                   </StackPanel>
                 </Button>
 
@@ -377,15 +390,13 @@
                         AutomationProperties.Name="{Binding [connection.disconnect], Source={x:Static loc:LocalizationService.Instance}}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <mi:MaterialIcon Kind="DatabaseOff" Width="13" Height="13"/>
-                    <TextBlock Text="{Binding [connection.disconnect], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+                    <TextBlock Text="{Binding [connection.action.disconnectConnection], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
                   </StackPanel>
                 </Button>
               </Grid>
-
             </StackPanel>
-          </StackPanel>
           </Border>
-        </ScrollViewer>
+        </Grid>
 
       </Grid>
     </Grid>

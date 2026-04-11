@@ -10,7 +10,7 @@ public sealed class MainWindowModeSwitchTemplateRegressionTests
         string xaml = ReadMainWindowXaml();
 
         Assert.Contains("Name=\"SqlEditorModeBtn\"", xaml);
-        Assert.Contains("Content=\"SQL\"", xaml);
+        Assert.Contains("Content=\"{Binding [mode.sql], Source={x:Static loc:LocalizationService.Instance}}\"", xaml);
         Assert.Contains("Click=\"SqlEditorModeBtn_Click\"", xaml);
     }
 

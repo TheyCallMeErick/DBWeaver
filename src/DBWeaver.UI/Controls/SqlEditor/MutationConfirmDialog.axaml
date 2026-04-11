@@ -8,35 +8,76 @@
   <Border Padding="10,8"
           Background="{StaticResource Bg0Brush}"
           BorderBrush="{StaticResource StatusWarningBrush}"
-          BorderThickness="1">
-    <StackPanel Spacing="6">
-      <TextBlock Text="{Binding PendingMutationMessage}"
-                 FontWeight="{StaticResource FontWeightTitle}"
-                 Foreground="{StaticResource TextPrimaryBrush}"/>
-      <ItemsControl ItemsSource="{Binding PendingMutationIssues}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:MutationGuardIssue">
-            <TextBlock Text="{Binding Message}"
-                       TextWrapping="Wrap"
-                       Foreground="{StaticResource TextSecondaryBrush}"/>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <TextBlock Text="{Binding PendingMutationCountQuery}"
-                 FontFamily="{StaticResource MonoFont}"
-                 Foreground="{StaticResource TextMutedBrush}"
-                 TextWrapping="Wrap"/>
-      <TextBlock Text="{Binding PendingMutationEstimateText}"
-                 Foreground="{StaticResource StatusInfoBrush}"
-                 TextWrapping="Wrap"/>
-      <ctrl:DiffPreviewControl/>
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="{Binding [sqlEditor.mutation.confirmExecute], Source={x:Static loc:LocalizationService.Instance}}"
-                Command="{Binding ConfirmPendingMutationCommand}"/>
-        <Button Content="{Binding [common.cancel], Source={x:Static loc:LocalizationService.Instance}}"
-                Classes="Danger"
-                Command="{Binding CancelPendingMutationCommand}"/>
-      </StackPanel>
-    </StackPanel>
+          BorderThickness="1"
+          CornerRadius="{StaticResource RadiusMD}">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <Border Grid.Row="0"
+              Padding="10,8"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="0,0,0,1"
+              Background="{StaticResource Bg1Brush}">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Border Width="22"
+                  Height="22"
+                  CornerRadius="{StaticResource RadiusSM}"
+                  Background="{StaticResource BtnWarningBgBrush}"
+                  BorderBrush="{StaticResource StatusWarningBrush}"
+                  BorderThickness="1">
+            <TextBlock Text="!"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontWeight="{StaticResource FontWeightTitle}"
+                       Foreground="{StaticResource StatusWarningBrush}"/>
+          </Border>
+          <StackPanel Spacing="1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding [sqlEditor.mutation.dialogTitle], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontWeight="{StaticResource FontWeightTitle}"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="{Binding [sqlEditor.mutation.dialogSubtitle], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource TextMutedBrush}"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="6" Margin="10,8">
+          <TextBlock Text="{Binding PendingMutationMessage}"
+                     FontWeight="{StaticResource FontWeightTitle}"
+                     Foreground="{StaticResource TextPrimaryBrush}"/>
+          <ItemsControl ItemsSource="{Binding PendingMutationIssues}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:MutationGuardIssue">
+                <TextBlock Text="{Binding Message}"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding PendingMutationCountQuery}"
+                     FontFamily="{StaticResource MonoFont}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding PendingMutationEstimateText}"
+                     Foreground="{StaticResource StatusInfoBrush}"
+                     TextWrapping="Wrap"/>
+          <ctrl:DiffPreviewControl/>
+        </StackPanel>
+      </ScrollViewer>
+
+      <Border Grid.Row="2"
+              Padding="10,8"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="0,1,0,0"
+              Background="{StaticResource Bg1Brush}">
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+          <Button Content="{Binding [common.cancel], Source={x:Static loc:LocalizationService.Instance}}"
+                  Classes="Danger"
+                  Command="{Binding CancelPendingMutationCommand}"/>
+          <Button Content="{Binding [sqlEditor.mutation.confirmExecute], Source={x:Static loc:LocalizationService.Instance}}"
+                  Command="{Binding ConfirmPendingMutationCommand}"/>
+        </StackPanel>
+      </Border>
+    </Grid>
   </Border>
 </UserControl>

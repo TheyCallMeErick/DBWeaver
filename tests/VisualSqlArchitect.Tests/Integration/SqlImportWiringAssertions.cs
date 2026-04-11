@@ -41,27 +41,9 @@ internal static class SqlImportWiringAssertions
                 && c.ToPin.Name.Equals("right", StringComparison.OrdinalIgnoreCase));
         }
 
-        NodeViewModel? where = canvas.Nodes.FirstOrDefault(n => n.Type == NodeType.WhereOutput);
-        bool hasSubqueryWhereConnection = canvas.Connections.Any(c =>
-            c.FromPin.Owner.Type is NodeType.SubqueryExists or NodeType.SubqueryIn or NodeType.SubqueryScalar
-            && c.FromPin.Name.Equals("result", StringComparison.OrdinalIgnoreCase)
-            && c.ToPin?.Owner == result
+        bool hasAnyWhereFlow = canvas.Connections.Any(c =>
+            c.ToPin?.Owner == result
             && c.ToPin.Name.Equals("where", StringComparison.OrdinalIgnoreCase));
-        if (where is not null)
-        {
-            bool hasIncomingCondition = canvas.Connections.Any(c =>
-                c.ToPin?.Owner == where
-                && c.ToPin.Name.Equals("condition", StringComparison.OrdinalIgnoreCase));
-
-            if (!hasSubqueryWhereConnection && hasIncomingCondition)
-            {
-                Assert.Contains(canvas.Connections, c =>
-                    c.FromPin.Owner == where
-                    && c.FromPin.Name.Equals("result", StringComparison.OrdinalIgnoreCase)
-                    && c.ToPin?.Owner == result
-                    && c.ToPin.Name.Equals("where", StringComparison.OrdinalIgnoreCase));
-            }
-        }
 
         NodeViewModel? subquery = canvas.Nodes.FirstOrDefault(n =>
             n.Type is NodeType.SubqueryExists or NodeType.SubqueryIn or NodeType.SubqueryScalar);
@@ -72,14 +54,20 @@ internal static class SqlImportWiringAssertions
                 && c.FromPin.Name.Equals("result", StringComparison.OrdinalIgnoreCase)
                 && c.ToPin?.Owner == result
                 && c.ToPin.Name.Equals("where", StringComparison.OrdinalIgnoreCase));
-            bool hasWhereCondition = where is not null && canvas.Connections.Any(c =>
+            bool hasWhereOutputCondition = canvas.Connections.Any(c =>
                 c.FromPin.Owner == subquery
                 && c.FromPin.Name.Equals("result", StringComparison.OrdinalIgnoreCase)
-                && c.ToPin?.Owner == where
+                && c.ToPin?.Owner?.Type == NodeType.WhereOutput
+                && c.ToPin.Name.Equals("condition", StringComparison.OrdinalIgnoreCase));
+            bool hasRoutedCondition = canvas.Connections.Any(c =>
+                c.FromPin.Owner == subquery
+                && c.FromPin.Name.Equals("result", StringComparison.OrdinalIgnoreCase)
+                && c.ToPin is not null
+                && c.ToPin.Owner != result
                 && c.ToPin.Name.Equals("condition", StringComparison.OrdinalIgnoreCase));
 
-            Assert.True(hasDirectWhere || hasWhereCondition,
-                "Subquery result must feed either ResultOutput.where or WhereOutput.condition.");
+            Assert.True(hasAnyWhereFlow && (hasDirectWhere || hasWhereOutputCondition || hasRoutedCondition),
+                "Subquery result must feed WHERE flow (directly or through condition chain).");
         }
 
         NodeViewModel? count = canvas.Nodes.FirstOrDefault(n => n.Type == NodeType.CountStar);

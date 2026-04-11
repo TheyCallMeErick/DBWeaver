@@ -21,7 +21,7 @@ public sealed class SqlEditorExecutionFeedbackServiceTests
 
         SqlEditorExecutionFeedback feedback = sut.Build(result);
 
-        Assert.Equal("Execution succeeded.", feedback.StatusText);
+        AssertLocalized(feedback.StatusText, "Execucao concluida com sucesso.", "Execution succeeded.");
         Assert.Contains("3", feedback.DetailText);
         Assert.False(feedback.HasError);
     }
@@ -34,14 +34,14 @@ public sealed class SqlEditorExecutionFeedbackServiceTests
         {
             StatementSql = "SELECT 1",
             Success = false,
-            ErrorMessage = "SQL execution was canceled.",
+            ErrorMessage = "A execucao SQL foi cancelada.",
             ExecutedAt = DateTimeOffset.UtcNow,
         };
 
         SqlEditorExecutionFeedback feedback = sut.Build(result);
 
-        Assert.Equal("Execution canceled.", feedback.StatusText);
-        Assert.Equal("SQL execution was canceled.", feedback.DetailText);
+        AssertLocalized(feedback.StatusText, "Execucao cancelada.", "Execution canceled.");
+        AssertLocalized(feedback.DetailText, "A execucao SQL foi cancelada.", "SQL execution was canceled.");
         Assert.False(feedback.HasError);
     }
 
@@ -59,7 +59,7 @@ public sealed class SqlEditorExecutionFeedbackServiceTests
 
         SqlEditorExecutionFeedback feedback = sut.Build(result);
 
-        Assert.Equal("Execution failed.", feedback.StatusText);
+        AssertLocalized(feedback.StatusText, "Falha na execucao.", "Execution failed.");
         Assert.Equal("broken", feedback.DetailText);
         Assert.True(feedback.HasError);
     }
@@ -97,5 +97,11 @@ public sealed class SqlEditorExecutionFeedbackServiceTests
         public string this[string key] => values.TryGetValue(key, out string? value) ? value : key;
         public bool ToggleCulture() => false;
         public bool SetCulture(string culture) => false;
+    }
+
+    private static void AssertLocalized(string? actual, params string[] expectedValues)
+    {
+        Assert.NotNull(actual);
+        Assert.Contains(actual!, expectedValues);
     }
 }

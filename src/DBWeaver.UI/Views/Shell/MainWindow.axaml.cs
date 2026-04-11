@@ -408,10 +408,10 @@ public partial class MainWindow : Window
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
             new FilePickerOpenOptions
             {
-                Title = L("file.openDialog.title", "Open Canvas"),
+                Title = L("file.openDialog.title", "Abrir Canvas"),
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("SQL Architect Canvas")
+                    new FilePickerFileType(L("file.openDialog.canvasType", "Canvas SQL Architect"))
                     {
                         Patterns = ["*.vsaq"],
                         MimeTypes = ["application/json"],

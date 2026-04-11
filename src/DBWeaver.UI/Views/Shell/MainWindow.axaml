@@ -267,7 +267,7 @@
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="Padding" Value="8,6"/>
       <Setter Property="CornerRadius" Value="{StaticResource RadiusSM}"/>
-      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Transitions">
         <Transitions>
@@ -351,9 +351,9 @@
                       ToolTip.Tip="{Binding [tooltip.switchToDdlMode], Source={x:Static loc:LocalizationService.Instance}}"/>
               <Button Classes="mode-switch-btn"
                       Name="SqlEditorModeBtn"
-                      Content="SQL"
+                      Content="{Binding [mode.sql], Source={x:Static loc:LocalizationService.Instance}}"
                       Click="SqlEditorModeBtn_Click"
-                      ToolTip.Tip="Switch to SQL editor"/>
+                      ToolTip.Tip="{Binding [tooltip.switchToSqlMode], Source={x:Static loc:LocalizationService.Instance}}"/>
             </StackPanel>
           </Border>
 

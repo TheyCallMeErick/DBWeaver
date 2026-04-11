@@ -82,7 +82,6 @@ public class SqlImportNodeCoverageMatrixIntegrationTests
                 [
                     NodeType.ResultOutput,
                     NodeType.ColumnSetBuilder,
-                    NodeType.WhereOutput,
                     NodeType.Top,
                     comparisonNodeType,
                 ],
@@ -237,7 +236,6 @@ public class SqlImportNodeCoverageMatrixIntegrationTests
                 [
                     NodeType.ResultOutput,
                     NodeType.ColumnSetBuilder,
-                    NodeType.WhereOutput,
                     NodeType.GreaterOrEqual,
                     NodeType.Top,
                 ],
@@ -327,7 +325,6 @@ public class SqlImportNodeCoverageMatrixIntegrationTests
     private static void AssertWhereComparisonWiring(CanvasViewModel canvas)
     {
         NodeViewModel result = canvas.Nodes.First(n => n.Type == NodeType.ResultOutput);
-        NodeViewModel where = canvas.Nodes.First(n => n.Type == NodeType.WhereOutput);
         NodeViewModel comparison = canvas.Nodes.First(n =>
             n.Type is NodeType.Equals
                 or NodeType.NotEquals
@@ -338,12 +335,6 @@ public class SqlImportNodeCoverageMatrixIntegrationTests
 
         Assert.Contains(canvas.Connections, c =>
             c.FromPin.Owner == comparison
-            && c.FromPin.Name.Equals("result", StringComparison.OrdinalIgnoreCase)
-            && c.ToPin?.Owner == where
-            && c.ToPin.Name.Equals("condition", StringComparison.OrdinalIgnoreCase));
-
-        Assert.Contains(canvas.Connections, c =>
-            c.FromPin.Owner == where
             && c.FromPin.Name.Equals("result", StringComparison.OrdinalIgnoreCase)
             && c.ToPin?.Owner == result
             && c.ToPin.Name.Equals("where", StringComparison.OrdinalIgnoreCase));

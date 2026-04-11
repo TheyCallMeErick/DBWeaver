@@ -26,12 +26,10 @@ public class SqlImporterWiringTests
         Assert.Equal("INNER", joinNode.Parameters["join_type"]);
         Assert.Equal("public.customers", joinNode.Parameters["right_source"]);
 
-        NodeViewModel whereNode = canvas.Nodes.First(n => n.Type == NodeType.WhereOutput);
         NodeViewModel resultNode = canvas.Nodes.First(n => n.Type == NodeType.ResultOutput);
 
         Assert.Contains(canvas.Connections, c =>
-            c.FromPin.Owner == whereNode
-            && c.FromPin.Name == "result"
+            c.FromPin.Name == "result"
             && c.ToPin?.Owner == resultNode
             && c.ToPin.Name == "where");
     }

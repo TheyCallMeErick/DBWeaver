@@ -7,34 +7,6 @@
              x:DataType="vm:SqlImporterViewModel">
 
   <UserControl.Styles>
-    <Style Selector="Button.sql-action">
-      <Setter Property="Background"    Value="{StaticResource CanvasBgBrush}"/>
-      <Setter Property="BorderBrush"   Value="{StaticResource BorderBrush}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Foreground"    Value="{StaticResource TextSecondaryBrush}"/>
-      <Setter Property="CornerRadius"  Value="6"/>
-      <Setter Property="Padding"       Value="10,5"/>
-      <Setter Property="FontSize"      Value="12"/>
-      <Setter Property="Cursor"        Value="Hand"/>
-    </Style>
-    <Style Selector="Button.sql-action:pointerover">
-      <Setter Property="Background" Value="{StaticResource Bg3Brush}"/>
-      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-    </Style>
-    <Style Selector="Button.import-btn">
-      <Setter Property="Background"    Value="{StaticResource BtnSuccessBgBrush}"/>
-      <Setter Property="BorderBrush"   Value="{StaticResource StatusOkBrush}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Foreground"    Value="{StaticResource StatusOkBrush}"/>
-      <Setter Property="CornerRadius"  Value="6"/>
-      <Setter Property="Padding"       Value="14,6"/>
-      <Setter Property="FontSize"      Value="12"/>
-      <Setter Property="FontWeight"    Value="SemiBold"/>
-      <Setter Property="Cursor"        Value="Hand"/>
-    </Style>
-    <Style Selector="Button.import-btn:pointerover">
-      <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
-    </Style>
     <Style Selector="Button.report-link-btn">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="BorderBrush" Value="Transparent"/>
@@ -90,7 +62,7 @@
 
           <!-- Close button -->
           <Button Grid.Column="2"
-                  Classes="sql-action"
+              Classes="modal-close-btn"
                   Name="CloseBtn"
                   AutomationProperties.Name="{Binding [sqlImporter.close], Source={x:Static loc:LocalizationService.Instance}}"
                   Padding="7,5">
@@ -170,7 +142,7 @@
 
           <!-- Import button -->
           <Button Grid.Column="1"
-                  Classes="import-btn"
+              Classes="modal-footer-primary-btn"
                   Name="ImportBtn"
                   IsEnabled="{Binding !IsImporting}"
                   AutomationProperties.Name="{Binding [sqlImporter.import], Source={x:Static loc:LocalizationService.Instance}}">
@@ -199,10 +171,10 @@
                         HorizontalAlignment="Right"
                         Spacing="8">
               <Button Name="CancelClearCanvasBtn"
-                      Classes="sql-action"
+                      Classes="modal-footer-secondary-btn"
                       Content="{Binding [common.cancel], Source={x:Static loc:LocalizationService.Instance}}"/>
               <Button Name="ConfirmClearCanvasBtn"
-                      Classes="import-btn"
+                      Classes="modal-footer-primary-btn"
                       Content="{Binding [sqlImporter.confirmProceed], Source={x:Static loc:LocalizationService.Instance}}"/>
             </StackPanel>
           </StackPanel>
@@ -301,7 +273,7 @@
           </ItemsControl>
 
           <Button Content="{Binding [common.close], Source={x:Static loc:LocalizationService.Instance}}"
-                  Classes="sql-action"
+              Classes="modal-footer-secondary-btn"
                   Name="ResultCloseBtn"
                   HorizontalAlignment="Right"
                   IsVisible="{Binding !IsImporting}"

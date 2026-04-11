@@ -19,30 +19,30 @@ public sealed class SqlEditorReportExportDialogViewModel : ViewModelBase
     public SqlEditorReportExportDialogViewModel(string defaultTitle)
     {
         string sanitizedTitle = string.IsNullOrWhiteSpace(defaultTitle)
-            ? L("sqlEditor.export.defaultFileBase", "report")
+            ? L("sqlEditor.export.defaultFileBase", "relatorio")
             : defaultTitle.Trim();
 
         ReportTypes =
         [
             new SqlEditorReportTypeOption(
                 SqlEditorReportType.HtmlFullFeature,
-                L("sqlEditor.export.type.html.title", "HTML full-feature report"),
-                L("sqlEditor.export.type.html.description", "Standalone, SQL-first HTML artifact for offline audit."),
+                L("sqlEditor.export.type.html.title", "Relatorio HTML completo"),
+                L("sqlEditor.export.type.html.description", "Artefato HTML autonomo e orientado a SQL para auditoria offline."),
                 "html"),
             new SqlEditorReportTypeOption(
                 SqlEditorReportType.JsonContract,
-                L("sqlEditor.export.type.json.title", "JSON execution contract"),
-                L("sqlEditor.export.type.json.description", "Machine-readable payload with SQL, metadata and execution result."),
+                L("sqlEditor.export.type.json.title", "Contrato de execucao JSON"),
+                L("sqlEditor.export.type.json.description", "Payload legivel por maquina com SQL, metadados e resultado da execucao."),
                 "json"),
             new SqlEditorReportTypeOption(
                 SqlEditorReportType.CsvData,
-                L("sqlEditor.export.type.csv.title", "CSV data export"),
-                L("sqlEditor.export.type.csv.description", "Tabular result data only, suitable for spreadsheet tools."),
+                L("sqlEditor.export.type.csv.title", "Exportacao de dados CSV"),
+                L("sqlEditor.export.type.csv.description", "Apenas dados tabulares do resultado, ideal para planilhas."),
                 "csv"),
             new SqlEditorReportTypeOption(
                 SqlEditorReportType.ExcelWorkbook,
-                L("sqlEditor.export.type.xlsx.title", "Excel workbook export"),
-                L("sqlEditor.export.type.xlsx.description", "Spreadsheet workbook with query result data only."),
+                L("sqlEditor.export.type.xlsx.title", "Exportacao de pasta Excel"),
+                L("sqlEditor.export.type.xlsx.description", "Pasta de trabalho com os dados tabulares do resultado."),
                 "xlsx"),
         ];
 
@@ -147,12 +147,12 @@ public sealed class SqlEditorReportExportDialogViewModel : ViewModelBase
     public SqlEditorReportExportRequest BuildRequest(string filePath)
     {
         if (SelectedType is null)
-            throw new InvalidOperationException(L("sqlEditor.export.error.typeRequired", "A report type must be selected before export."));
+            throw new InvalidOperationException(L("sqlEditor.export.error.typeRequired", "Um tipo de relatorio deve ser selecionado antes da exportacao."));
 
         return new SqlEditorReportExportRequest(
             ReportType: SelectedType.Type,
             FilePath: filePath,
-            Title: string.IsNullOrWhiteSpace(Title) ? L("sqlEditor.export.defaultTitle", "SQL Report") : Title.Trim(),
+            Title: string.IsNullOrWhiteSpace(Title) ? L("sqlEditor.export.defaultTitle", "Relatorio SQL") : Title.Trim(),
             Description: string.IsNullOrWhiteSpace(Description) ? string.Empty : Description.Trim(),
             IncludeSchema: IncludeSchema,
             IncludeNodeDetails: IncludeNodeDetails,

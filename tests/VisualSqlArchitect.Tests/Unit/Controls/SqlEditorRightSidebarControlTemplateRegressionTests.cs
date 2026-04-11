@@ -14,14 +14,22 @@ public sealed class SqlEditorRightSidebarControlTemplateRegressionTests
         Assert.Contains("Text=\"{Binding ExecutionDetailText}\"", xaml);
         Assert.Contains("Text=\"{Binding ResultSummaryText}\"", xaml);
         Assert.Contains("Text=\"{Binding ExecutionTelemetryText}\"", xaml);
+        Assert.Contains("Text=\"{Binding CompletionTelemetryText}\"", xaml);
         Assert.Contains("Text=\"{Binding ExecutionTelemetryErrorsText}\"", xaml);
         Assert.Contains("Text=\"{Binding HistoryEmptyText}\"", xaml);
         Assert.Contains("IsVisible=\"{Binding IsExecutionHistoryEmpty}\"", xaml);
         Assert.Contains("IsVisible=\"{Binding HasExecutionHistory}\"", xaml);
-        Assert.Contains("ItemsSource=\"{Binding ExecutionHistory}\"", xaml);
-        Assert.Contains("x:DataType=\"vm:SqlEditorHistoryEntry\"", xaml);
+        Assert.Contains("ItemsSource=\"{Binding FilteredExecutionHistory}\"", xaml);
+        Assert.Contains("IsVisible=\"{Binding HasFilteredExecutionHistory}\"", xaml);
+        Assert.Contains("IsVisible=\"{Binding HasHistorySearchNoResults}\"", xaml);
         Assert.Contains("Text=\"{Binding ExecutedAt}\"", xaml);
         Assert.Contains("Text=\"{Binding Sql}\"", xaml);
+        Assert.Contains("Click=\"ExplainButton_Click\"", xaml);
+        Assert.Contains("Click=\"BenchmarkButton_Click\"", xaml);
+        Assert.Contains("Text=\"{Binding ExplainSummaryText}\"", xaml);
+        Assert.Contains("Text=\"{Binding ExplainRawOutput}\"", xaml);
+        Assert.Contains("Text=\"{Binding BenchmarkProgressText}\"", xaml);
+        Assert.Contains("Text=\"{Binding BenchmarkSummaryText}\"", xaml);
     }
 
     private static string ReadXaml()

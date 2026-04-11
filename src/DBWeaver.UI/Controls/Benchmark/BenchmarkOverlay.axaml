@@ -23,25 +23,6 @@
       <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
       <Setter Property="BorderThickness" Value="1"/>
     </Style>
-    <Style Selector="Button.primary">
-      <Setter Property="Background"      Value="{StaticResource AccentPrimaryBrush}"/>
-      <Setter Property="Foreground"      Value="{StaticResource BtnPrimaryFgBrush}"/>
-      <Setter Property="Padding"         Value="12,7"/>
-      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
-      <Setter Property="FontSize"        Value="{StaticResource FontSizeBody}"/>
-      <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Cursor"          Value="Hand"/>
-    </Style>
-    <Style Selector="Button.secondary">
-      <Setter Property="Background"      Value="{StaticResource Bg1Brush}"/>
-      <Setter Property="Foreground"      Value="{StaticResource TextPrimaryBrush}"/>
-      <Setter Property="Padding"         Value="10,7"/>
-      <Setter Property="CornerRadius"    Value="{StaticResource RadiusSM}"/>
-      <Setter Property="FontSize"        Value="{StaticResource FontSizeBody}"/>
-      <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Cursor"          Value="Hand"/>
-    </Style>
     <Style Selector="Border.stat-card">
       <Setter Property="Background"      Value="{StaticResource CanvasBgBrush}"/>
       <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
@@ -73,7 +54,7 @@
           BorderThickness="1"
           BoxShadow="{StaticResource ShadowXL}">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto">
 
       <!-- Header -->
       <Border Grid.Row="0"
@@ -95,7 +76,7 @@
             </StackPanel>
           </StackPanel>
 
-          <Button Grid.Column="2" Classes="secondary" Command="{Binding CloseCommand}"
+            <Button Grid.Column="2" Classes="modal-close-btn" Command="{Binding CloseCommand}"
                   Width="28" Height="28" Padding="0"
                   HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
               ToolTip.Tip="{Binding [tooltip.closeEsc], Source={x:Static loc:LocalizationService.Instance}}"
@@ -140,56 +121,6 @@
                 <TextBox Classes="field" Text="{Binding IntervalMs}" Watermark="0"/>
               </StackPanel>
             </Grid>
-
-            <!-- Progress bar -->
-            <StackPanel Spacing="5" IsVisible="{Binding IsRunning}">
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="{Binding Progress}"
-                           FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
-                <TextBlock Grid.Column="1" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}">
-                  <Run Text="{Binding ProgressFraction, StringFormat={}{0:P0}}"/>
-                </TextBlock>
-              </Grid>
-              <ProgressBar Value="{Binding ProgressFraction}"
-                           Minimum="0" Maximum="1"
-                           Height="4" CornerRadius="{StaticResource RadiusXS}"
-                           Foreground="{StaticResource AccentPrimaryBrush}" Background="{StaticResource BorderSoftBrush}"/>
-            </StackPanel>
-
-            <!-- Non-running status -->
-            <TextBlock Text="{Binding Progress}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"
-                       IsVisible="{Binding !IsRunning}"
-                       IsEnabled="{Binding Progress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-
-            <!-- Action buttons -->
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Classes="primary" Command="{Binding RunCommand}"
-                      AutomationProperties.Name="{Binding [benchmark.run], Source={x:Static loc:LocalizationService.Instance}}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <mi:MaterialIcon Kind="Play" Width="14" Height="14"
-                                   IsVisible="{Binding !IsRunning}"/>
-                  <mi:MaterialIcon Kind="Loading" Width="14" Height="14"
-                                   IsVisible="{Binding IsRunning}"/>
-                  <TextBlock Text="{Binding [benchmark.run], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="secondary" Command="{Binding CancelCommand}"
-                      IsVisible="{Binding IsRunning}"
-                      AutomationProperties.Name="{Binding [benchmark.cancel], Source={x:Static loc:LocalizationService.Instance}}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <mi:MaterialIcon Kind="Stop" Width="14" Height="14"/>
-                  <TextBlock Text="{Binding [benchmark.cancel], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
-                </StackPanel>
-              </Button>
-              <Button Classes="secondary" Command="{Binding ClearHistoryCommand}"
-                      IsVisible="{Binding HasResult}"
-                      AutomationProperties.Name="{Binding [benchmark.clearHistory], Source={x:Static loc:LocalizationService.Instance}}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <mi:MaterialIcon Kind="DeleteSweep" Width="13" Height="13"/>
-                  <TextBlock Text="{Binding [benchmark.clearHistory], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
-                </StackPanel>
-              </Button>
-            </StackPanel>
 
             <!-- Latest result stats -->
             <StackPanel IsVisible="{Binding HasResult}" Spacing="10">
@@ -336,6 +267,62 @@
           </StackPanel>
         </Border>
       </ScrollViewer>
+
+      <Border Grid.Row="2"
+              Background="{StaticResource Bg1Brush}"
+              BorderBrush="{StaticResource BorderSubtleBrush}"
+              BorderThickness="0,1,0,0"
+              CornerRadius="{StaticResource RadiusLGBottom}"
+              Padding="20,10">
+        <StackPanel Spacing="8">
+          <StackPanel Spacing="5" IsVisible="{Binding IsRunning}">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0" Text="{Binding Progress}"
+                         FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"/>
+              <TextBlock Grid.Column="1" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextMutedBrush}">
+                <Run Text="{Binding ProgressFraction, StringFormat={}{0:P0}}"/>
+              </TextBlock>
+            </Grid>
+            <ProgressBar Value="{Binding ProgressFraction}"
+                         Minimum="0" Maximum="1"
+                         Height="4" CornerRadius="{StaticResource RadiusXS}"
+                         Foreground="{StaticResource AccentPrimaryBrush}" Background="{StaticResource BorderSoftBrush}"/>
+          </StackPanel>
+
+          <TextBlock Text="{Binding Progress}" FontSize="{StaticResource FontSizeCaption}" Foreground="{StaticResource TextSecondaryBrush}"
+                     IsVisible="{Binding !IsRunning}"
+                     IsEnabled="{Binding Progress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Classes="modal-footer-secondary-btn" Command="{Binding ClearHistoryCommand}"
+                    IsVisible="{Binding HasResult}"
+                    AutomationProperties.Name="{Binding [benchmark.clearHistory], Source={x:Static loc:LocalizationService.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <mi:MaterialIcon Kind="DeleteSweep" Width="13" Height="13"/>
+                <TextBlock Text="{Binding [benchmark.clearHistory], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+              </StackPanel>
+            </Button>
+                <Button Classes="modal-footer-secondary-btn" Command="{Binding CancelCommand}"
+                    IsVisible="{Binding IsRunning}"
+                    AutomationProperties.Name="{Binding [benchmark.cancel], Source={x:Static loc:LocalizationService.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <mi:MaterialIcon Kind="Stop" Width="14" Height="14"/>
+                <TextBlock Text="{Binding [benchmark.cancel], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+              </StackPanel>
+            </Button>
+                <Button Classes="modal-footer-primary-btn" Command="{Binding RunCommand}"
+                    AutomationProperties.Name="{Binding [benchmark.run], Source={x:Static loc:LocalizationService.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <mi:MaterialIcon Kind="Play" Width="14" Height="14"
+                                 IsVisible="{Binding !IsRunning}"/>
+                <mi:MaterialIcon Kind="Loading" Width="14" Height="14"
+                                 IsVisible="{Binding IsRunning}"/>
+                <TextBlock Text="{Binding [benchmark.run], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeBody}"/>
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Border>
     </Grid>
   </Border>
 </UserControl>

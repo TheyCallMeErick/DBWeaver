@@ -35,7 +35,10 @@ public sealed class SqlEditorExecutionServiceTests
 
         Assert.False(result.Success);
         Assert.Equal(string.Empty, result.StatementSql);
-        Assert.Equal("No SQL statement selected for execution.", result.ErrorMessage);
+        AssertLocalized(
+            result.ErrorMessage,
+            "Nenhuma instrucao SQL selecionada para execucao.",
+            "No SQL statement selected for execution.");
     }
 
     [Fact]
@@ -46,7 +49,10 @@ public sealed class SqlEditorExecutionServiceTests
         SqlEditorResultSet result = await sut.ExecuteAsync("SELECT 1", config: null);
 
         Assert.False(result.Success);
-        Assert.Equal("No active database connection for SQL execution.", result.ErrorMessage);
+        AssertLocalized(
+            result.ErrorMessage,
+            "Nenhuma conexao ativa para execucao SQL.",
+            "No active database connection for SQL execution.");
     }
 
     [Fact]
@@ -58,7 +64,10 @@ public sealed class SqlEditorExecutionServiceTests
         SqlEditorResultSet result = await sut.ExecuteAsync("SELECT 1", BuildConfig(), ct: CancellationToken.None);
 
         Assert.False(result.Success);
-        Assert.Equal("SQL execution was canceled.", result.ErrorMessage);
+        AssertLocalized(
+            result.ErrorMessage,
+            "A execucao SQL foi cancelada.",
+            "SQL execution was canceled.");
     }
 
     private static ConnectionConfig BuildConfig() =>
@@ -116,5 +125,11 @@ public sealed class SqlEditorExecutionServiceTests
             Task.FromResult(new DdlExecutionResult(true, []));
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private static void AssertLocalized(string? actual, params string[] expectedValues)
+    {
+        Assert.NotNull(actual);
+        Assert.Contains(actual!, expectedValues);
     }
 }

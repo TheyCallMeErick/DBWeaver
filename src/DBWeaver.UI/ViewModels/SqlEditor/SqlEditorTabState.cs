@@ -5,6 +5,9 @@ namespace DBWeaver.UI.ViewModels;
 
 public sealed class SqlEditorTabState
 {
+    public const int CompletionTelemetryWindowSize = 200;
+    public const long CompletionTelemetryBudgetMs = 100;
+
     public required string Id { get; init; }
     public required string FallbackTitle { get; set; }
     public string SqlText { get; set; } = string.Empty;
@@ -23,7 +26,10 @@ public sealed class SqlEditorTabState
     public string? ResultGridSortColumn { get; set; }
     public bool ResultGridSortAscending { get; set; } = true;
     public IReadOnlyList<SqlEditorHistoryEntry> ExecutionHistory { get; set; } = [];
+    public bool IsExecutionHistoryHydratedFromSettings { get; set; }
     public SqlEditorHistoryEntry? SelectedExecutionHistoryEntry { get; set; }
     public SqlEditorExecutionTelemetry ExecutionTelemetry { get; set; } = SqlEditorExecutionTelemetry.Empty();
+    public SqlEditorCompletionTelemetryTracker CompletionTelemetryTracker { get; } = new(CompletionTelemetryWindowSize, CompletionTelemetryBudgetMs);
+    public SqlEditorCompletionTelemetry CompletionTelemetry { get; set; } = SqlEditorCompletionTelemetry.Empty(CompletionTelemetryBudgetMs);
     public ICommand? CloseCommand { get; set; }
 }

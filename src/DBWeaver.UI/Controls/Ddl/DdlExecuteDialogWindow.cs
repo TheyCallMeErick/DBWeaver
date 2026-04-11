@@ -150,6 +150,14 @@ public sealed class DdlExecuteDialogWindow : Window
             },
         };
 
+        Button headerCloseButton = new()
+        {
+            Content = "×",
+            Padding = new Thickness(8, 4),
+            MinWidth = 32,
+        };
+        headerCloseButton.Click += (_, _) => Close();
+
         _resultBox = new TextBox
         {
             IsReadOnly = true,
@@ -161,32 +169,105 @@ public sealed class DdlExecuteDialogWindow : Window
 
         return new Border
         {
-            Padding = new Thickness(16),
+            Background = new SolidColorBrush(Color.Parse(UiColorConstants.C_070A12)),
             Child = new Grid
             {
-                RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto,Auto,*,Auto"),
+                RowDefinitions = new RowDefinitions("Auto,*,Auto"),
                 Children =
                 {
-                    new TextBlock
+                    new Border
                     {
-                        Text = L("ddl.dialog.confirmQuestion", "Confirm DDL execution on the connected database?"),
-                        FontSize = 18,
-                        FontWeight = FontWeight.SemiBold,
-                        Foreground = new SolidColorBrush(Color.Parse(UiColorConstants.C_E8EAED)),
+                        Background = ResolveBrush("Bg1Brush", UiColorConstants.C_0F1220),
+                        BorderBrush = ResolveBrush("BorderSubtleBrush", UiColorConstants.C_1E2A3F),
+                        BorderThickness = new Thickness(0, 0, 0, 1),
+                        Padding = new Thickness(16, 12),
+                        Child = new Grid
+                        {
+                            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+                            Children =
+                            {
+                                new Border
+                                {
+                                    Width = 28,
+                                    Height = 28,
+                                    CornerRadius = ResolveCornerRadius("RadiusSM", 6),
+                                    Background = ResolveBrush("BtnWarningBgBrush", UiColorConstants.C_10291A),
+                                    BorderBrush = ResolveBrush("StatusWarningBrush", UiColorConstants.C_FBBF24),
+                                    BorderThickness = new Thickness(1),
+                                    Child = new TextBlock
+                                    {
+                                        Text = "!",
+                                        FontWeight = FontWeight.SemiBold,
+                                        HorizontalAlignment = HorizontalAlignment.Center,
+                                        VerticalAlignment = VerticalAlignment.Center,
+                                        Foreground = ResolveBrush("StatusWarningBrush", UiColorConstants.C_FBBF24),
+                                    },
+                                },
+                                PlaceAtCol(new StackPanel
+                                {
+                                    Margin = new Thickness(10, 0, 0, 0),
+                                    Spacing = 2,
+                                    Children =
+                                    {
+                                        new TextBlock
+                                        {
+                                            Text = L("ddl.dialog.title", "Execute DDL"),
+                                            FontSize = 14,
+                                            FontWeight = FontWeight.SemiBold,
+                                            Foreground = ResolveBrush("TextPrimaryBrush", UiColorConstants.C_E8EAED),
+                                        },
+                                        new TextBlock
+                                        {
+                                            Text = L("ddl.dialog.subtitle", "Review and execute DDL changes safely"),
+                                            FontSize = 11,
+                                            Foreground = ResolveBrush("TextMutedBrush", UiColorConstants.C_9CA3AF),
+                                        },
+                                    },
+                                }, 1),
+                                PlaceAtCol(headerCloseButton, 2),
+                            },
+                        },
                     },
-                    new TextBlock
+                    PlaceAtRow(new ScrollViewer
                     {
-                        Text = L("ddl.dialog.irreversibleWarning", "This action can change the schema irreversibly."),
-                        Foreground = new SolidColorBrush(Color.Parse(UiColorConstants.C_FBBF24)),
-                        FontSize = 12,
-                        Margin = new Thickness(0, 28, 0, 0),
-                    },
-                    PlaceAtRow(sqlPreview, 2),
-                    PlaceAtRow(_summaryText, 3),
-                    PlaceAtRow(statementListHost, 4),
-                    PlaceAtRow(_resultBox, 5),
-                    PlaceAtRow(
-                        new Grid
+                        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                        Content = new Border
+                        {
+                            Padding = new Thickness(16, 12),
+                            Child = new StackPanel
+                            {
+                                Spacing = 10,
+                                Children =
+                                {
+                                    new TextBlock
+                                    {
+                                        Text = L("ddl.dialog.confirmQuestion", "Confirm DDL execution on the connected database?"),
+                                        FontSize = 18,
+                                        FontWeight = FontWeight.SemiBold,
+                                        Foreground = new SolidColorBrush(Color.Parse(UiColorConstants.C_E8EAED)),
+                                    },
+                                    new TextBlock
+                                    {
+                                        Text = L("ddl.dialog.irreversibleWarning", "This action can change the schema irreversibly."),
+                                        Foreground = new SolidColorBrush(Color.Parse(UiColorConstants.C_FBBF24)),
+                                        FontSize = 12,
+                                    },
+                                    sqlPreview,
+                                    _summaryText,
+                                    statementListHost,
+                                    _resultBox,
+                                },
+                            },
+                        },
+                    }, 1),
+                    PlaceAtRow(new Border
+                    {
+                        Background = ResolveBrush("Bg1Brush", UiColorConstants.C_0F1220),
+                        BorderBrush = ResolveBrush("BorderSubtleBrush", UiColorConstants.C_1E2A3F),
+                        BorderThickness = new Thickness(0, 1, 0, 0),
+                        Padding = new Thickness(16, 10),
+                        Child = new Grid
                         {
                             ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto"),
                             Children =
@@ -205,8 +286,7 @@ public sealed class DdlExecuteDialogWindow : Window
                                 PlaceAtCol(closeButton, 3),
                             },
                         },
-                        6
-                    ),
+                    }, 2),
                 },
             },
         };
@@ -286,5 +366,21 @@ public sealed class DdlExecuteDialogWindow : Window
     {
         string value = LocalizationService.Instance[key];
         return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+    }
+
+    private static IBrush ResolveBrush(string key, string fallbackHex)
+    {
+        if (Application.Current?.TryFindResource(key, out object? resource) == true && resource is IBrush brush)
+            return brush;
+
+        return new SolidColorBrush(Color.Parse(fallbackHex));
+    }
+
+    private static CornerRadius ResolveCornerRadius(string key, double fallbackValue)
+    {
+        if (Application.Current?.Resources.TryGetResource(key, null, out object? resource) == true && resource is CornerRadius radius)
+            return radius;
+
+        return new CornerRadius(fallbackValue);
     }
 }

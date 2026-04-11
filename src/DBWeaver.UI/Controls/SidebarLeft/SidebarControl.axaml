@@ -37,7 +37,7 @@
     </Style>
 
     <Style Selector="Button.tab-button.active">
-      <Setter Property="Background" Value="{StaticResource AccentTealBrush}"/>
+      <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}"/>
       <Setter Property="Foreground" Value="{StaticResource BtnPrimaryFgBrush}"/>
     </Style>
 

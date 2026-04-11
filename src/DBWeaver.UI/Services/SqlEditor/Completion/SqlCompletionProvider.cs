@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using DBWeaver.Core;
 using DBWeaver.Metadata;
 
@@ -6,6 +5,21 @@ namespace DBWeaver.UI.Services.SqlEditor;
 
 public sealed class SqlCompletionProvider
 {
+    private static readonly SqlTokenizer Tokenizer = new();
+    private static readonly SqlStatementExtractor StatementExtractor = new();
+    private static readonly SqlContextDetector ContextDetector = new();
+    private static readonly SqlSymbolTableBuilder SymbolTableBuilder = new();
+    private readonly CompletionRankingEngine _rankingEngine;
+    private readonly CompletionUsageStats _usageStats;
+
+    public SqlCompletionProvider(
+        CompletionRankingEngine? rankingEngine = null,
+        CompletionUsageStats? usageStats = null)
+    {
+        _rankingEngine = rankingEngine ?? new CompletionRankingEngine();
+        _usageStats = usageStats ?? new CompletionUsageStats();
+    }
+
     private static readonly string[] Keywords =
     [
         "SELECT", "FROM", "WHERE", "JOIN", "LEFT", "RIGHT", "INNER", "OUTER",
@@ -18,7 +32,8 @@ public sealed class SqlCompletionProvider
         string fullText,
         int caretOffset,
         DbMetadata? metadata,
-        DatabaseProvider? provider = null)
+        DatabaseProvider? provider = null,
+        string? connectionProfileId = null)
     {
         ArgumentNullException.ThrowIfNull(fullText);
         if (caretOffset < 0 || caretOffset > fullText.Length)
@@ -28,42 +43,64 @@ public sealed class SqlCompletionProvider
         int prefixStart = FindPrefixStart(fullText, caretOffset);
         string prefix = fullText[prefixStart..caretOffset];
         string beforeCaret = fullText[..caretOffset];
-        string statementBeforeCaret = ExtractCurrentStatement(beforeCaret);
+        IReadOnlyList<SqlToken> allTokens = Tokenizer.Tokenize(fullText);
+        SqlStatementContext statementContext = StatementExtractor.Extract(allTokens, caretOffset);
+        SqlCompletionContext completionContext = ContextDetector.Detect(statementContext.Tokens, caretOffset);
+
+        int statementBeforeCaretStart = Math.Min(statementContext.StartOffset, caretOffset);
+        int statementBeforeCaretLength = Math.Max(0, caretOffset - statementBeforeCaretStart);
+        string statementBeforeCaret = statementBeforeCaretLength > 0
+            ? fullText.Substring(statementBeforeCaretStart, statementBeforeCaretLength)
+            : string.Empty;
+        SqlSymbolTable symbolTable = SymbolTableBuilder.Build(statementBeforeCaret, resolvedProvider);
 
         var suggestions = new List<SqlCompletionSuggestion>();
         suggestions.AddRange(SuggestKeywords());
         suggestions.AddRange(SuggestFunctions(resolvedProvider));
         suggestions.AddRange(SuggestSnippets());
+        if (IsTableContext(completionContext))
+            suggestions.AddRange(SuggestCtes(symbolTable));
 
         if (metadata is not null)
         {
-            if (IsTableContext(statementBeforeCaret))
+            if (IsTableContext(completionContext))
                 suggestions.AddRange(SuggestTables(metadata));
 
-            if (IsJoinContext(statementBeforeCaret))
-                suggestions.AddRange(SuggestSmartJoins(statementBeforeCaret, metadata));
+            if (IsJoinContext(completionContext))
+                suggestions.AddRange(SuggestSmartJoins(metadata, symbolTable));
 
             string? qualifier = TryGetQualifier(beforeCaret, prefixStart);
             if (!string.IsNullOrWhiteSpace(qualifier))
-                suggestions.AddRange(SuggestColumnsForQualifier(statementBeforeCaret, metadata, qualifier));
-            else if (IsColumnContext(statementBeforeCaret))
-                suggestions.AddRange(SuggestColumnsInScope(statementBeforeCaret, metadata));
+                suggestions.AddRange(SuggestColumnsForQualifier(metadata, symbolTable, qualifier));
+            else if (IsColumnContext(completionContext))
+                suggestions.AddRange(SuggestColumnsInScope(metadata, symbolTable));
         }
 
-        IEnumerable<SqlCompletionSuggestion> filtered = suggestions
-            .Where(s => string.IsNullOrWhiteSpace(prefix)
-                || s.Label.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                || s.Label.Split('.').Last().StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        IReadOnlyList<SqlCompletionSuggestion> ranked = _rankingEngine.Rank(
+            suggestions,
+            prefix,
+            symbolTable,
+            _usageStats,
+            connectionProfileId);
+
+        IEnumerable<SqlCompletionSuggestion> filtered = ranked
             .GroupBy(s => s.Label, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
-            .OrderBy(s => s.Kind)
-            .ThenBy(s => s.Label, StringComparer.OrdinalIgnoreCase);
+            .ToList();
 
         return new SqlCompletionRequest
         {
             PrefixLength = prefix.Length,
             Suggestions = filtered.ToList(),
         };
+    }
+
+    public void RecordAcceptedSuggestion(string? suggestionLabel, string? connectionProfileId)
+    {
+        if (string.IsNullOrWhiteSpace(suggestionLabel))
+            return;
+
+        _usageStats.RecordAccepted(suggestionLabel, connectionProfileId);
     }
 
     private static IEnumerable<SqlCompletionSuggestion> SuggestKeywords() =>
@@ -152,14 +189,36 @@ public sealed class SqlCompletionProvider
         }
     }
 
+    private static IEnumerable<SqlCompletionSuggestion> SuggestCtes(SqlSymbolTable symbolTable)
+    {
+        foreach (string cteName in symbolTable.CteNames.OrderBy(static name => name, StringComparer.OrdinalIgnoreCase))
+        {
+            string alias = BuildAlias(cteName.Split('.').Last());
+            yield return new SqlCompletionSuggestion(
+                cteName,
+                cteName,
+                "CTE",
+                SqlCompletionKind.Table);
+            yield return new SqlCompletionSuggestion(
+                $"{cteName} AS {alias}",
+                $"{cteName} AS {alias}",
+                "CTE with alias",
+                SqlCompletionKind.Table);
+        }
+    }
+
     private static IEnumerable<SqlCompletionSuggestion> SuggestColumnsForQualifier(
-        string statementBeforeCaret,
         DbMetadata metadata,
+        SqlSymbolTable symbolTable,
         string qualifier)
     {
-        Dictionary<string, string> aliasMap = ExtractAliasMap(statementBeforeCaret);
-        if (!aliasMap.TryGetValue(qualifier, out string? tableRef))
-            tableRef = qualifier;
+        string tableRef = qualifier;
+        if (symbolTable.TryResolveBinding(qualifier, out SqlTableBindingSymbol? binding)
+            && binding is not null
+            && !binding.IsSubquery)
+        {
+            tableRef = binding.TableRef;
+        }
 
         TableMetadata? table = ResolveTable(metadata, tableRef);
         if (table is null)
@@ -175,21 +234,23 @@ public sealed class SqlCompletionProvider
         }
     }
 
-    private static IEnumerable<SqlCompletionSuggestion> SuggestColumnsInScope(string statementBeforeCaret, DbMetadata metadata)
+    private static IEnumerable<SqlCompletionSuggestion> SuggestColumnsInScope(DbMetadata metadata, SqlSymbolTable symbolTable)
     {
-        Dictionary<string, string> aliasMap = ExtractAliasMap(statementBeforeCaret);
-        if (aliasMap.Count == 0)
+        if (symbolTable.BindingsInOrder.Count == 0)
             yield break;
 
-        foreach ((string alias, string tableRef) in aliasMap)
+        foreach (SqlTableBindingSymbol binding in symbolTable.BindingsInOrder)
         {
-            TableMetadata? table = ResolveTable(metadata, tableRef);
+            if (binding.IsSubquery)
+                continue;
+
+            TableMetadata? table = ResolveTable(metadata, binding.TableRef);
             if (table is null)
                 continue;
 
             foreach (ColumnMetadata col in table.Columns.OrderBy(c => c.OrdinalPosition))
             {
-                string label = $"{alias}.{col.Name}";
+                string label = $"{binding.Alias}.{col.Name}";
                 yield return new SqlCompletionSuggestion(
                     label,
                     label,
@@ -199,13 +260,12 @@ public sealed class SqlCompletionProvider
         }
     }
 
-    private static IEnumerable<SqlCompletionSuggestion> SuggestSmartJoins(string statementBeforeCaret, DbMetadata metadata)
+    private static IEnumerable<SqlCompletionSuggestion> SuggestSmartJoins(DbMetadata metadata, SqlSymbolTable symbolTable)
     {
-        List<TableBinding> bindings = ExtractTableBindings(statementBeforeCaret);
-        if (bindings.Count == 0)
+        SqlTableBindingSymbol? anchor = symbolTable.BindingsInOrder.LastOrDefault(static binding => !binding.IsSubquery);
+        if (anchor is null)
             yield break;
 
-        TableBinding anchor = bindings[^1];
         TableMetadata? anchorTable = ResolveTable(metadata, anchor.TableRef);
         if (anchorTable is null)
             yield break;
@@ -249,36 +309,6 @@ public sealed class SqlCompletionProvider
         return $"{table.FullName}.{column.Name} ({column.DataType}){suffix}";
     }
 
-    private static Dictionary<string, string> ExtractAliasMap(string statement)
-    {
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (TableBinding binding in ExtractTableBindings(statement))
-        {
-            map[binding.Alias] = binding.TableRef;
-            string shortName = binding.TableRef.Split('.').Last();
-            if (!map.ContainsKey(shortName))
-                map[shortName] = binding.TableRef;
-        }
-
-        return map;
-    }
-
-    private static List<TableBinding> ExtractTableBindings(string statement)
-    {
-        var bindings = new List<TableBinding>();
-        foreach (Match match in Regex.Matches(
-                     statement,
-                     @"\b(?:FROM|JOIN|LEFT\s+JOIN|RIGHT\s+JOIN|INNER\s+JOIN|FULL\s+JOIN|CROSS\s+JOIN)\s+([A-Za-z_][A-Za-z0-9_\.]*)\s*(?:AS\s+)?([A-Za-z_][A-Za-z0-9_]*)?",
-                     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-        {
-            string tableRef = match.Groups[1].Value;
-            string alias = match.Groups[2].Success ? match.Groups[2].Value : BuildAlias(tableRef.Split('.').Last());
-            bindings.Add(new TableBinding(tableRef, alias));
-        }
-
-        return bindings;
-    }
-
     private static string BuildAlias(string tableName)
     {
         string[] parts = tableName
@@ -300,29 +330,27 @@ public sealed class SqlCompletionProvider
                    t.Name.Equals(normalized, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static bool IsTableContext(string statementBeforeCaret)
+    private static bool IsTableContext(SqlCompletionContext context)
     {
-        string t = statementBeforeCaret.TrimEnd();
-        return Regex.IsMatch(t, @"\b(FROM|JOIN|LEFT\s+JOIN|RIGHT\s+JOIN|INNER\s+JOIN|FULL\s+JOIN|CROSS\s+JOIN|UPDATE|INTO)\s+[A-Za-z0-9_\.]*$", RegexOptions.IgnoreCase)
-               || Regex.IsMatch(t, @"\bDELETE\s+FROM\s+[A-Za-z0-9_\.]*$", RegexOptions.IgnoreCase);
+        return context is SqlCompletionContext.FromClause
+            or SqlCompletionContext.JoinClause
+            or SqlCompletionContext.InsertColumns;
     }
 
-    private static bool IsJoinContext(string statementBeforeCaret)
+    private static bool IsJoinContext(SqlCompletionContext context)
     {
-        string t = statementBeforeCaret.TrimEnd();
-        return Regex.IsMatch(t, @"\b(JOIN|LEFT\s+JOIN|RIGHT\s+JOIN|INNER\s+JOIN|FULL\s+JOIN|CROSS\s+JOIN)\s*(?:[A-Za-z0-9_\.]*)$", RegexOptions.IgnoreCase);
+        return context == SqlCompletionContext.JoinClause;
     }
 
-    private static bool IsColumnContext(string statementBeforeCaret)
+    private static bool IsColumnContext(SqlCompletionContext context)
     {
-        string t = statementBeforeCaret.TrimEnd();
-        return Regex.IsMatch(t, @"\b(SELECT|WHERE|ON|ORDER\s+BY|GROUP\s+BY)\s+[A-Za-z0-9_\.]*$", RegexOptions.IgnoreCase);
-    }
-
-    private static string ExtractCurrentStatement(string text)
-    {
-        int idx = text.LastIndexOf(';');
-        return idx >= 0 ? text[(idx + 1)..] : text;
+        return context is SqlCompletionContext.SelectList
+            or SqlCompletionContext.WhereClause
+            or SqlCompletionContext.OnClause
+            or SqlCompletionContext.OrderByClause
+            or SqlCompletionContext.GroupByClause
+            or SqlCompletionContext.HavingClause
+            or SqlCompletionContext.UpdateSetClause;
     }
 
     private static string? TryGetQualifier(string beforeCaret, int prefixStart)
@@ -351,5 +379,4 @@ public sealed class SqlCompletionProvider
         return start;
     }
 
-    private sealed record TableBinding(string TableRef, string Alias);
 }

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DBWeaver.UI.ViewModels"
              xmlns:ctrl="using:DBWeaver.UI.Controls"
+             xmlns:shell="using:DBWeaver.UI.Controls.Shell"
              xmlns:loc="using:DBWeaver.UI.Services.Localization"
              xmlns:mi="using:Material.Icons.Avalonia"
              x:Class="DBWeaver.UI.Controls.Shell.DiagramDocumentPageControl"
@@ -16,10 +17,28 @@
       <ctrl:SearchMenuControl DataContext="{Binding SearchMenu}" Name="SearchOverlay"/>
     </Panel>
 
+    <Panel Name="OverlayDismissBackdrop"
+           HorizontalAlignment="Stretch"
+           VerticalAlignment="Stretch"
+           Background="Transparent"
+          x:CompileBindings="False"
+           ZIndex="{x:Static shell:OverlayZIndex.Backdrop}">
+      <Panel.IsVisible>
+        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+          <Binding Path="Benchmark.IsVisible"/>
+          <Binding Path="ExplainPlan.IsVisible"/>
+          <Binding Path="SqlImporter.IsVisible"/>
+          <Binding Path="FlowVersions.IsVisible"/>
+          <Binding Path="FileHistory.IsVisible"/>
+          <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="DataContext.CommandPalette.IsVisible"/>
+        </MultiBinding>
+      </Panel.IsVisible>
+    </Panel>
+
     <Panel HorizontalAlignment="Center"
            VerticalAlignment="Top"
            Margin="0,60,0,0"
-           ZIndex="999"
+          ZIndex="{x:Static shell:OverlayZIndex.CommandPalette}"
            IsVisible="{ReflectionBinding DataContext.CommandPalette.IsVisible, RelativeSource={RelativeSource AncestorType=Window}}">
       <ctrl:CommandPaletteControl DataContext="{ReflectionBinding DataContext.CommandPalette, RelativeSource={RelativeSource AncestorType=Window}}"
                                   Name="CommandPaletteOverlay"/>
@@ -28,7 +47,7 @@
     <Panel Name="BenchmarkOverlayHost"
            HorizontalAlignment="Center"
            VerticalAlignment="Center"
-           ZIndex="999"
+          ZIndex="{x:Static shell:OverlayZIndex.Benchmark}"
            IsVisible="{Binding Benchmark.IsVisible}">
       <ctrl:BenchmarkOverlay DataContext="{Binding Benchmark}" Name="BenchmarkOverlayCtrl"/>
     </Panel>
@@ -36,20 +55,20 @@
     <Panel Name="ExplainOverlayHost"
            HorizontalAlignment="Center"
            VerticalAlignment="Center"
-           ZIndex="999"
+           ZIndex="{x:Static shell:OverlayZIndex.ExplainPlan}"
            IsVisible="{Binding ExplainPlan.IsVisible}">
       <ctrl:ExplainPlanOverlay DataContext="{Binding ExplainPlan}" Name="ExplainPlanOverlayCtrl"/>
     </Panel>
 
-    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="999" IsVisible="{Binding SqlImporter.IsVisible}">
+    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="{x:Static shell:OverlayZIndex.SqlImporter}" IsVisible="{Binding SqlImporter.IsVisible}">
       <ctrl:SqlImporterOverlay DataContext="{Binding SqlImporter}" Name="SqlImporterOverlayCtrl"/>
     </Panel>
 
-    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="999" IsVisible="{Binding FlowVersions.IsVisible}">
+    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="{x:Static shell:OverlayZIndex.FlowVersions}" IsVisible="{Binding FlowVersions.IsVisible}">
       <ctrl:FlowVersionOverlay DataContext="{Binding FlowVersions}" Name="FlowVersionsOverlayCtrl"/>
     </Panel>
 
-    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="999" IsVisible="{Binding FileHistory.IsVisible}">
+    <Panel HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="{x:Static shell:OverlayZIndex.FileHistory}" IsVisible="{Binding FileHistory.IsVisible}">
       <ctrl:FileVersionHistoryOverlay DataContext="{Binding FileHistory}" Name="FileHistoryOverlayCtrl"/>
     </Panel>
 

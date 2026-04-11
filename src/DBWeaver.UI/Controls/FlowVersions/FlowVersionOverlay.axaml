@@ -21,34 +21,6 @@
       <Setter Property="BorderBrush" Value="{StaticResource BorderFocusBrush}"/>
     </Style>
 
-    <!-- Action buttons -->
-    <Style Selector="Button.action-btn">
-      <Setter Property="Background"     Value="{StaticResource BtnInfoBgBrush}"/>
-      <Setter Property="BorderBrush"    Value="{StaticResource BorderFocusBrush}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Foreground"     Value="{StaticResource AccentPrimaryHoverBrush}"/>
-      <Setter Property="FontSize"       Value="11"/>
-      <Setter Property="CornerRadius"   Value="{StaticResource RadiusXS}"/>
-      <Setter Property="Padding"        Value="7,3"/>
-      <Setter Property="Cursor"         Value="Hand"/>
-    </Style>
-    <Style Selector="Button.action-btn:pointerover">
-      <Setter Property="Background" Value="{StaticResource PanelActiveBrush}"/>
-    </Style>
-
-    <!-- Danger button -->
-    <Style Selector="Button.danger-btn">
-      <Setter Property="Background"     Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Foreground"     Value="{StaticResource TextMutedBrush}"/>
-      <Setter Property="FontSize"       Value="11"/>
-      <Setter Property="Padding"        Value="5,3"/>
-      <Setter Property="Cursor"         Value="Hand"/>
-    </Style>
-    <Style Selector="Button.danger-btn:pointerover">
-      <Setter Property="Foreground" Value="{StaticResource StatusErrorBrush}"/>
-    </Style>
-
     <!-- Diff badge -->
     <Style Selector="Border.diff-add">
       <Setter Property="Background"  Value="{StaticResource BtnSuccessBgBrush}"/>
@@ -79,18 +51,22 @@
 
   <!-- ══ Overlay panel ══════════════════════════════════════════════════════ -->
   <Border MaxWidth="540"
+      MaxHeight="680"
           Background="{StaticResource Bg0Brush}"
           BorderBrush="{StaticResource BorderSubtleBrush}"
           BorderThickness="1"
           CornerRadius="{StaticResource RadiusLG}"
           BoxShadow="{StaticResource ShadowXL}">
 
-    <StackPanel>
+      <Grid RowDefinitions="Auto,*,Auto">
 
       <!-- ── Header ───────────────────────────────────────────────────────── -->
-      <Border Background="{StaticResource Bg1Brush}"
+        <Border Grid.Row="0"
+          Background="{StaticResource Bg1Brush}"
               CornerRadius="{StaticResource RadiusLGTop}"
-              Padding="12,10">
+          Padding="12,10"
+          BorderBrush="{StaticResource BorderSubtleBrush}"
+          BorderThickness="0,0,0,1">
 
         <Grid ColumnDefinitions="Auto,*,Auto">
 
@@ -122,131 +98,119 @@
 
           <!-- Close button -->
           <Button Grid.Column="2"
-                  Classes="danger-btn"
+              Classes="modal-close-btn"
                   Name="CloseBtn">
             <mi:MaterialIcon Kind="Close" Width="14" Height="14"/>
           </Button>
         </Grid>
       </Border>
 
-      <!-- Divider -->
-      <Border Height="1" Background="{StaticResource BorderSubtleBrush}"/>
+      <ScrollViewer Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
 
-      <!-- ── New checkpoint row ────────────────────────────────────────────── -->
-      <Border Padding="12,10">
-        <Grid ColumnDefinitions="*,Auto">
+          <!-- ── New checkpoint row ────────────────────────────────────────────── -->
+          <Border Padding="12,10">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding [flowVersion.saveCheckpoint], Source={x:Static loc:LocalizationService.Instance}}"
+                         FontSize="{StaticResource FontSizeCaption}"
+                         Foreground="{StaticResource TextMutedBrush}"/>
 
-          <TextBox Grid.Column="0"
-                   Text="{Binding NewLabel}"
-                   Watermark="{Binding [flowVersion.watermark], Source={x:Static loc:LocalizationService.Instance}}"
-                   FontSize="{StaticResource FontSizeCaption}"
-                   Background="{StaticResource Bg0Brush}"
-                   Foreground="{StaticResource TextSecondaryBrush}"
-                   BorderBrush="{StaticResource BorderSubtleBrush}"
-                   BorderThickness="1"
-                   CornerRadius="{StaticResource RadiusSM}"
-                   Padding="8,5"
-                   Margin="0,0,8,0"
-                   Name="LabelBox"/>
-
-          <Button Grid.Column="1"
-                  Classes="action-btn"
-                  Name="SaveBtn">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <mi:MaterialIcon Kind="ContentSave" Width="12" Height="12"/>
-              <TextBlock Text="{Binding [flowVersion.saveCheckpoint], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
+              <TextBox Text="{Binding NewLabel}"
+                       Watermark="{Binding [flowVersion.watermark], Source={x:Static loc:LocalizationService.Instance}}"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Background="{StaticResource Bg0Brush}"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       BorderBrush="{StaticResource BorderSubtleBrush}"
+                       BorderThickness="1"
+                       CornerRadius="{StaticResource RadiusSM}"
+                       Padding="8,5"
+                       Name="LabelBox"/>
             </StackPanel>
-          </Button>
-        </Grid>
-      </Border>
+          </Border>
 
-      <!-- Divider -->
-      <Border Height="1" Background="{StaticResource BorderSubtleBrush}"/>
+          <!-- Divider -->
+          <Border Height="1" Background="{StaticResource BorderSubtleBrush}"/>
 
-      <!-- ── Diff mode toggle ───────────────────────────────────────────────── -->
-      <Border Padding="12,8">
-        <Grid ColumnDefinitions="*,Auto">
+          <!-- ── Diff mode summary ─────────────────────────────────────────────── -->
+          <Border Padding="12,8">
+            <Grid ColumnDefinitions="*,Auto">
           <TextBlock Grid.Column="0"
                      Text="{Binding DiffSummary}"
                      FontSize="{StaticResource FontSizeCaption}"
                      Foreground="{StaticResource TextMutedBrush}"
                      VerticalAlignment="Center"/>
-          <Button Grid.Column="1"
-                  Classes="action-btn"
-                  Name="DiffModeBtn">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <mi:MaterialIcon Kind="Compare" Width="12" Height="12"/>
-              <TextBlock Text="{Binding [flowVersion.compareMode], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
-            </StackPanel>
-          </Button>
-        </Grid>
-      </Border>
-
-      <!-- Divider -->
-      <Border Height="1" Background="{StaticResource BorderSubtleBrush}"/>
-
-      <!-- ── Diff base selector (visible in diff mode) ─────────────────────── -->
-      <Border Padding="12,8"
-              IsVisible="{Binding IsDiffMode}">
-        <StackPanel Spacing="4">
-          <TextBlock Text="{Binding [flowVersion.selectBase], Source={x:Static loc:LocalizationService.Instance}}"
+          <TextBlock Grid.Column="1"
+                     Text="{Binding [flowVersion.compareMode], Source={x:Static loc:LocalizationService.Instance}}"
                      FontSize="{StaticResource FontSizeCaption}"
-                     Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
-          <ComboBox ItemsSource="{Binding Versions}"
-                    SelectedItem="{Binding DiffBaseVersion}"
-                    Background="{StaticResource Bg0Brush}"
-                    BorderBrush="{StaticResource BorderSubtleBrush}"
-                    Foreground="{StaticResource TextSecondaryBrush}"
-                    FontSize="{StaticResource FontSizeCaption}"
-                    HorizontalAlignment="Stretch"
-                    Name="DiffBaseCombo">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:FlowVersionRowViewModel">
-                <TextBlock Text="{Binding Label}"
-                           FontSize="{StaticResource FontSizeCaption}"
-                           Foreground="{StaticResource TextSecondaryBrush}"/>
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <TextBlock Text="{Binding [flowVersion.clickAny], Source={x:Static loc:LocalizationService.Instance}}"
-                     FontSize="{StaticResource FontSizeCaption}"
-                     Foreground="{StaticResource TextMutedBrush}"/>
-        </StackPanel>
-      </Border>
+                     Foreground="{StaticResource AccentPrimaryHoverBrush}"
+                     IsVisible="{Binding IsDiffMode}"/>
+            </Grid>
+          </Border>
 
-      <!-- ── Version list ──────────────────────────────────────────────────── -->
-      <ScrollViewer MaxHeight="280"
-                    Margin="8,4"
-                    HorizontalScrollBarVisibility="Disabled">
+          <!-- Divider -->
+          <Border Height="1" Background="{StaticResource BorderSubtleBrush}"/>
 
-        <StackPanel>
-
-          <!-- Empty state -->
-          <Border Padding="16,20"
-                  IsVisible="{Binding HasVersions, Converter={x:Static BoolConverters.Not}}">
-            <StackPanel HorizontalAlignment="Center" Spacing="6">
-              <mi:MaterialIcon Kind="ClipboardTextHistory"
-                               Width="24" Height="24"
-                               Foreground="{StaticResource BorderSubtleBrush}"
-                               HorizontalAlignment="Center"/>
-              <TextBlock Text="{Binding [flowVersion.noCheckpoints], Source={x:Static loc:LocalizationService.Instance}}"
-                         FontSize="{StaticResource FontSizeBody}"
-                         Foreground="{StaticResource TextMutedBrush}"
-                         HorizontalAlignment="Center"/>
-              <TextBlock Text="{Binding [flowVersion.noCheckpointsHint], Source={x:Static loc:LocalizationService.Instance}}"
+          <!-- ── Diff base selector (visible in diff mode) ─────────────────────── -->
+          <Border Padding="12,8"
+                  IsVisible="{Binding IsDiffMode}">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding [flowVersion.selectBase], Source={x:Static loc:LocalizationService.Instance}}"
                          FontSize="{StaticResource FontSizeCaption}"
-                         Foreground="{StaticResource TextMutedBrush}"
-                         HorizontalAlignment="Center"/>
+                         Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
+              <ComboBox ItemsSource="{Binding Versions}"
+                        SelectedItem="{Binding DiffBaseVersion}"
+                        Background="{StaticResource Bg0Brush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        FontSize="{StaticResource FontSizeCaption}"
+                        HorizontalAlignment="Stretch"
+                        Name="DiffBaseCombo">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:FlowVersionRowViewModel">
+                    <TextBlock Text="{Binding Label}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="{Binding [flowVersion.clickAny], Source={x:Static loc:LocalizationService.Instance}}"
+                         FontSize="{StaticResource FontSizeCaption}"
+                         Foreground="{StaticResource TextMutedBrush}"/>
             </StackPanel>
           </Border>
 
-          <!-- Version rows -->
-          <ItemsControl ItemsSource="{Binding Versions}"
-                        IsVisible="{Binding HasVersions}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:FlowVersionRowViewModel">
-                <Border Classes="version-row">
-                  <Grid RowDefinitions="Auto,Auto">
+          <!-- ── Version list ──────────────────────────────────────────────────── -->
+          <Border Margin="8,4">
+            <StackPanel>
+
+              <!-- Empty state -->
+              <Border Padding="16,20"
+                      IsVisible="{Binding HasVersions, Converter={x:Static BoolConverters.Not}}">
+                <StackPanel HorizontalAlignment="Center" Spacing="6">
+                  <mi:MaterialIcon Kind="ClipboardTextHistory"
+                                   Width="24" Height="24"
+                                   Foreground="{StaticResource BorderSubtleBrush}"
+                                   HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding [flowVersion.noCheckpoints], Source={x:Static loc:LocalizationService.Instance}}"
+                             FontSize="{StaticResource FontSizeBody}"
+                             Foreground="{StaticResource TextMutedBrush}"
+                             HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding [flowVersion.noCheckpointsHint], Source={x:Static loc:LocalizationService.Instance}}"
+                             FontSize="{StaticResource FontSizeCaption}"
+                             Foreground="{StaticResource TextMutedBrush}"
+                             HorizontalAlignment="Center"/>
+                </StackPanel>
+              </Border>
+
+              <!-- Version rows -->
+              <ItemsControl ItemsSource="{Binding Versions}"
+                            IsVisible="{Binding HasVersions}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:FlowVersionRowViewModel">
+                    <Border Classes="version-row">
+                      <Grid RowDefinitions="Auto,Auto">
 
                     <!-- Row 0: Label + timestamp + buttons -->
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto">
@@ -270,7 +234,7 @@
 
                       <!-- Compare button -->
                       <Button Grid.Column="1"
-                              Classes="action-btn"
+                              Classes="modal-footer-secondary-btn"
                               Margin="6,0,4,0"
                               Tag="{Binding Id}"
                               Name="CompareBtn">
@@ -279,7 +243,7 @@
 
                       <!-- Restore button -->
                       <Button Grid.Column="2"
-                              Classes="action-btn"
+                              Classes="modal-footer-secondary-btn"
                               Margin="0,0,4,0"
                               Tag="{Binding Id}"
                               Name="RestoreBtn">
@@ -291,64 +255,98 @@
 
                       <!-- Delete button -->
                       <Button Grid.Column="3"
-                              Classes="danger-btn"
+                              Classes="modal-close-btn"
                               Tag="{Binding Id}"
                               Name="DeleteBtn">
                         <mi:MaterialIcon Kind="TrashCanOutline" Width="12" Height="12"/>
                       </Button>
                     </Grid>
 
-                  </Grid>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
 
+            </StackPanel>
+          </Border>
+
+          <!-- ── Diff results ──────────────────────────────────────────────────── -->
+          <Border IsVisible="{Binding HasDiffItems}"
+                  BorderBrush="{StaticResource BorderSubtleBrush}"
+                  BorderThickness="0,1,0,0">
+
+            <StackPanel>
+              <Border Padding="12,8">
+                <TextBlock Text="{Binding [flowVersion.diffResults], Source={x:Static loc:LocalizationService.Instance}}"
+                           FontSize="{StaticResource FontSizeCaption}"
+                           FontWeight="{StaticResource FontWeightTitle}"
+                           Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
+              </Border>
+
+              <ScrollViewer MaxHeight="200"
+                            Margin="8,0,8,8"
+                            HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding DiffItems}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DiffItemViewModel">
+                      <Grid ColumnDefinitions="14,*" Margin="0,1">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Icon}"
+                                   Foreground="{Binding KindBrush}"
+                                   FontFamily="{StaticResource MonoFont}"
+                                   FontSize="{StaticResource FontSizeBody}"
+                                   FontWeight="{StaticResource FontWeightHeading}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Description}"
+                                   FontSize="{StaticResource FontSizeCaption}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"
+                                   Margin="4,0,0,0"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </StackPanel>
+          </Border>
         </StackPanel>
       </ScrollViewer>
 
-      <!-- ── Diff results ──────────────────────────────────────────────────── -->
-      <Border IsVisible="{Binding HasDiffItems}"
+      <Border Grid.Row="2"
               BorderBrush="{StaticResource BorderSubtleBrush}"
-              BorderThickness="0,1,0,0">
-
-        <StackPanel>
-          <Border Padding="12,8">
-            <TextBlock Text="{Binding [flowVersion.diffResults], Source={x:Static loc:LocalizationService.Instance}}"
-                       FontSize="{StaticResource FontSizeCaption}"
-                       FontWeight="{StaticResource FontWeightTitle}"
-                       Foreground="{StaticResource AccentPrimaryHoverBrush}"/>
-          </Border>
-
-          <ScrollViewer MaxHeight="200"
-                        Margin="8,0,8,8"
-                        HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding DiffItems}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:DiffItemViewModel">
-                  <Grid ColumnDefinitions="14,*" Margin="0,1">
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding Icon}"
-                               Foreground="{Binding KindBrush}"
-                               FontFamily="{StaticResource MonoFont}"
-                               FontSize="{StaticResource FontSizeBody}"
-                               FontWeight="{StaticResource FontWeightHeading}"
-                               VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="1"
-                               Text="{Binding Description}"
-                               FontSize="{StaticResource FontSizeCaption}"
-                               Foreground="{StaticResource TextSecondaryBrush}"
-                               TextTrimming="CharacterEllipsis"
-                               VerticalAlignment="Center"
-                               Margin="4,0,0,0"/>
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
-        </StackPanel>
+              BorderThickness="0,1,0,0"
+              Background="{StaticResource Bg1Brush}"
+              CornerRadius="{StaticResource RadiusLGBottom}"
+              Padding="12,10">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <TextBlock Grid.Column="0"
+                     Text="{Binding DiffSummary}"
+                     FontSize="{StaticResource FontSizeCaption}"
+                     Foreground="{StaticResource TextMutedBrush}"
+                     VerticalAlignment="Center"/>
+          <Button Grid.Column="1"
+              Classes="modal-footer-secondary-btn"
+                  Name="DiffModeBtn"
+                  Margin="0,0,8,0">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <mi:MaterialIcon Kind="Compare" Width="12" Height="12"/>
+              <TextBlock Text="{Binding [flowVersion.compareMode], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="2"
+              Classes="modal-footer-primary-btn"
+                  Name="SaveBtn">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <mi:MaterialIcon Kind="ContentSave" Width="12" Height="12"/>
+              <TextBlock Text="{Binding [flowVersion.saveCheckpoint], Source={x:Static loc:LocalizationService.Instance}}" FontSize="{StaticResource FontSizeCaption}"/>
+            </StackPanel>
+          </Button>
+        </Grid>
       </Border>
 
-    </StackPanel>
+    </Grid>
   </Border>
 </UserControl>

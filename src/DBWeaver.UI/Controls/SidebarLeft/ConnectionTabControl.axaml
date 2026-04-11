@@ -13,10 +13,10 @@
              HorizontalAlignment="Stretch">
 
   <UserControl.Styles>
-    <Style Selector="TextBlock.section-header-teal">
+    <Style Selector="TextBlock.section-header-accent">
       <Setter Property="FontSize"         Value="{StaticResource FontSizeCaption}"/>
       <Setter Property="FontWeight"       Value="Bold"/>
-      <Setter Property="Foreground"       Value="{StaticResource AccentTealLightBrush}"/>
+      <Setter Property="Foreground"       Value="{StaticResource AccentPrimaryHoverBrush}"/>
       <Setter Property="LetterSpacing"     Value="1.5"/>
     </Style>
 
@@ -37,11 +37,11 @@
 
     <Style Selector="Border.connection-card:pointerover">
       <Setter Property="Background" Value="{StaticResource Bg2Brush}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource AccentTealLightBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryHoverBrush}"/>
     </Style>
 
     <Style Selector="Border.connection-card.active">
-      <Setter Property="BorderBrush" Value="{StaticResource AccentTealLightBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryHoverBrush}"/>
     </Style>
 
     <Style Selector="TextBlock.empty-state">
@@ -60,7 +60,7 @@
 
       <!-- ── CONEXÃO section ─────────────────────────────────── -->
       <TextBlock Text="CONEXÃO"
-                 Classes="section-header-teal"
+                 Classes="section-header-accent"
                  Margin="2,0,0,8"/>
 
       <!-- Connected card -->
@@ -94,7 +94,7 @@
             <ProgressBar Width="120"
              Height="3"
              IsIndeterminate="True"
-             Foreground="{StaticResource AccentTealBrush}"
+             Foreground="{StaticResource AccentPrimaryBrush}"
              Background="{StaticResource BorderSubtleBrush}"/>
             <TextBlock Text="Conectando..."
                  Classes="empty-state"
@@ -123,7 +123,7 @@
           IsVisible="{Binding ActiveProfileId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
           VerticalAlignment="Stretch">
       <TextBlock Text="SCHEMA"
-                 Classes="section-header-teal"
+                 Classes="section-header-accent"
                  Margin="2,8,0,8"/>
 
       <Border Grid.Row="1"
