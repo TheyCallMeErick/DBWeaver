@@ -37,6 +37,10 @@ public sealed class DdlExecuteDialogWindow : Window
         MinWidth = 740;
         MinHeight = 520;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        SystemDecorations = SystemDecorations.None;
+        ExtendClientAreaToDecorationsHint = true;
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+        ExtendClientAreaTitleBarHeightHint = -1;
         Background = new SolidColorBrush(Color.Parse(UiColorConstants.C_0D0F14));
 
         KeyDown += OnKeyDown;

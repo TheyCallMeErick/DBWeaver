@@ -10,6 +10,8 @@ public sealed class SqlEditorPropertyChangePublisher
         "ActiveTabConnectionProfile",
         "ActiveTabConnectionProfileId",
         "HasConnectionProfiles",
+        "SidebarSelectedConnectionProfile",
+        "HasSidebarSelectedConnectionProfile",
         "SharedConnectionManager",
         "HasSharedConnectionManager",
         "HasResolvedConnection",

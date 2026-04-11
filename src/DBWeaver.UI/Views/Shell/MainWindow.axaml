@@ -687,7 +687,7 @@
 
     <Panel Grid.RowSpan="5" ZIndex="80" x:CompileBindings="False">
       <ctrl:BottomSheetToast ZIndex="81"
-                             DataContext="{Binding Toasts}"/>
+                 DataContext="{ReflectionBinding DataContext.Toasts, ElementName=RootWindow}"/>
       <Border x:Name="PreviewDockHost"
               IsVisible="{Binding IsDiagramDocumentPageActive}"
               Classes="preview-dock-shell"
@@ -727,7 +727,7 @@
         </StackPanel>
       </Border>
 
-            <Border IsVisible="{Binding Toasts.IsDetailsOpen}"
+            <Border IsVisible="{ReflectionBinding DataContext.Toasts.IsDetailsOpen, ElementName=RootWindow}"
               DataContext="{Binding DataContext, ElementName=RootWindow}"
               Background="{StaticResource MacroScrimBrush}"
               ZIndex="82"

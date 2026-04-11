@@ -16,6 +16,10 @@ public sealed class SqlEditorCellExpandDialogWindow : Window
         MinWidth = 620;
         MinHeight = 380;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        SystemDecorations = SystemDecorations.None;
+        ExtendClientAreaToDecorationsHint = true;
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+        ExtendClientAreaTitleBarHeightHint = -1;
 
         var header = new TextBlock
         {

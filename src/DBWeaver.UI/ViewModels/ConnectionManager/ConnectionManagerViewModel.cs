@@ -729,21 +729,6 @@ public sealed class ConnectionManagerViewModel : ViewModelBase
             candidate = _formMapper.ToProfile(CaptureFormData());
         }
 
-        OperationResultDto<ConnectionDetailsDto> saveResult = await _connectionCatalogService.SaveAsync(
-            ConnectionContractMapper.ToDetails(candidate),
-            CancellationToken.None);
-        if (!saveResult.Success || saveResult.Payload is null)
-        {
-            ApplyTestStatus(_statusPresenter.Failed(saveResult.UserMessage));
-            NotifyConnectionFailed(saveResult.UserMessage, saveResult.TechnicalError);
-            return;
-        }
-
-        await ReloadProfilesFromCatalogAsync(saveResult.Payload.Id);
-        candidate = ConnectionContractMapper.ToProfile(saveResult.Payload);
-
-        ProfilesChanged?.Invoke();
-
         OperationResultDto<ActiveConnectionSessionDto> connectSessionResult = await _connectionSessionService.ConnectAsync(
             ConnectionContractMapper.ToDetails(candidate),
             CancellationToken.None);

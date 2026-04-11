@@ -53,6 +53,46 @@
                    Classes="section-header-accent"
                    Margin="2,0,0,0"/>
 
+        <Border Classes="connection-card"
+                IsVisible="{Binding HasConnectionProfiles}"
+                Margin="0,0,0,6">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Conexão da aba SQL"
+                       FontSize="{StaticResource FontSizeCaption}"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+
+            <ComboBox ItemsSource="{Binding AvailableConnectionProfiles}"
+                      SelectedItem="{Binding SidebarSelectedConnectionProfile}"
+                      HorizontalAlignment="Stretch"
+                      Background="{StaticResource Bg1Brush}"
+                      BorderBrush="{StaticResource BorderBrush}"
+                      CornerRadius="{StaticResource RadiusSM}"
+                      FontSize="{StaticResource FontSizeLabel}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SqlEditorConnectionProfileOption">
+                  <TextBlock Text="{Binding DisplayName}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Trocar na aba"
+                      Command="{Binding ApplySidebarConnectionToTabCommand}"
+                      IsEnabled="{Binding HasSidebarSelectedConnectionProfile}"
+                      HorizontalAlignment="Stretch"
+                      MinWidth="120"
+                      Padding="10,6"/>
+              <Button Content="Trocar na aplicação"
+                      Command="{Binding ApplySidebarConnectionToApplicationCommand}"
+                      IsEnabled="{Binding HasSidebarSelectedConnectionProfile}"
+                      HorizontalAlignment="Stretch"
+                      MinWidth="150"
+                      Padding="10,6"
+                      Classes="secondary"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
       <Grid IsVisible="{Binding HasSharedConnectionManager}">
         <shared:DatabaseConnectionCard
             IsVisible="{Binding SharedConnectionManager.ActiveProfileId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

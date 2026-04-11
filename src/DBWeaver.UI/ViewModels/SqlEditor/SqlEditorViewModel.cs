@@ -11,6 +11,7 @@ using System.Data;
 using System.IO;
 using System.Windows.Input;
 using Material.Icons;
+using DBWeaver.UI.Services.ConnectionManager.Models;
 
 namespace DBWeaver.UI.ViewModels;
 
@@ -83,6 +84,7 @@ public sealed class SqlEditorViewModel : ViewModelBase
     private Timer? _draftAutoSaveForcedTimer;
     private bool _hasPendingDraftAutoSave;
     private bool _draftAutoSaveTimersStarted;
+    private string? _sidebarSelectedConnectionProfileId;
 
     public SqlEditorViewModel(
         DatabaseProvider initialProvider = DatabaseProvider.Postgres,
@@ -159,6 +161,12 @@ public sealed class SqlEditorViewModel : ViewModelBase
         OpenConnectionSwitcherCommand = new RelayCommand(
             OpenConnectionSwitcher,
             () => AvailableConnectionProfiles.Count > 0);
+        ApplySidebarConnectionToTabCommand = new RelayCommand(
+            ApplySidebarConnectionToTab,
+            () => SidebarSelectedConnectionProfile is not null);
+        ApplySidebarConnectionToApplicationCommand = new RelayCommand(
+            ApplySidebarConnectionToApplication,
+            () => SidebarSelectedConnectionProfile is not null);
         ExecuteHistoryEntryCommand = new RelayCommand<SqlEditorHistoryEntry>(
             entry => _ = ExecuteHistoryEntryAsync(entry),
             entry => !IsExecuting && entry is not null && !string.IsNullOrWhiteSpace(entry.Sql));
@@ -168,6 +176,7 @@ public sealed class SqlEditorViewModel : ViewModelBase
         ReopenResultsSheetCommand = new RelayCommand(
             OpenResultsSheet,
             () => CanReopenResultsSheet);
+        _sidebarSelectedConnectionProfileId = ActiveTab.ConnectionProfileId;
         SyncTabCommands();
     }
 
@@ -192,6 +201,8 @@ public sealed class SqlEditorViewModel : ViewModelBase
     public ICommand ConfirmPendingMutationCommand { get; }
     public ICommand CancelPendingMutationCommand { get; }
     public ICommand OpenConnectionSwitcherCommand { get; }
+    public ICommand ApplySidebarConnectionToTabCommand { get; }
+    public ICommand ApplySidebarConnectionToApplicationCommand { get; }
     public ICommand ExecuteHistoryEntryCommand { get; }
     public ICommand CloseResultsSheetCommand { get; }
     public ICommand ReopenResultsSheetCommand { get; }
@@ -249,10 +260,42 @@ public sealed class SqlEditorViewModel : ViewModelBase
 
             HistorySearchText = string.Empty;
             TryHydrateExecutionHistoryForTab(ActiveTab, force: true);
+            SyncSidebarConnectionSelectionToActiveTab();
             RaiseSqlPanelPropertiesChanged();
         }
     }
     public bool HasConnectionProfiles => AvailableConnectionProfiles.Count > 0;
+    public SqlEditorConnectionProfileOption? SidebarSelectedConnectionProfile
+    {
+        get
+        {
+            string? selectedId = _sidebarSelectedConnectionProfileId;
+            if (string.IsNullOrWhiteSpace(selectedId))
+                selectedId = ActiveTabConnectionProfileId;
+
+            return AvailableConnectionProfiles.FirstOrDefault(option =>
+                string.Equals(option.Id, selectedId, StringComparison.Ordinal));
+        }
+        set
+        {
+            string? nextId = value?.Id;
+            if (!string.IsNullOrWhiteSpace(nextId)
+                && !AvailableConnectionProfiles.Any(profile => string.Equals(profile.Id, nextId, StringComparison.Ordinal)))
+            {
+                nextId = null;
+            }
+
+            if (string.Equals(_sidebarSelectedConnectionProfileId, nextId, StringComparison.Ordinal))
+                return;
+
+            _sidebarSelectedConnectionProfileId = nextId;
+            RaisePropertyChanged(nameof(SidebarSelectedConnectionProfile));
+            RaisePropertyChanged(nameof(HasSidebarSelectedConnectionProfile));
+            (ApplySidebarConnectionToTabCommand as RelayCommand)?.NotifyCanExecuteChanged();
+            (ApplySidebarConnectionToApplicationCommand as RelayCommand)?.NotifyCanExecuteChanged();
+        }
+    }
+    public bool HasSidebarSelectedConnectionProfile => SidebarSelectedConnectionProfile is not null;
     public ConnectionManagerViewModel? SharedConnectionManager => _sharedConnectionManagerResolver();
     public bool HasSharedConnectionManager => SharedConnectionManager is not null;
     public bool HasResolvedConnection => ResolveConnectionConfigForActiveTab() is not null;
@@ -314,7 +357,7 @@ public sealed class SqlEditorViewModel : ViewModelBase
         && CurrentResult is not null
         && ((CurrentResult.Data?.Rows.Count ?? 0) > 0 || !string.IsNullOrWhiteSpace(CurrentResult.ErrorMessage));
     public bool CanReopenResultsSheet => !IsResultsSheetOpen && CurrentResult is not null;
-    public string RestoreResultsButtonText => L("sqlEditor.results.restore", "Restaurar resultados");
+    public string RestoreResultsButtonText => L("sqlEditor.results.restore", "Abrir resultados");
 
     public double ResultsSheetHeight
     {
@@ -1606,6 +1649,8 @@ public sealed class SqlEditorViewModel : ViewModelBase
         (CloseResultsSheetCommand as RelayCommand)?.NotifyCanExecuteChanged();
         (ReopenResultsSheetCommand as RelayCommand)?.NotifyCanExecuteChanged();
         (OpenConnectionSwitcherCommand as RelayCommand)?.NotifyCanExecuteChanged();
+        (ApplySidebarConnectionToTabCommand as RelayCommand)?.NotifyCanExecuteChanged();
+        (ApplySidebarConnectionToApplicationCommand as RelayCommand)?.NotifyCanExecuteChanged();
         (ExecuteHistoryEntryCommand as RelayCommand<SqlEditorHistoryEntry>)?.NotifyCanExecuteChanged();
     }
 
@@ -1619,6 +1664,7 @@ public sealed class SqlEditorViewModel : ViewModelBase
     {
         RaisePropertyChanged(nameof(SharedConnectionManager));
         RaisePropertyChanged(nameof(HasSharedConnectionManager));
+        SyncSidebarConnectionSelectionToActiveTab();
         RaiseSqlPanelPropertiesChanged();
     }
 
@@ -1829,6 +1875,7 @@ public sealed class SqlEditorViewModel : ViewModelBase
     private void RaiseTabStateChanged()
     {
         _isHistoryClearConfirmationPending = false;
+        SyncSidebarConnectionSelectionToActiveTab();
         TryHydrateResultFilterForTab(ActiveTab);
         TryHydrateExecutionHistoryForTab(ActiveTab);
         EnsureHistorySelection();
@@ -1908,6 +1955,65 @@ public sealed class SqlEditorViewModel : ViewModelBase
             return;
 
         ActiveTabConnectionProfileId = next.Id;
+    }
+
+    private void ApplySidebarConnectionToTab()
+    {
+        SqlEditorConnectionProfileOption? selected = SidebarSelectedConnectionProfile;
+        if (selected is null)
+            return;
+
+        ActiveTabConnectionProfileId = selected.Id;
+        PublishStatus(
+            string.Format(
+                L("sqlEditor.connection.sidebar.tabApplied", "Conexao aplicada para a aba atual: {0}."),
+                selected.DisplayName),
+            null,
+            false);
+    }
+
+    private void ApplySidebarConnectionToApplication()
+    {
+        SqlEditorConnectionProfileOption? selected = SidebarSelectedConnectionProfile;
+        if (selected is null)
+            return;
+
+        foreach (SqlEditorTabState tab in Tabs.Tabs)
+        {
+            tab.ConnectionProfileId = selected.Id;
+            tab.Provider = selected.Provider;
+        }
+
+        ConnectionManagerViewModel? manager = SharedConnectionManager;
+        if (manager is not null)
+        {
+            ConnectionProfile? profile = manager.Profiles
+                .FirstOrDefault(candidate => string.Equals(candidate.Id, selected.Id, StringComparison.Ordinal));
+            if (profile is not null && manager.SwitchConnectionCommand.CanExecute(profile))
+                manager.SwitchConnectionCommand.Execute(profile);
+        }
+
+        _sidebarSelectedConnectionProfileId = selected.Id;
+        RaiseTabStateChanged();
+        PublishStatus(
+            string.Format(
+                L("sqlEditor.connection.sidebar.applicationApplied", "Conexao aplicada para toda a aplicacao: {0}."),
+                selected.DisplayName),
+            null,
+            false);
+    }
+
+    private void SyncSidebarConnectionSelectionToActiveTab()
+    {
+        string? activeProfileId = ActiveTabConnectionProfileId;
+        if (string.Equals(_sidebarSelectedConnectionProfileId, activeProfileId, StringComparison.Ordinal))
+            return;
+
+        _sidebarSelectedConnectionProfileId = activeProfileId;
+        RaisePropertyChanged(nameof(SidebarSelectedConnectionProfile));
+        RaisePropertyChanged(nameof(HasSidebarSelectedConnectionProfile));
+        (ApplySidebarConnectionToTabCommand as RelayCommand)?.NotifyCanExecuteChanged();
+        (ApplySidebarConnectionToApplicationCommand as RelayCommand)?.NotifyCanExecuteChanged();
     }
 
     private void OpenResultsSheet()

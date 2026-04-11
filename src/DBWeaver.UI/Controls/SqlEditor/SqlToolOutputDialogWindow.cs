@@ -16,6 +16,10 @@ public sealed class SqlToolOutputDialogWindow : Window
         MinWidth = 620;
         MinHeight = 360;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        SystemDecorations = SystemDecorations.None;
+        ExtendClientAreaToDecorationsHint = true;
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+        ExtendClientAreaTitleBarHeightHint = -1;
         CanResize = true;
         Title = title;
 

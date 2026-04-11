@@ -16,6 +16,10 @@ public sealed class SqlEditorForeignKeyDialogWindow : Window
         MinWidth = 560;
         MinHeight = 320;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        SystemDecorations = SystemDecorations.None;
+        ExtendClientAreaToDecorationsHint = true;
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+        ExtendClientAreaTitleBarHeightHint = -1;
         Title = string.Format(L("sqlEditor.relation.title", "Relacionamentos: {0}"), columnName);
 
         var contentPanel = new StackPanel { Spacing = 8 };

@@ -30,15 +30,11 @@ namespace DBWeaver.UI.Controls.SqlEditor;
 [ExcludeFromCodeCoverage]
 public partial class SqlEditorControl : UserControl
 {
-    private const double ResultsSheetMinHeight = 160;
-    private const double ResultsSheetMaxHeightFallback = 720;
     private const int LargeEditorCompletionThreshold = 10_000;
     private const int CompletionDebounceMs = 80;
     private const int HoverDocsDebounceMs = 400;
 
     private TextEditor? _editor;
-    private Control? _resultsSheetHost;
-    private Control? _resultsResizeGrip;
     private Border? _goToLineOverlay;
     private TextBlock? _goToLineLabel;
     private TextBox? _goToLineInput;
@@ -63,9 +59,6 @@ public partial class SqlEditorControl : UserControl
     private bool _completionOnDemandHintShown;
     private long _completionRequestVersion;
     private Point _lastHoverPointerPosition;
-    private bool _isResizingResultsSheet;
-    private Point _resizeStartPointerPosition;
-    private double _resizeStartHeight;
 
     public SqlEditorControl()
     {
@@ -80,8 +73,6 @@ public partial class SqlEditorControl : UserControl
     private void ConfigureTextEditor()
     {
         _editor = this.FindControl<TextEditor>("SqlTextEditor");
-        _resultsSheetHost = this.FindControl<Control>("ResultsSheetHost");
-        _resultsResizeGrip = this.FindControl<Control>("ResultsResizeGrip");
         _goToLineOverlay = this.FindControl<Border>("GoToLineOverlay");
         _goToLineLabel = this.FindControl<TextBlock>("GoToLineLabel");
         _goToLineInput = this.FindControl<TextBox>("GoToLineInput");
@@ -289,6 +280,15 @@ public partial class SqlEditorControl : UserControl
 
         if (isCancel)
         {
+            if (_vm.ShouldShowResultsSheet)
+            {
+                if (_vm.CloseResultsSheetCommand.CanExecute(null))
+                    _vm.CloseResultsSheetCommand.Execute(null);
+
+                e.Handled = true;
+                return;
+            }
+
             if (_searchPanel?.IsOpened == true)
             {
                 _searchPanel.Close();
@@ -886,66 +886,19 @@ public partial class SqlEditorControl : UserControl
             RegexOptions.IgnoreCase);
     }
 
-    private void ResultsResizeGrip_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void ResultsModalBackdrop_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_vm is null || _resultsResizeGrip is null)
+        if (_vm is null)
             return;
 
-        PointerPointProperties properties = e.GetCurrentPoint(_resultsResizeGrip).Properties;
+        PointerPointProperties properties = e.GetCurrentPoint(this).Properties;
         if (!properties.IsLeftButtonPressed)
             return;
 
-        _isResizingResultsSheet = true;
-        _resizeStartPointerPosition = e.GetPosition(this);
-        _resizeStartHeight = Math.Max(ResultsSheetMinHeight, _vm.ResultsSheetHeight);
-        e.Pointer.Capture(_resultsResizeGrip);
+        if (_vm.CloseResultsSheetCommand.CanExecute(null))
+            _vm.CloseResultsSheetCommand.Execute(null);
+
         e.Handled = true;
-    }
-
-    private void ResultsResizeGrip_OnPointerMoved(object? sender, PointerEventArgs e)
-    {
-        if (!_isResizingResultsSheet || _vm is null)
-            return;
-
-        Point current = e.GetPosition(this);
-        double deltaY = _resizeStartPointerPosition.Y - current.Y;
-        double maxHeight = ResolveResultsSheetMaxHeight();
-        double target = Math.Clamp(_resizeStartHeight + deltaY, ResultsSheetMinHeight, maxHeight);
-        _vm.SetResultsSheetHeight(target);
-        e.Handled = true;
-    }
-
-    private void ResultsResizeGrip_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        EndResultsResize(e.Pointer);
-        e.Handled = true;
-    }
-
-    private void ResultsResizeGrip_OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
-    {
-        EndResultsResize(null);
-    }
-
-    private void EndResultsResize(IPointer? pointer)
-    {
-        if (!_isResizingResultsSheet)
-            return;
-
-        _isResizingResultsSheet = false;
-        pointer?.Capture(null);
-        _vm?.PersistResultsSheetHeightPreference();
-    }
-
-    private double ResolveResultsSheetMaxHeight()
-    {
-        if (_resultsSheetHost?.Parent is not Control parent || parent.Bounds.Height <= 0)
-            return ResultsSheetMaxHeightFallback;
-
-        double available = parent.Bounds.Height - 80;
-        if (available < ResultsSheetMinHeight)
-            return ResultsSheetMinHeight;
-
-        return available;
     }
 
     private static int? ResolveTabShortcutIndex(Key key, KeyModifiers modifiers)

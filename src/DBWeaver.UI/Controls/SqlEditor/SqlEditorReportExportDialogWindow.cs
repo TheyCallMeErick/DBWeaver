@@ -28,6 +28,10 @@ public sealed class SqlEditorReportExportDialogWindow : Window
         MinWidth = 620;
         MinHeight = 600;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        SystemDecorations = SystemDecorations.None;
+        ExtendClientAreaToDecorationsHint = true;
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome;
+        ExtendClientAreaTitleBarHeightHint = -1;
         Background = ResolveBrush("Bg0Brush", UiColorConstants.C_070A12);
 
         _confirmButton = new Button
